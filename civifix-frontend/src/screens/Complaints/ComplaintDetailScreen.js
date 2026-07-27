@@ -13,15 +13,16 @@ import {
   TextInput,
   Image,
 } from "react-native";
-import { MaterialCommunityIcons as Icon } from "@expo/vector-icons";
+import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import authService from "../../services/authService";
 import { getErrorMessage } from "../../services/api";
 import { AuthContext } from "../../context/AuthContext";
 import { SPACING } from "../../constants/theme";
-import * as ImagePicker from "expo-image-picker";
+import * as ImagePicker from '../../services/ImagePicker';
 
 import { API_URL } from "../../constants/endpoints";
 import { resolveImageUri } from "../../utils/imageUri";
+import { getComplaintStatusMeta, normalizeComplaintStatus } from "../../utils/status";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
@@ -56,7 +57,7 @@ const PRIORITY_CONFIG = {
 };
 
 function getStatus(key) {
-  return STATUS_CONFIG[(key || "").toLowerCase()] || STATUS_CONFIG.pending;
+  return getComplaintStatusMeta(key);
 }
 function getPriority(key) {
   return PRIORITY_CONFIG[(key || "").toLowerCase()] || PRIORITY_CONFIG.medium;
@@ -398,6 +399,7 @@ export const ComplaintDetailScreen = ({ route, navigation }) => {
     }
   };
 
+  const normalizedStatus = normalizeComplaintStatus(complaint?.status);
   const statusCfg = getStatus(complaint?.status);
   // Extract citizen uploaded images or proof images
   let complaintImages = [];
@@ -518,7 +520,7 @@ export const ComplaintDetailScreen = ({ route, navigation }) => {
           </View>
 
           {/* ── FEEDBACK & RATING (If CLOSED/RESOLVED) ── */}
-          {isCitizen && complaint && ["closed", "resolved"].includes(complaint.status?.toLowerCase()) && !complaint.rating && (
+          {isCitizen && complaint && ["closed", "resolved"].includes(normalizedStatus.toLowerCase()) && !complaint.rating && (
             <View style={styles.card}>
               <SectionTitle title="Feedback & Rating" icon="star-outline" />
               <View style={styles.ratingRow}>
@@ -557,7 +559,7 @@ export const ComplaintDetailScreen = ({ route, navigation }) => {
           )}
 
           {/* ── REOPEN COMPLAINT (If CLOSED/RESOLVED) ── */}
-          {isCitizen && complaint && ["closed", "resolved"].includes(complaint.status?.toLowerCase()) && (
+          {isCitizen && complaint && ["closed", "resolved"].includes(normalizedStatus.toLowerCase()) && (
             <View style={styles.card}>
               <SectionTitle title="Issue not fixed?" icon="refresh" />
               <TextInput
@@ -579,7 +581,7 @@ export const ComplaintDetailScreen = ({ route, navigation }) => {
           {isInspector && complaint && (
             <View style={styles.card}>
               <SectionTitle title="Inspector Actions" icon="shield-check" />
-              {["new", "open"].includes(complaint.status?.toLowerCase()) && (
+              {["new", "open", "pending"].includes(normalizedStatus.toLowerCase()) && (
                 <View style={{ flexDirection: "row", gap: SPACING.md }}>
                   <TouchableOpacity style={[styles.actionBtn, { flex: 1, backgroundColor: "#059669" }]} onPress={handleAccept} disabled={submitting}>
                     {submitting ? <ActivityIndicator size="small" color="#fff" /> : <Text style={styles.actionBtnText}>Accept</Text>}
@@ -589,7 +591,7 @@ export const ComplaintDetailScreen = ({ route, navigation }) => {
                   </TouchableOpacity>
                 </View>
               )}
-              {["in_progress", "working"].includes(complaint.status?.toLowerCase()) && (
+              {["in_progress", "working"].includes(normalizedStatus.toLowerCase()) && (
                 <View style={{ marginTop: 10 }}>
                   <Text style={{ fontSize: 14, fontWeight: '700', marginBottom: 10, color: '#333' }}>Attach Proof (Required)</Text>
                   
@@ -635,7 +637,7 @@ export const ComplaintDetailScreen = ({ route, navigation }) => {
                   </TouchableOpacity>
                 </View>
               )}
-              {["resolved", "closed", "rejected"].includes(complaint.status?.toLowerCase()) && (
+              {["resolved", "closed", "rejected"].includes(normalizedStatus.toLowerCase()) && (
                 <Text style={{ color: GRAY_500, fontSize: 14, textAlign: "center", fontStyle: "italic" }}>No actions available.</Text>
               )}
             </View>

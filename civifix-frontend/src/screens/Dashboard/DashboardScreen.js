@@ -9,9 +9,9 @@ import {
   View,
   Platform,
 } from "react-native";
-import { LinearGradient } from "expo-linear-gradient";
+import { LinearGradient } from 'react-native-linear-gradient';
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { MaterialCommunityIcons as Icon } from "@expo/vector-icons";
+import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { AuthContext } from "../../context/AuthContext";
 import { Screen } from "../../components";

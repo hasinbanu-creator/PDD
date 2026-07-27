@@ -1,7 +1,7 @@
 import { Platform } from 'react-native';
 import React, { useState } from "react";
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, ActivityIndicator, Dimensions } from "react-native";
-import { MaterialCommunityIcons as Icon } from "@expo/vector-icons";
+import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { COLORS, FONT_SIZES, SPACING, BORDER_RADIUS, SHADOWS } from "../../constants/theme";
 import MapView, { Marker } from "react-native-maps";
 import { API_URL } from "../../constants/endpoints";
@@ -35,10 +35,12 @@ const ComplaintPreviewScreen = ({ route, navigation }) => {
           if (Platform.OS === 'android' && !fileUri.startsWith('file://') && !fileUri.startsWith('content://')) {
             fileUri = 'file://' + fileUri;
           }
+          let mimeType = img.type || 'image/jpeg';
+          if (mimeType === 'image') mimeType = 'image/jpeg';
           formData.append("images", {
             uri: fileUri,
-            name: img.name || `photo-${index}.jpg`,
-            type: (img.type === 'image' ? 'image/jpeg' : img.type) || 'image/jpeg'
+            name: img.fileName || `image_${index}.jpg`,
+            type: mimeType
           });
         });
       }

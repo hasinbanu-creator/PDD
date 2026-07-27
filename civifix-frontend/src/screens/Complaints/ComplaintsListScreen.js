@@ -11,11 +11,12 @@ import {
   StatusBar,
   TextInput,
 } from "react-native";
-import { MaterialCommunityIcons as Icon } from "@expo/vector-icons";
+import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import authService from "../../services/authService";
 import { AuthContext } from "../../context/AuthContext";
 import { getErrorMessage } from "../../services/api";
 import ComplaintCard from "./ComplaintCard";
+import { normalizeComplaintStatus, isComplaintActive } from "../../utils/status";
 
 // ─── TOKENS ───────────────────────────────────────────────────────────────────
 const PRIMARY       = "#2563EB";
@@ -107,14 +108,14 @@ const ErrorState = ({ message, onRetry }) => (
 // ─── SUMMARY CHIPS ────────────────────────────────────────────────────────────
 const SummaryChips = ({ complaints }) => {
   const counts = complaints.reduce((acc, c) => {
-    const s = (c.status || "PENDING").toUpperCase();
+    const s = normalizeComplaintStatus(c.status);
     acc[s] = (acc[s] || 0) + 1;
     return acc;
   }, {});
 
   const chips = [
     { label: "Total",       value: complaints.length,        color: PRIMARY  },
-    { label: "Active",      value: (counts.OPEN || 0) + (counts.IN_PROGRESS || 0) + (counts.ASSIGNED || 0), color: "#0891B2" },
+    { label: "Active",      value: (counts.OPEN || 0) + (counts.IN_PROGRESS || 0) + (counts.ASSIGNED || 0) + (counts.APPROVAL || 0), color: "#0891B2" },
     { label: "Resolved",    value: counts.RESOLVED || 0,     color: SUCCESS  },
     { label: "Rejected",    value: counts.REJECTED || 0,     color: ERROR    },
   ];
@@ -134,8 +135,8 @@ const SummaryChips = ({ complaints }) => {
 // ─── FILTER TABS ──────────────────────────────────────────────────────────────
 const FilterTabs = ({ active, onChange, complaints }) => {
   const counts = complaints.reduce((acc, c) => {
-    const s = (c.status || "PENDING").toUpperCase();
-    if (["PENDING", "OPEN", "ASSIGNED", "IN_PROGRESS"].includes(s)) acc["ACTIVE"] = (acc["ACTIVE"] || 0) + 1;
+    const s = normalizeComplaintStatus(c.status);
+    if (isComplaintActive(s)) acc["ACTIVE"] = (acc["ACTIVE"] || 0) + 1;
     else acc[s] = (acc[s] || 0) + 1;
     return acc;
   }, {});
@@ -192,31 +193,33 @@ export const ComplaintsListScreen = ({ navigation }) => {
   const { user } = useContext(AuthContext);
 
   const loadComplaints = useCallback(async (pageNum = 1) => {
+    const safePage = typeof pageNum === "number" && Number.isFinite(pageNum) ? pageNum : 1;
+
     try {
-      if (pageNum === 1) setLoading(true);
+      if (safePage === 1) setLoading(true);
       else setLoadingMore(true);
       setError("");
-      
+
       let payload;
       if (user?.role === "INSPECTOR") {
         payload = await authService.getWardComplaints({
-          page: pageNum,
+          page: safePage,
           limit: 10,
         });
       } else if (user?.role === "WORKER") {
-        payload = await authService.getAssignedComplaints({ page: pageNum, limit: 10 });
+        payload = await authService.getAssignedComplaints({ page: safePage, limit: 10 });
       } else {
-        payload = await authService.getComplaints({ page: pageNum, limit: 10 });
+        payload = await authService.getComplaints({ page: safePage, limit: 10 });
       }
-      
+
       const newComplaints = extractComplaints(payload);
-      if (pageNum === 1) {
+      if (safePage === 1) {
         setComplaints(newComplaints);
       } else {
         setComplaints(prev => [...prev, ...newComplaints]);
       }
       setHasMore(newComplaints.length === 10);
-      setPage(pageNum);
+      setPage(safePage);
     } catch (err) {
       setError(getErrorMessage(err, "Unable to load complaints"));
     } finally {
@@ -224,10 +227,10 @@ export const ComplaintsListScreen = ({ navigation }) => {
       setRefreshing(false);
       setLoadingMore(false);
     }
-  }, []);
+  }, [user?.role]);
 
   useEffect(() => {
-    const unsubscribe = navigation.addListener("focus", loadComplaints);
+    const unsubscribe = navigation.addListener("focus", () => loadComplaints(1));
     return unsubscribe;
   }, [loadComplaints, navigation]);
 
@@ -237,10 +240,10 @@ export const ComplaintsListScreen = ({ navigation }) => {
   };
 
   const filtered = complaints.filter((c) => {
-    const s = (c.status || "").toUpperCase();
+    const s = normalizeComplaintStatus(c.status);
     let matchesStatus = false;
     if (activeFilter === "ALL") matchesStatus = true;
-    else if (activeFilter === "ACTIVE") matchesStatus = ["PENDING", "OPEN", "ASSIGNED", "IN_PROGRESS"].includes(s);
+    else if (activeFilter === "ACTIVE") matchesStatus = isComplaintActive(s);
     else matchesStatus = s === activeFilter;
 
     const matchesCategory = activeCategory === "ALL" || c.complaint_type === activeCategory;

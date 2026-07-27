@@ -14,7 +14,7 @@ import {
   FlatList,
   StatusBar,
 } from "react-native";
-import { MaterialCommunityIcons as Icon } from "@expo/vector-icons";
+import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { AuthContext } from "../../context/AuthContext";
 import { COLORS, SPACING, FONT_SIZES, SHADOWS } from "../../constants/theme";
 import { API_URL, ENDPOINTS } from "../../constants/endpoints";

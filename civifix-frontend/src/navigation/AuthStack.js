@@ -6,7 +6,6 @@ import RegisterScreen from "../screens/Auth/RegisterScreen";
 import VerifyLoginScreen from "../screens/Auth/VerifyLoginScreen";
 import VerifyRegisterScreen from "../screens/Auth/VerifyRegisterScreen";
 import OnboardingScreen from "../screens/Auth/OnboardingScreen";
-import RoleSelectionScreen from "../screens/Auth/RoleSelectionScreen";
 import RecoverAccountScreen from "../screens/Auth/RecoverAccountScreen";
 
 const Stack = createNativeStackNavigator();
@@ -23,7 +22,6 @@ export const AuthStack = () => {
     >
       <Stack.Screen name="Splash" component={SplashScreen} />
       <Stack.Screen name="Onboarding" component={OnboardingScreen} />
-      <Stack.Screen name="RoleSelection" component={RoleSelectionScreen} />
       <Stack.Screen name="Login" component={LoginScreen} />
       <Stack.Screen name="Register" component={RegisterScreen} />
       <Stack.Screen name="RecoverAccount" component={RecoverAccountScreen} />

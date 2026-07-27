@@ -8,7 +8,7 @@ import {
   FlatList,
   Platform,
 } from "react-native";
-import { MaterialCommunityIcons as Icon } from "@expo/vector-icons";
+import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import authService, { getErrorMessage } from "../../services/authService";
 import { COLORS, SPACING, FONT_SIZES, SHADOWS } from "../../constants/theme";

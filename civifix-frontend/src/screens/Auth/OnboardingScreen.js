@@ -31,12 +31,12 @@ const OnboardingScreen = ({ navigation }) => {
     if (currentIndex < slides.length - 1) {
       setCurrentIndex(currentIndex + 1);
     } else {
-      navigation.navigate("RoleSelection");
+      navigation.navigate("Login");
     }
   };
 
   const handleSkip = () => {
-    navigation.navigate("RoleSelection");
+    navigation.navigate("Login");
   };
 
   return (

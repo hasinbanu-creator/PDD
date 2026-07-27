@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from "react";
 import { View, StyleSheet, TouchableOpacity, Text, Dimensions, ActivityIndicator } from "react-native";
 import MapView, { Marker, Callout } from "react-native-maps";
-import * as Location from "expo-location";
-import { MaterialCommunityIcons as Icon } from "@expo/vector-icons";
+import * as Location from '../../services/Location';
+import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { COLORS, FONT_SIZES, SPACING, BORDER_RADIUS, SHADOWS } from "../../constants/theme";
 import authService from "../../services/authService";
 import { getErrorMessage } from "../../services/api";

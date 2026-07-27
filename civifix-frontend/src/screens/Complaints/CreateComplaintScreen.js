@@ -15,11 +15,11 @@ import {
   Dimensions,
   TextInput,
 } from "react-native";
-import { LinearGradient } from "expo-linear-gradient";
-import * as Location from "expo-location";
+import { LinearGradient } from 'react-native-linear-gradient';
+import * as Location from '../../services/Location';
 import { Alert, Image } from "react-native";
-import * as ImagePicker from "expo-image-picker";
-import { MaterialCommunityIcons as Icon } from "@expo/vector-icons";
+import * as ImagePicker from '../../services/ImagePicker';
+import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 
 const EMPTY_FORM = {
   ward_id: "",
@@ -373,17 +373,31 @@ export const CreateComplaintScreen = ({ route, navigation }) => {
       }
       const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
       const { latitude, longitude } = loc.coords;
+      console.log("DEBUG: Current coordinates:", loc.coords);
+      console.log("DEBUG: Latitude:", latitude);
+      console.log("DEBUG: Longitude:", longitude);
       updateField("latitude",  String(latitude.toFixed(6)));
       updateField("longitude", String(longitude.toFixed(6)));
       // Reverse geocode → autofill address
+      let finalAddress = `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`;
       try {
         const [place] = await Location.reverseGeocodeAsync({ latitude, longitude });
-        if (place) {
-          const parts = [place.name, place.street, place.district, place.city, place.region].filter(Boolean);
-          updateField("address", parts.join(", "));
+        console.log("DEBUG: Address response:", place);
+        if (place && Object.keys(place).length > 0) {
+          const parts = [place.name, place.street, place.locality, place.city, place.district, place.region, place.postalCode].filter(Boolean);
+          const formatted = parts.length > 0 ? parts.join(", ") : (place.formattedAddress || "");
+          if (formatted.trim()) {
+            finalAddress = formatted;
+          }
         }
-      } catch { /* optional */ }
-    } catch {
+      } catch (error) {
+        console.error("Geocoding failed", error);
+        console.log("DEBUG: Network failures during geocoding:", error);
+      }
+      // Force UI update safely outside the try block
+      updateField("address", finalAddress);
+    } catch (error) {
+      console.log("DEBUG: Network failures during GPS:", error);
       Alert.alert("Location Error", "Could not get your location. Please try again.");
     } finally {
       setGpsLoading(false);
@@ -495,10 +509,16 @@ export const CreateComplaintScreen = ({ route, navigation }) => {
     }
   };
 
-  const wardItems = wards.map((w) => ({
-    ...w, value: w._id ?? w.ward_id,
-    label: w.label ?? w.ward_name ?? w.name ?? w._id,
-  }));
+  const wardItems = wards.map((w) => {
+    const idVal = w._id && typeof w._id === 'object' ? w._id.$oid ?? String(w._id) : w._id;
+    return {
+      ...w, value: String(idVal ?? w.ward_id),
+      label: w.label ?? w.ward_name ?? w.name ?? idVal,
+    };
+  }).sort((a, b) => {
+    if (a.ward_number && b.ward_number) return a.ward_number - b.ward_number;
+    return a.label.localeCompare(b.label, undefined, { numeric: true, sensitivity: 'base' });
+  });
   const selectedType = COMPLAINT_TYPES.find((t) => t.value === form.complaint_type);
   const selectedPri  = PRIORITIES.find((p) => p.value === form.priority);
 

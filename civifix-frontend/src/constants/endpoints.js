@@ -1,8 +1,8 @@
 import { Platform } from "react-native";
-import Constants from "expo-constants";
-import * as Device from "expo-device";
+import Config from "react-native-config";
+import DeviceInfo from "react-native-device-info";
 
-const DEFAULT_API_URL = "http://localhost:8000/api/v1"
+const DEFAULT_API_URL = "https://cv.onenism.org/api/v1";
 
 const isLocalhostLike = (url) => {
   if (!url) return true;
@@ -15,26 +15,19 @@ const isLocalhostLike = (url) => {
   }
 };
 
-const getMetroHost = () => {
-  const hostUri =
-    Constants.expoConfig?.hostUri ||
-    Constants.manifest2?.extra?.expoClient?.hostUri ||
-    Constants.manifest?.debuggerHost;
+const getMetroHost = () => null;
 
-  return hostUri?.split(":")?.[0];
-};
+const getLanIp = () => null;
 
-const getLanIp = () => {
-  const host = getMetroHost();
-  if (!host) return null;
-  if (host === "localhost" || host === "127.0.0.1" || host === "0.0.0.0") {
-    return null;
-  }
-  return host;
+const getConfiguredApiUrl = () => process.env.EXPO_PUBLIC_API_URL || Config.EXPO_PUBLIC_API_URL || Config.API_URL || DEFAULT_API_URL;
+
+const normalizeApiUrl = (url) => {
+  if (!url) return url;
+  return url.endsWith("/") ? url : `${url}/`;
 };
 
 const resolveApiUrl = () => {
-  const configuredUrl = process.env.EXPO_PUBLIC_API_URL || DEFAULT_API_URL;
+  const configuredUrl = normalizeApiUrl(getConfiguredApiUrl());
   const isLocalhost = isLocalhostLike(configuredUrl);
 
   if (!isLocalhost || Platform.OS === "web") {
@@ -42,7 +35,7 @@ const resolveApiUrl = () => {
   }
 
   // If we are on an Android emulator, we should use 10.0.2.2 for localhost
-  if (Platform.OS === "android" && !Device.isDevice) {
+  if (Platform.OS === "android" && DeviceInfo.isEmulatorSync()) {
     return configuredUrl.replace(/localhost|127\.0\.0\.1/, "10.0.2.2");
   }
 

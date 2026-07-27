@@ -11,7 +11,7 @@ import {
   StatusBar,
   Dimensions,
 } from "react-native";
-import { MaterialCommunityIcons as Icon } from "@expo/vector-icons";
+import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { AuthContext } from "../../context/AuthContext";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");

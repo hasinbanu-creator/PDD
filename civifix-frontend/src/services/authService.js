@@ -102,15 +102,12 @@ export const authService = {
     console.log("4. Validating FormData...");
     if (complaintData && complaintData._parts) {
       console.log("   - FormData keys:", complaintData._parts.map(p => p[0]));
-      const images = complaintData._parts.filter(p => p[0] === 'images');
-      images.forEach((img, i) => {
-        console.log(`   - Image ${i + 1} URI:`, img[1]?.uri);
-        console.log(`   - Image ${i + 1} MIME type:`, img[1]?.type);
-      });
+      console.log("DEBUG: FormData._parts:\n", JSON.stringify(complaintData._parts, null, 2));
     }
 
     try {
       console.log("5. Calling fetch()...");
+      console.log("DEBUG: API request body:", complaintData);
       const response = await fetch(url, {
         method: "POST",
         headers: {
@@ -124,12 +121,26 @@ export const authService = {
       console.log("7. Response status:", response.status);
       
       const responseData = await response.json();
+      console.log("DEBUG: API response:\n", JSON.stringify(responseData, null, 2));
+      
       if (!response.ok) {
         console.error("8. Server returned error:", responseData);
-        throw new Error(responseData.message || "Failed to create complaint");
+        console.log("DEBUG: Backend error:", responseData);
+        let errorMsg = responseData.message;
+        if (!errorMsg && Array.isArray(responseData.detail)) {
+          console.log("DEBUG: Validation errors:", responseData.detail);
+          errorMsg = responseData.detail.map(err => {
+            const field = err.loc ? err.loc[err.loc.length - 1] : "Field";
+            return `${field}: ${err.msg}`;
+          }).join(", ");
+        } else if (!errorMsg && typeof responseData.detail === "string") {
+          errorMsg = responseData.detail;
+        }
+        throw new Error(errorMsg || "Failed to create complaint");
       }
       return responseData;
     } catch (err) {
+      console.log("DEBUG: Network failures:", err);
       console.error("6. fetch() or execution crashed before returning a response!");
       console.error("   -> Error:", err.message);
       console.error("   -> Stack Trace:", err.stack);

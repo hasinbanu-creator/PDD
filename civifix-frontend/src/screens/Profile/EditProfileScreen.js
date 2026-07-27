@@ -8,7 +8,7 @@ import Button from "../../components/Button";
 import TextField from "../../components/TextField";
 import { AuthContext } from "../../context/AuthContext";
 import authService from "../../services/authService";
-import { MaterialCommunityIcons as Icon } from "@expo/vector-icons";
+import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 
 const EditProfileScreen = ({ navigation }) => {
   const { user, setUser } = useContext(AuthContext);

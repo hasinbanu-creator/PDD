@@ -13,7 +13,17 @@ export const unwrapResponse = <T>(response: any): T => {
 export const getErrorMessage = (error: any, fallback = "Something went wrong"): string => {
   const data = error?.response?.data;
   if (typeof data === "string") return data;
-  return data?.message || data?.detail || data?.errors || error?.message || fallback;
+  
+  // Handle FastAPI validation errors
+  if (Array.isArray(data?.detail)) {
+    return data.detail.map((err: any) => {
+      const field = err.loc ? err.loc[err.loc.length - 1] : "Field";
+      return `${field}: ${err.msg}`;
+    }).join(", ");
+  }
+  
+  if (typeof data?.detail === "string") return data.detail;
+  return data?.message || data?.errors || error?.message || fallback;
 };
 
 api.interceptors.request.use(

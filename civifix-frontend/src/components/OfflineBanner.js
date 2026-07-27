@@ -2,7 +2,7 @@ import React, { useContext } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { NetworkContext } from '../context/NetworkContext';
 import { COLORS, FONT_SIZES, SPACING, SHADOWS } from '../constants/theme';
-import { MaterialCommunityIcons as Icon } from '@expo/vector-icons';
+import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 
 const OfflineBanner = () => {
   const { isConnected, isInternetReachable } = useContext(NetworkContext);

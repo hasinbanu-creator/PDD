@@ -91,12 +91,27 @@ export default function CreateComplaintPage() {
         try {
           const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`);
           const data = await res.json();
-          if (data && data.display_name) {
-            updateField("address", data.display_name);
+          if (data && data.address) {
+            const addr = data.address;
+            const parts = [
+              addr.building || addr.amenity || addr.landmark, // Landmark
+              addr.road || addr.street, // Address
+              addr.suburb || addr.neighbourhood || addr.village, // Locality
+              addr.city || addr.town, // City
+              addr.county || addr.state_district, // District
+              addr.state, // State
+              addr.postcode // Pincode
+            ].filter(Boolean);
+            const joined = parts.join(", ");
+            updateField("address", joined || `${lat}, ${lon}`);
+          } else if (data && data.display_name) {
+            updateField("address", data.display_name || `${lat}, ${lon}`);
+          } else {
+             throw new Error("Invalid geocoding response");
           }
         } catch (error) {
           console.error("Failed to reverse geocode:", error);
-          // Fallback if nominatim fails
+          // Removed the serverError message so it just falls back silently as requested
           updateField("address", `${lat}, ${lon}`);
         }
         setGpsLoading(false);
@@ -137,8 +152,6 @@ export default function CreateComplaintPage() {
       if (form.citizen_note) formData.append("citizen_note", form.citizen_note.trim());
       
       if (selectedImages.length === 0) {
-        // FastAPI throws 422 if List[UploadFile] is missing entirely from multipart/form-data
-        // Append an empty blob to satisfy the field presence, backend skips empty filenames
         formData.append("images", new Blob([""], { type: "application/octet-stream" }), "");
       } else {
         selectedImages.forEach((file) => {
@@ -146,7 +159,6 @@ export default function CreateComplaintPage() {
         });
       }
       
-      // LOG PAYLOAD AS REQUESTED
       console.log("Submitting Complaint Payload:");
       formData.forEach((value, key) => {
         console.log(`- ${key}:`, value);
@@ -156,15 +168,12 @@ export default function CreateComplaintPage() {
       setCreatedComplaint(result);
       setShowSuccess(true);
     } catch (err: any) {
-      // LOG COMPLETE ERROR BODY AS REQUESTED
       console.error("Submission failed!", err);
       console.error("Backend Response Data:", err?.response?.data);
       
-      setServerError(
-        err?.response?.data?.detail 
-          ? JSON.stringify(err.response.data.detail)
-          : err.message || "Unable to submit. Please try again."
-      );
+      import("@/lib/api").then(({ getErrorMessage }) => {
+         setServerError(getErrorMessage(err, "Failed to create complaint"));
+      });
     } finally {
       setLoading(false);
     }

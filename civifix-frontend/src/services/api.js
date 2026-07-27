@@ -2,10 +2,17 @@ import axios from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { API_URL, ENDPOINTS } from "../constants/endpoints";
 
+const normalizedBaseUrl = API_URL.endsWith("/") ? API_URL.slice(0, -1) : API_URL;
+
 const api = axios.create({
-  baseURL: API_URL,
+  baseURL: normalizedBaseUrl,
   timeout: 180000,
 });
+
+if (process.env.EXPO_PUBLIC_ENABLE_DEBUG === "true") {
+  console.log("[API CONFIG] API_URL=", API_URL);
+  console.log("[API CONFIG] axios baseURL=", normalizedBaseUrl);
+}
 
 export const unwrapResponse = (response) => response?.data?.data ?? response?.data;
 

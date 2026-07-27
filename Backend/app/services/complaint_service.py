@@ -152,7 +152,7 @@ class ComplaintService:
             raise
         except Exception as e:
             logger.error(f"Error creating complaint: {str(e)}")
-            raise CivifixException("Failed to create complaint", status_code=500)
+            raise CivifixException(f"Database insertion failed: {str(e)}", status_code=500)
 
     async def get_complaint(self, complaint_id: str) -> dict:
         """Get complaint details with history"""

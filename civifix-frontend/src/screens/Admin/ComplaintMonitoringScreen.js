@@ -1,7 +1,7 @@
 import React, { useState, useCallback } from "react";
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, RefreshControl, ActivityIndicator, Alert, Linking } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
-import { MaterialCommunityIcons as Icon } from "@expo/vector-icons";
+import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { COLORS, FONT_SIZES, SPACING, BORDER_RADIUS, SHADOWS } from "../../constants/theme";
 import Screen from "../../components/Screen";
 import Header from "../../components/Header";

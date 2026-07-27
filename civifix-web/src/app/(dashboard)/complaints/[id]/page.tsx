@@ -220,6 +220,7 @@ export default function ComplaintDetailsPage() {
       
       // Save the rejection reason via Notes API
       try {
+        const { default: api } = await import("@/lib/api");
         await api.post(`/inspector/complaints/${id}/notes`, { note: `Rejection Reason: ${rejectReason}` });
       } catch (noteErr) {
         console.error("Failed to save rejection reason", noteErr);

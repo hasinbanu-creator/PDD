@@ -1,7 +1,8 @@
 import React from "react";
 import { Text, TouchableOpacity, View } from "react-native";
-import { MaterialCommunityIcons as Icon } from "@expo/vector-icons";
+import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { COLORS, FONT_SIZES, SPACING } from "../../constants/theme";
+import { getComplaintStatusMeta } from "../../utils/status";
 
 // ─── STATUS CONFIG ────────────────────────────────────────────────────────────
 
@@ -57,7 +58,7 @@ const getWardDisplayLabel = (complaint) => {
 export const ComplaintCard = ({ complaint, onPress }) => {
   const type      = complaint?.complaint_type || "OTHER";
   const typeMeta  = TYPE_META[type] || TYPE_META.OTHER;
-  const status    = STATUS[complaint?.status] || STATUS.OPEN;
+  const status    = getComplaintStatusMeta(complaint?.status);
   const title     = formatType(complaint?.complaint_type || complaint?.title || "Complaint");
   
   const address   = complaint?.address || "Address not provided";

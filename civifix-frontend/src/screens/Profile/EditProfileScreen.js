@@ -11,7 +11,7 @@ import authService from "../../services/authService";
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 
 const EditProfileScreen = ({ navigation }) => {
-  const { user, setUser } = useContext(AuthContext);
+  const { user, updateUser } = useContext(AuthContext);
   const queryClient = useQueryClient();
 
   const { control, handleSubmit, formState: { errors } } = useForm({
@@ -32,7 +32,9 @@ const EditProfileScreen = ({ navigation }) => {
   const updateProfileMutation = useMutation({
     mutationFn: (data) => authService.updateProfile(data),
     onSuccess: (updatedUser) => {
-      setUser(updatedUser);
+      if (updateUser) {
+        updateUser(updatedUser);
+      }
       // Invalidate any queries related to user if needed
       queryClient.invalidateQueries({ queryKey: ["userProfile"] });
       navigation.goBack();

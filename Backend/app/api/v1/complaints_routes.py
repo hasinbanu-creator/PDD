@@ -419,8 +419,12 @@ async def submit_feedback(
     """Submit feedback and rating (CITIZEN only)"""
     try:
         update_data = {"rating": rating, "feedback": feedback, "status": "CLOSED"}
-        # assuming service.complaint_repo.update exists
+        complaint = await service.complaint_repo.get_by_id(complaint_id)
+        old_status = complaint.get("status") if complaint else None
+        new_status = "CLOSED"
+        logger.info(f"STATUS CHANGE BEFORE - Complaint ID: {complaint_id}, Old Status: {old_status}, New Status: {new_status}")
         success = await service.complaint_repo.update(complaint_id, update_data)
+        logger.info(f"STATUS CHANGE AFTER - Complaint ID: {complaint_id}, Old Status: {old_status}, New Status: {new_status}")
         if not success:
             raise HTTPException(status_code=404, detail="Complaint not found")
             
@@ -447,7 +451,12 @@ async def reopen_complaint(
     """Reopen a closed complaint (CITIZEN only)"""
     try:
         update_data = {"status": "REOPENED", "reopen_reason": reason}
+        complaint = await service.complaint_repo.get_by_id(complaint_id)
+        old_status = complaint.get("status") if complaint else None
+        new_status = "REOPENED"
+        logger.info(f"STATUS CHANGE BEFORE - Complaint ID: {complaint_id}, Old Status: {old_status}, New Status: {new_status}")
         success = await service.complaint_repo.update(complaint_id, update_data)
+        logger.info(f"STATUS CHANGE AFTER - Complaint ID: {complaint_id}, Old Status: {old_status}, New Status: {new_status}")
         if not success:
             raise HTTPException(status_code=404, detail="Complaint not found")
             

@@ -53,13 +53,22 @@ async def get_current_user(
             headers={"WWW-Authenticate": "Bearer"},
         )
     
-    return {
-        "user_id": user_id,
-        "email": token_data.get("email"),
-        "role": token_data.get("role"),
-        "district": token_data.get("district"),
-        "permissions": user.get("permissions", [])
-    }
+    # Build a complete profile from the MongoDB document
+    # Stringify _id to make it JSON-serializable
+    if "_id" in user:
+        user["_id"] = str(user["_id"])
+    
+    # Ensure essential fields from JWT are always present as fallbacks
+    user.setdefault("user_id", user_id)
+    user.setdefault("email", token_data.get("email"))
+    user.setdefault("role", token_data.get("role"))
+    user.setdefault("district", token_data.get("district"))
+    
+    # Remove sensitive fields that should never be sent to the client
+    for key in ("otp_code_hash", "otp_expiry", "otp_attempts", "otp_last_request_at", "password_hash"):
+        user.pop(key, None)
+    
+    return user
 
 
 async def get_current_admin(

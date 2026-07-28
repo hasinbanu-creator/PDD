@@ -148,6 +148,10 @@ export const AuthProvider = ({ children }) => {
       dispatch({ type: "SIGN_OUT" });
     }, []),
 
+    updateUser: useCallback((userData) => {
+      dispatch({ type: "SET_USER", payload: userData });
+    }, []),
+
   };
 
   return (

@@ -213,6 +213,7 @@ export const ComplaintsListScreen = ({ navigation }) => {
       }
 
       const newComplaints = extractComplaints(payload);
+      console.log("[ComplaintsListScreen] API response for complaints before rendering:", newComplaints.map(c => ({ id: c.complaint_id || c._id, status: c.status })));
       if (safePage === 1) {
         setComplaints(newComplaints);
       } else {

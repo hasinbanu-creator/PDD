@@ -381,17 +381,21 @@ async def start_work(
                 selected = random.choice(workers)
                 assigned_worker_id = selected["_id"]
 
+        old_status = complaint.get("status")
+        new_status = "IN_PROGRESS"
         update_fields: Dict[str, Any] = {
-            "status": "IN_PROGRESS",
+            "status": new_status,
             "updated_at": datetime.utcnow()
         }
         if assigned_worker_id:
             update_fields["worker_id"] = assigned_worker_id
 
+        logger.info(f"STATUS CHANGE BEFORE - Complaint ID: {complaint_id}, Old Status: {old_status}, New Status: {new_status}")
         await db.complaints.update_one(
             {"_id": complaint.get("_id")},
             {"$set": update_fields}
         )
+        logger.info(f"STATUS CHANGE AFTER - Complaint ID: {complaint_id}, Old Status: {old_status}, New Status: {new_status}")
 
         await db.complaint_history.insert_one({
             "complaint_id": complaint.get("_id"),
@@ -441,10 +445,14 @@ async def reject_complaint_simplified(
                 status_code=status.HTTP_400_BAD_REQUEST
             )
 
+        old_status = complaint.get("status")
+        new_status = "REJECTED"
+        logger.info(f"STATUS CHANGE BEFORE - Complaint ID: {complaint_id}, Old Status: {old_status}, New Status: {new_status}")
         await db.complaints.update_one(
             {"_id": complaint.get("_id")},
-            {"$set": {"status": "REJECTED", "updated_at": datetime.utcnow()}}
+            {"$set": {"status": new_status, "updated_at": datetime.utcnow()}}
         )
+        logger.info(f"STATUS CHANGE AFTER - Complaint ID: {complaint_id}, Old Status: {old_status}, New Status: {new_status}")
 
         await db.complaint_history.insert_one({
             "complaint_id": complaint.get("_id"),
@@ -522,15 +530,19 @@ async def resolve_complaint(
                 status_code=status.HTTP_400_BAD_REQUEST
             )
 
+        old_status = complaint.get("status")
+        new_status = "RESOLVED"
+        logger.info(f"STATUS CHANGE BEFORE - Complaint ID: {complaint_id}, Old Status: {old_status}, New Status: {new_status}")
         await db.complaints.update_one(
             {"_id": complaint.get("_id")},
             {"$set": {
-                "status": "RESOLVED",
+                "status": new_status,
                 "proof_images": image_urls,
                 "closed_at": datetime.utcnow(),
                 "updated_at": datetime.utcnow()
             }}
         )
+        logger.info(f"STATUS CHANGE AFTER - Complaint ID: {complaint_id}, Old Status: {old_status}, New Status: {new_status}")
 
         await db.complaint_history.insert_one({
             "complaint_id": complaint.get("_id"),
@@ -587,6 +599,7 @@ async def update_complaint_status(
                 status_code=status.HTTP_400_BAD_REQUEST
             )
 
+        logger.info(f"STATUS CHANGE BEFORE - Complaint ID: {complaint_id}, Old Status: {old_status}, New Status: {new_status}")
         await db.complaints.update_one(
             {"_id": complaint.get("_id")},
             {"$set": {
@@ -594,6 +607,7 @@ async def update_complaint_status(
                 "updated_at": datetime.utcnow()
             }}
         )
+        logger.info(f"STATUS CHANGE AFTER - Complaint ID: {complaint_id}, Old Status: {old_status}, New Status: {new_status}")
 
         await db.complaint_history.insert_one({
             "complaint_id": complaint.get("_id"),

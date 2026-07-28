@@ -17,6 +17,7 @@ import { AuthContext } from "../../context/AuthContext";
 import { Screen } from "../../components";
 import { COLORS, FONT_SIZES, SHADOWS, SPACING } from "../../constants/theme";
 import authService from "../../services/authService";
+import { normalizeComplaintStatus, getComplaintStatusMeta } from "../../utils/status";
 
 // ─── UTILITIES ───────────────────────────────────────────────────────────────
 
@@ -31,13 +32,7 @@ const initials = (name = "") =>
 
 // ─── CONSTANTS ───────────────────────────────────────────────────────────────
 
-const STATUS_STYLES = {
-  OPEN:     { label: "Pending",     color: "#D97706", bg: "#FEF3C7" },
-  WORKING:  { label: "In Progress", color: COLORS.primary,  bg: "#DBEAFE" },
-  APPROVAL: { label: "Review",      color: "#0891B2", bg: "#CFFAFE" },
-  CLOSED:   { label: "Resolved",    color: "#059669", bg: "#D1FAE5" },
-  REJECTED: { label: "Rejected",    color: "#DC2626", bg: "#FFE4E6" },
-};
+// STATUS_STYLES removed to use getComplaintStatusMeta from utils/status as the single source of truth
 
 const TYPE_META = {
   ROAD_DAMAGE:  { icon: "road-variant",         color: "#DC2626", title: "Road Damage"      },
@@ -141,7 +136,7 @@ const MetricCard = ({ icon, value, label, color, bg }) => (
 const ComplaintItem = ({ complaint, index, total, onPress }) => {
   const type   = complaint.complaint_type || "OTHER";
   const meta   = TYPE_META[type] || TYPE_META.OTHER;
-  const status = STATUS_STYLES[complaint.status] || STATUS_STYLES.OPEN;
+  const status = getComplaintStatusMeta(complaint.status);
   const title  = complaint.title || complaint.type || meta.title;
   const desc   = complaint.description || "No description provided";
 
@@ -464,7 +459,7 @@ const DistrictAdminDashboard = ({ navigation, meData, user }) => {
 const InspectorComplaintItem = ({ complaint, index, total, onPress }) => {
   const type   = complaint.complaint_type || "OTHER";
   const meta   = TYPE_META[type] || TYPE_META.OTHER;
-  const status = STATUS_STYLES[complaint.status] || STATUS_STYLES.OPEN;
+  const status = getComplaintStatusMeta(complaint.status);
   const title  = meta.title;
   const desc   = complaint.description || "No description provided";
   
@@ -629,6 +624,7 @@ const InspectorDashboard = ({ navigation, meData, user }) => {
         if (i < 3) console.log(`  [complaint ${i}] id=${c.complaint_id} type=${c.complaint_type} status=${c.status}`);
       });
 
+      console.log("[InspectorDashboard] API response for complaints before rendering:", complaintsList.map(c => ({ id: c.complaint_id || c._id, status: c.status })));
       setComplaints(complaintsList);
 
       // Parse stats from response
@@ -967,21 +963,27 @@ const CitizenDashboard = ({ navigation, meData, user }) => {
   const [complaints, setComplaints] = useState([]);
   const [loading, setLoading]       = useState(true);
 
-  useEffect(() => { load(); }, []);
-
   const load = async () => {
     setLoading(true);
     try {
       const res = await authService.getComplaints?.() ?? Promise.resolve([]);
-      setComplaints(getItems(res).slice(0, 5));
-    } catch (e) { console.error(e); }
+      const items = getItems(res);
+      console.log("[CitizenDashboard] API response for complaints before rendering:", items.slice(0, 5).map(c => ({ id: c.complaint_id || c._id, status: c.status })));
+      setComplaints(items.slice(0, 5));
+    } catch (e) { console.warn(e); }
     finally { setLoading(false); }
   };
 
+  // Re-fetch complaints every time the dashboard gains focus
+  useEffect(() => {
+    const unsubscribe = navigation.addListener("focus", () => load());
+    return unsubscribe;
+  }, [navigation]);
+
   const counts = useMemo(() => ({
-    open:   complaints.filter((c) => c.status === "OPEN").length,
-    active: complaints.filter((c) => ["WORKING", "APPROVAL"].includes(c.status)).length,
-    closed: complaints.filter((c) => c.status === "CLOSED").length,
+    open:   complaints.filter((c) => { const s = normalizeComplaintStatus(c.status); return ["PENDING", "OPEN"].includes(s); }).length,
+    active: complaints.filter((c) => { const s = normalizeComplaintStatus(c.status); return ["ASSIGNED", "IN_PROGRESS", "APPROVAL"].includes(s); }).length,
+    closed: complaints.filter((c) => { const s = normalizeComplaintStatus(c.status); return ["RESOLVED", "CLOSED"].includes(s); }).length,
   }), [complaints]);
 
   const profileStats = [

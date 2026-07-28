@@ -138,7 +138,8 @@ export const authService = {
         }
         throw new Error(errorMsg || "Failed to create complaint");
       }
-      return responseData;
+      console.log("[createComplaint] API response data:", responseData);
+      return responseData.data;
     } catch (err) {
       console.log("DEBUG: Network failures:", err);
       console.error("6. fetch() or execution crashed before returning a response!");

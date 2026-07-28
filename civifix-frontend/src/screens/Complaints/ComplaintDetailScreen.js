@@ -239,7 +239,8 @@ export const ComplaintDetailScreen = ({ route, navigation }) => {
         setError("");
         console.log(`[ComplaintDetailScreen] Fetching complaint using authService.getComplaint(${complaintId})`);
         const data = await authService.getComplaint(complaintId);
-        console.log("[ComplaintDetailScreen] Fetched complaint data:", data?._id || data?.complaint_id);
+        console.log("[ComplaintDetailScreen] API response for getComplaint:", JSON.stringify(data, null, 2));
+        console.log("[ComplaintDetailScreen] Fetched complaint data ID:", data?._id || data?.complaint_id);
         setComplaint(data);
       } catch (err) {
         console.error("[ComplaintDetailScreen] Error fetching complaint:", err);

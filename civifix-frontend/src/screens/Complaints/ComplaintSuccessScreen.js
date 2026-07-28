@@ -5,6 +5,7 @@ import { COLORS, FONT_SIZES, SPACING, BORDER_RADIUS, SHADOWS } from "../../const
 
 const ComplaintSuccessScreen = ({ route, navigation }) => {
   const { complaint } = route.params;
+  console.log("[ComplaintSuccessScreen] Navigation parameters (route.params.complaint):", route.params?.complaint);
   const complaintId = complaint?.complaint_id || complaint?._id || "—";
   const scaleAnim = useRef(new Animated.Value(0)).current;
 

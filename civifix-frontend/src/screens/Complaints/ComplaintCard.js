@@ -150,7 +150,9 @@ export const ComplaintCard = ({ complaint, onPress }) => {
             </View>
             <View style={{ flexDirection: "row", alignItems: "center", gap: 4, width: "100%", marginTop: 2 }}>
               <Icon name="map-marker-radius-outline" size={14} color="#64748B" />
-              <Text numberOfLines={1} style={{ color: "#64748B", fontSize: FONT_SIZES.xs, flex: 1 }}>{address}</Text>
+              <Text numberOfLines={1} style={{ color: "#64748B", fontSize: FONT_SIZES.xs, flex: 1 }}>
+                {address}{complaint?.landmark ? ` (Landmark: ${complaint.landmark})` : ""}
+              </Text>
             </View>
           </View>
         </View>

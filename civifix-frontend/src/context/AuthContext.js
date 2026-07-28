@@ -3,7 +3,6 @@ import { DeviceEventEmitter, Alert } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import authService from "../services/authService";
 import { getErrorMessage } from "../services/api";
-import notificationService from "../services/notificationService";
 
 export const AuthContext = createContext();
 
@@ -112,11 +111,7 @@ export const AuthProvider = ({ children }) => {
         
         dispatch({ type: "SET_USER", payload: user });
         dispatch({ type: "SIGN_IN", payload: response.access_token });
-        
-        // Push notification hook
-        notificationService.registerForPushNotificationsAsync().then(token => {
-          notificationService.syncTokenWithServer(token);
-        });
+
 
         return response;
       } catch (error) {

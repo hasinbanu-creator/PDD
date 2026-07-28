@@ -21,16 +21,19 @@ export async function reverseGeocodeAsync({latitude, longitude}) {
       }
     });
     const data = await response.json();
+    console.log("DEBUG: Nominatim reverse geocode raw response:", JSON.stringify(data, null, 2));
     if (data && data.address) {
       return [{
-        name: data.address.building || data.address.amenity || data.address.landmark || '',
-        street: data.address.road || data.address.street || '',
-        locality: data.address.suburb || data.address.neighbourhood || data.address.village || '',
-        city: data.address.city || data.address.town || '',
-        district: data.address.county || data.address.state_district || '',
-        region: data.address.state || '',
+        houseNumber: data.address.house_number || data.address.house || data.address.flat || data.address.apartment || data.address.unit || '',
+        building: data.address.building || data.address.amenity || data.address.landmark || data.address.shop || data.address.office || data.address.historic || data.address.tourism || data.address.man_made || data.address.leisure || '',
+        street: data.address.road || data.address.street || data.address.pedestrian || data.address.footway || data.address.path || data.address.cycleway || data.address.track || data.address.square || '',
+        locality: data.address.suburb || data.address.neighbourhood || data.address.village || data.address.sublocality || data.address.city_district || data.address.quarter || data.address.residential || data.address.farm || data.address.allotments || data.address.hamlet || '',
+        ward: data.address.ward || '',
+        city: data.address.city || data.address.town || data.address.municipality || '',
+        district: data.address.county || data.address.state_district || data.address.district || '',
+        region: data.address.state || data.address.province || data.address.region || '',
         country: data.address.country || '',
-        postalCode: data.address.postcode || '',
+        postalCode: data.address.postcode || data.address.postal_code || '',
         formattedAddress: data.display_name
       }];
     }

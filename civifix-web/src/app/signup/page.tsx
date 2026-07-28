@@ -76,7 +76,18 @@ export default function SignupPage() {
     setLoadingWards(true);
     authService.getWardsByDistrict(formData.district_id)
       .then(data => {
-        setWards(Array.isArray(data) ? data : data?.data || []);
+        const rawWards = Array.isArray(data) ? data : data?.data || [];
+        const sortedWards = [...rawWards].sort((a: any, b: any) => {
+          const numA = parseInt(a.ward_number, 10);
+          const numB = parseInt(b.ward_number, 10);
+          if (!isNaN(numA) && !isNaN(numB)) {
+            return numA - numB;
+          }
+          const labelA = a.ward_name || "";
+          const labelB = b.ward_name || "";
+          return labelA.localeCompare(labelB, undefined, { numeric: true, sensitivity: 'base' });
+        });
+        setWards(sortedWards);
         setLoadingWards(false);
       })
       .catch(err => {
@@ -379,7 +390,9 @@ export default function SignupPage() {
                     >
                       <option value="">{loadingWards ? "Loading..." : "Select Ward"}</option>
                       {wards.map(w => (
-                        <option key={w._id || w.id} value={w._id || w.id}>{w.ward_name}</option>
+                        <option key={w._id || w.id} value={w._id || w.id}>
+                          {w.ward_number ? `${String(w.ward_number).padStart(2, "0")} - ` : ""}{w.ward_name}
+                        </option>
                       ))}
                     </select>
                   </div>

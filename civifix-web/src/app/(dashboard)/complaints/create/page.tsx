@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/auth-context";
 import authService from "@/services/auth";
@@ -54,6 +54,7 @@ export default function CreateComplaintPage() {
     latitude: "",
     longitude: "",
     address: "",
+    landmark: "",
     citizen_note: "",
     priority: "MEDIUM",
   });
@@ -65,8 +66,20 @@ export default function CreateComplaintPage() {
   const [selectedImages, setSelectedImages] = useState<File[]>([]);
   const [createdComplaint, setCreatedComplaint] = useState<any>(null);
   const [step, setStep] = useState(1);
-  const { data: wardsData, isLoading: wardsLoading } = useWards(user?.district || user?.district_id);
-  const wards = wardsData?.data || [];
+  const { data: wardsData, isLoading: wardsLoading } = useWards(user?.district_id || user?.district);
+  const wards = useMemo(() => {
+    const rawWards = wardsData?.data || [];
+    return [...rawWards].sort((a: any, b: any) => {
+      const numA = parseInt(a.ward_number, 10);
+      const numB = parseInt(b.ward_number, 10);
+      if (!isNaN(numA) && !isNaN(numB)) {
+        return numA - numB;
+      }
+      const labelA = a.ward_name || "";
+      const labelB = b.ward_name || "";
+      return labelA.localeCompare(labelB, undefined, { numeric: true, sensitivity: 'base' });
+    });
+  }, [wardsData]);
   const createComplaint = useCreateComplaint();
 
   const updateField = (field: string, value: string) => {
@@ -81,37 +94,112 @@ export default function CreateComplaintPage() {
       setGpsLoading(false);
       return;
     }
+    
     navigator.geolocation.getCurrentPosition(
       async (position) => {
         const lat = position.coords.latitude.toFixed(6);
         const lon = position.coords.longitude.toFixed(6);
         updateField("latitude", lat);
         updateField("longitude", lon);
+        if (errors.location) setErrors((prev) => ({ ...prev, location: "" }));
         
         try {
+          const deduplicateAddress = (addressStr: string) => {
+            if (!addressStr) return "";
+            const rawParts = addressStr.split(",");
+            const cleanedParts: string[] = [];
+            const seenNormalized = new Set<string>();
+            
+            for (const part of rawParts) {
+              const trimmed = part.trim();
+              if (!trimmed) continue;
+              
+              if (trimmed.toLowerCase() === "india") continue;
+              
+              let normalized = trimmed.toLowerCase();
+              normalized = normalized.replace(/\b(district|municipality|taluk|state|city|town|village|county)\b/g, "");
+              normalized = normalized.replace(/\s+/g, "").trim();
+              
+              if (!normalized) continue;
+              
+              let isDuplicate = false;
+              for (const seen of seenNormalized) {
+                if (seen.includes(normalized) || normalized.includes(seen) ||
+                    (normalized.substring(0, 5) === seen.substring(0, 5))) {
+                  isDuplicate = true;
+                  break;
+                }
+              }
+              
+              if (!isDuplicate) {
+                seenNormalized.add(normalized);
+                cleanedParts.push(trimmed);
+              }
+            }
+            
+            if (cleanedParts.length >= 2) {
+              const last = cleanedParts[cleanedParts.length - 1];
+              const prev = cleanedParts[cleanedParts.length - 2];
+              const isPostalCode = /^\d{6}$/.test(last);
+              if (isPostalCode) {
+                cleanedParts.splice(cleanedParts.length - 2, 2, `${prev} ${last}`);
+              }
+            }
+            
+            return cleanedParts.join(", ");
+          };
+
           const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`);
           const data = await res.json();
           if (data && data.address) {
             const addr = data.address;
-            const parts = [
-              addr.building || addr.amenity || addr.landmark, // Landmark
-              addr.road || addr.street, // Address
-              addr.suburb || addr.neighbourhood || addr.village, // Locality
-              addr.city || addr.town, // City
-              addr.county || addr.state_district, // District
-              addr.state, // State
-              addr.postcode // Pincode
-            ].filter(Boolean);
-            const joined = parts.join(", ");
-            updateField("address", joined || `${lat}, ${lon}`);
-          } else if (data && data.display_name) {
-            updateField("address", data.display_name || `${lat}, ${lon}`);
+            let formatted = "";
+            
+            if (data.display_name) {
+              formatted = deduplicateAddress(data.display_name);
+            }
+            
+            if (!formatted || formatted.split(",").length < 3) {
+              const parts = [];
+              const streetPart = [];
+              if (addr.house_number || addr.house || addr.flat || addr.apartment || addr.unit) {
+                streetPart.push(addr.house_number || addr.house || addr.flat || addr.apartment || addr.unit);
+              }
+              if (addr.building || addr.amenity || addr.landmark || addr.shop || addr.office) {
+                streetPart.push(addr.building || addr.amenity || addr.landmark || addr.shop || addr.office);
+              }
+              if (addr.road || addr.street || addr.pedestrian || addr.footway) {
+                streetPart.push(addr.road || addr.street || addr.pedestrian || addr.footway);
+              }
+              if (streetPart.length > 0) {
+                parts.push(streetPart.join(" "));
+              }
+              
+              const locality = addr.suburb || addr.neighbourhood || addr.village || addr.sublocality || addr.residential || addr.hamlet;
+              if (locality) parts.push(locality);
+              if (addr.ward) parts.push(addr.ward);
+              
+              const city = addr.city || addr.town || addr.municipality;
+              if (city) {
+                parts.push(city);
+              } else if (addr.county || addr.state_district) {
+                parts.push(addr.county || addr.state_district);
+              }
+              
+              const regionPart = [];
+              if (addr.state || addr.province) regionPart.push(addr.state || addr.province);
+              if (addr.postcode) regionPart.push(addr.postcode);
+              if (regionPart.length > 0) parts.push(regionPart.join(" "));
+              
+              formatted = deduplicateAddress(parts.join(", "));
+            }
+            
+            updateField("address", formatted || `${lat}, ${lon}`);
           } else {
              throw new Error("Invalid geocoding response");
           }
         } catch (error) {
           console.error("Failed to reverse geocode:", error);
-          // Removed the serverError message so it just falls back silently as requested
           updateField("address", `${lat}, ${lon}`);
         }
         setGpsLoading(false);
@@ -129,7 +217,9 @@ export default function CreateComplaintPage() {
     if (!form.ward_id) next.ward_id = "Please select a ward";
     if (!form.complaint_type) next.complaint_type = "Please select a complaint type";
     if (form.description.trim().length < 10) next.description = "Description must be at least 10 characters";
-    if (!form.latitude || !form.longitude) next.location = "Please provide your location";
+    if (!form.latitude || !form.longitude) next.location = "Please use your current location to proceed";
+    if (!form.address || !form.address.trim()) next.address = "Address is required";
+    if (!form.landmark || !form.landmark.trim()) next.landmark = "Landmark / Door No. is required";
     setErrors(next);
     return Object.keys(next).length === 0;
   };
@@ -149,6 +239,7 @@ export default function CreateComplaintPage() {
       formData.append("latitude", form.latitude);
       formData.append("longitude", form.longitude);
       if (form.address) formData.append("address", form.address);
+      if (form.landmark) formData.append("landmark", form.landmark);
       if (form.citizen_note) formData.append("citizen_note", form.citizen_note.trim());
       
       if (selectedImages.length === 0) {
@@ -408,8 +499,10 @@ export default function CreateComplaintPage() {
                       className={`w-full appearance-none bg-muted/30 border-2 ${errors.ward_id ? 'border-destructive' : 'border-border'} rounded-2xl px-5 py-4 text-sm font-bold text-foreground outline-none focus:border-primary focus:bg-card focus:ring-4 focus:ring-primary/10 transition-all duration-200 disabled:opacity-50`}
                     >
                       <option value="" disabled>{wardsLoading ? "Loading wards..." : "Select your ward"}</option>
-                      {wards.map((w: any) => (
-                        <option key={w._id} value={w._id}>{w.ward_name}</option>
+                       {wards.map((w: any) => (
+                        <option key={w._id || w.id} value={w._id || w.id}>
+                          {w.ward_number ? `${String(w.ward_number).padStart(2, "0")} - ` : ""}{w.ward_name}
+                        </option>
                       ))}
                     </select>
                     <ChevronDown className="absolute right-5 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground pointer-events-none" />
@@ -445,15 +538,30 @@ export default function CreateComplaintPage() {
                   </div>
                 )}
 
-                <div>
-                  <label className="block text-xs font-bold text-muted-foreground tracking-wider mb-2 uppercase">Address / Landmark</label>
-                  <input
-                    type="text"
-                    value={form.address}
-                    onChange={(e) => updateField("address", e.target.value)}
-                    placeholder="e.g. Near post office, Main Road"
-                    className="w-full bg-muted/30 border-2 border-border rounded-2xl px-5 py-4 text-sm font-medium text-foreground outline-none focus:border-primary focus:bg-card focus:ring-4 focus:ring-primary/10 transition-all duration-200"
-                  />
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-xs font-bold text-muted-foreground tracking-wider mb-2 uppercase">Address</label>
+                    <input
+                      type="text"
+                      value={form.address}
+                      onChange={(e) => updateField("address", e.target.value)}
+                      placeholder="Address will be auto-filled by GPS"
+                      className={`w-full bg-muted/30 border-2 ${errors.address ? 'border-destructive' : 'border-border'} rounded-2xl px-5 py-4 text-sm font-medium text-foreground outline-none focus:border-primary focus:bg-card focus:ring-4 focus:ring-primary/10 transition-all duration-200`}
+                    />
+                    {errors.address && <p className="text-destructive text-xs font-bold mt-1.5 ml-1">{errors.address}</p>}
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-muted-foreground tracking-wider mb-2 uppercase">Landmark / Door No.</label>
+                    <input
+                      type="text"
+                      value={form.landmark}
+                      onChange={(e) => updateField("landmark", e.target.value)}
+                      placeholder="Example: Near Government School, No. 64/13 Rayan Kuttai Street"
+                      className={`w-full bg-muted/30 border-2 ${errors.landmark ? 'border-destructive' : 'border-border'} rounded-2xl px-5 py-4 text-sm font-medium text-foreground outline-none focus:border-primary focus:bg-card focus:ring-4 focus:ring-primary/10 transition-all duration-200`}
+                    />
+                    {errors.landmark && <p className="text-destructive text-xs font-bold mt-1.5 ml-1">{errors.landmark}</p>}
+                  </div>
                 </div>
               </div>
               

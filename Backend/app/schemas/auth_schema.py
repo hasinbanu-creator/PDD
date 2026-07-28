@@ -128,6 +128,8 @@ class UpdateProfileSchema(BaseModel):
     name: Optional[str] = Field(None, min_length=2, max_length=100)
     mobile_number: Optional[str] = Field(None, min_length=10, max_length=10)
     address: Optional[str] = Field(None, min_length=5, max_length=200)
+    district: Optional[str] = Field(None, max_length=100)
+    ward: Optional[str] = Field(None, max_length=100)
 
     class Config:
         example = {

@@ -275,21 +275,6 @@ export const authService = {
     return unwrapResponse(response);
   },
 
-  // --- Notifications ---
-  getNotifications: async (params) => {
-    const response = await api.get(ENDPOINTS.GET_NOTIFICATIONS, { params });
-    return unwrapResponse(response);
-  },
-
-  markNotificationRead: async (id) => {
-    const response = await api.put(ENDPOINTS.MARK_NOTIFICATION_READ(id));
-    return unwrapResponse(response);
-  },
-
-  markAllNotificationsRead: async () => {
-    const response = await api.put(ENDPOINTS.MARK_ALL_NOTIFICATIONS_READ);
-    return unwrapResponse(response);
-  },
 
   // --- Complaints Additions ---
   saveComplaintDraft: async (complaintData) => {

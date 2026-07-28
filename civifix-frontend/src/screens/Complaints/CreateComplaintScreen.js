@@ -28,6 +28,7 @@ const EMPTY_FORM = {
   latitude: "",
   longitude: "",
   address: "",
+  landmark: "",
   citizen_note: "",
   priority: "MEDIUM",
 };
@@ -381,12 +382,103 @@ export const CreateComplaintScreen = ({ route, navigation }) => {
       // Reverse geocode → autofill address
       let finalAddress = `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`;
       try {
+        const deduplicateAddress = (addressStr) => {
+          if (!addressStr) return "";
+          const rawParts = addressStr.split(",");
+          const cleanedParts = [];
+          const seenNormalized = new Set();
+          
+          for (const part of rawParts) {
+            const trimmed = part.trim();
+            if (!trimmed) continue;
+            
+            // Exclude country
+            if (trimmed.toLowerCase() === "india") continue;
+            
+            let normalized = trimmed.toLowerCase();
+            // Remove common administrative designations
+            normalized = normalized.replace(/\b(district|municipality|taluk|state|city|town|village|county)\b/g, "");
+            normalized = normalized.replace(/\s+/g, "").trim();
+            
+            if (!normalized) continue;
+            
+            // Fuzzy deduplication
+            let isDuplicate = false;
+            for (const seen of seenNormalized) {
+              if (seen.includes(normalized) || normalized.includes(seen) ||
+                  (normalized.substring(0, 5) === seen.substring(0, 5))) {
+                isDuplicate = true;
+                break;
+              }
+            }
+            
+            if (!isDuplicate) {
+              seenNormalized.add(normalized);
+              cleanedParts.push(trimmed);
+            }
+          }
+          
+          // Format state and postcode cleanly at the end if applicable
+          if (cleanedParts.length >= 2) {
+            const last = cleanedParts[cleanedParts.length - 1];
+            const prev = cleanedParts[cleanedParts.length - 2];
+            const isPostalCode = /^\d{6}$/.test(last);
+            if (isPostalCode) {
+              cleanedParts.splice(cleanedParts.length - 2, 2, `${prev} ${last}`);
+            }
+          }
+          
+          return cleanedParts.join(", ");
+        };
+
         const [place] = await Location.reverseGeocodeAsync({ latitude, longitude });
         console.log("DEBUG: Address response:", place);
         if (place && Object.keys(place).length > 0) {
-          const parts = [place.name, place.street, place.locality, place.city, place.district, place.region, place.postalCode].filter(Boolean);
-          const formatted = parts.length > 0 ? parts.join(", ") : (place.formattedAddress || "");
-          if (formatted.trim()) {
+          let formatted = "";
+          
+          // 1. Try using the provider's full formatted address first
+          if (place.formattedAddress) {
+            formatted = deduplicateAddress(place.formattedAddress);
+          }
+          
+          // 2. If the formatted address is empty or not detailed enough, construct it from components
+          if (!formatted || formatted.split(",").length < 3) {
+            const parts = [];
+            
+            let streetPart = [];
+            if (place.houseNumber) streetPart.push(place.houseNumber);
+            if (place.building) streetPart.push(place.building);
+            if (place.street) streetPart.push(place.street);
+            if (streetPart.length > 0) {
+              parts.push(streetPart.join(" "));
+            }
+            
+            if (place.locality) {
+              parts.push(place.locality);
+            }
+
+            if (place.ward) {
+              parts.push(place.ward);
+            }
+            
+            if (place.city) {
+              parts.push(place.city);
+            } else if (place.district) {
+              parts.push(place.district);
+            }
+            
+            let regionPart = [];
+            if (place.region) regionPart.push(place.region);
+            if (place.postalCode) regionPart.push(place.postalCode);
+            if (regionPart.length > 0) {
+              parts.push(regionPart.join(" "));
+            }
+            
+            const builtAddress = parts.length > 0 ? parts.join(", ") : "";
+            formatted = deduplicateAddress(builtAddress);
+          }
+          
+          if (formatted) {
             finalAddress = formatted;
           }
         }
@@ -409,6 +501,12 @@ export const CreateComplaintScreen = ({ route, navigation }) => {
     if (!form.ward_id)                          next.ward_id        = "Please select a ward";
     if (!form.complaint_type)                   next.complaint_type = "Please select a complaint type";
     if (form.description.trim().length < 10)    next.description    = "Description must be at least 10 characters";
+    if (!form.latitude || !form.longitude) {
+      Alert.alert("Location Required", "Please tap 'Use my current location' to fetch GPS coordinates.");
+      return false;
+    }
+    if (!form.address || !form.address.trim())  next.address        = "Address is required";
+    if (!form.landmark || !form.landmark.trim()) next.landmark       = "Landmark / Door No. is required";
     setErrors(next);
     return Object.keys(next).length === 0;
   };
@@ -637,11 +735,22 @@ export const CreateComplaintScreen = ({ route, navigation }) => {
 
             {/* Address — autofilled by GPS, still editable */}
             <InputField
-              label="Address / Landmark"
-              icon="home-map-marker"
-              placeholder="e.g. Near post office, Main Road"
+              label="Address"
+              icon="map-marker-radius-outline"
+              placeholder="Address will be auto-filled by GPS"
               value={form.address}
               onChangeText={(v) => updateField("address", v)}
+              error={errors.address}
+            />
+
+            {/* Landmark / Door No. — required */}
+            <InputField
+              label="Landmark / Door No."
+              icon="home-map-marker"
+              placeholder="Example: Near Government School, No. 64/13 Rayan Kuttai Street"
+              value={form.landmark}
+              onChangeText={(v) => updateField("landmark", v)}
+              error={errors.landmark}
             />
           </FormCard>
 

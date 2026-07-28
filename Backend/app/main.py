@@ -27,7 +27,6 @@ from app.api.v1.districts_routes import router as districts_router
 from app.api.v1.dashboard_routes import router as dashboard_router
 from app.api.v1.inspector_routes import router as inspector_router
 from app.api.v1.worker_routes import router as worker_router
-from app.api.v1.notification_routes import router as notification_router
 from app.api.v1.upload_routes import router as upload_router
 from app.api.v1.settings_routes import router as settings_router
 from app.db.indexes import create_indexes
@@ -140,11 +139,6 @@ app.include_router(
     tags=["Worker"]
 )
 
-app.include_router(
-    notification_router,
-    prefix="/api/v1/notifications",
-    tags=["Notifications"]
-)
 
 app.include_router(
     upload_router,

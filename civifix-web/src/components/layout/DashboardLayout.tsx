@@ -12,14 +12,14 @@ import {
   LogOut,
   Menu,
   X,
-  Bell,
   Building2,
   Map,
   Users,
   Activity,
   Settings,
   PieChart,
-  UserCheck
+  UserCheck,
+  HelpCircle
 } from "lucide-react";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -36,21 +36,23 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
       { name: "Raise Complaint", href: "/complaints/create", icon: PlusCircle },
       { name: "My Complaints", href: "/complaints", icon: FileText },
-      { name: "Notifications", href: "/notifications", icon: Bell },
       { name: "Profile", href: "/profile", icon: User },
+      { name: "Support", href: "/support", icon: HelpCircle },
     ];
-  } else if (role === "INSPECTOR" || role === "WORKER") {
+  } else if (role === "DISTRICT_ADMIN") {
     navItems = [
       { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
       { name: "Complaints", href: "/complaints", icon: FileText },
+      { name: "Wards", href: "/wards", icon: Map },
       { name: "Profile", href: "/profile", icon: User },
+      { name: "Support", href: "/support", icon: HelpCircle },
     ];
   } else {
-    // ADMIN roles (Fallback until fully implemented)
     navItems = [
       { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
       { name: "Complaints", href: "/complaints", icon: FileText },
       { name: "Profile", href: "/profile", icon: User },
+      { name: "Support", href: "/support", icon: HelpCircle },
     ];
   }
 
@@ -75,7 +77,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
         <nav className="flex-1 px-4 py-8 space-y-2 overflow-y-auto">
           {navItems.map((item) => {
-            const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
+            const isActive = 
+              item.href === "/dashboard" ? pathname === "/dashboard" :
+              item.href === "/complaints/create" ? pathname === "/complaints/create" :
+              item.href === "/complaints" ? (pathname === "/complaints" || (pathname.startsWith("/complaints/") && pathname !== "/complaints/create")) :
+              pathname === item.href || pathname.startsWith(item.href + "/");
             const Icon = item.icon;
             return (
               <Link
@@ -106,25 +112,23 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       </aside>
 
       {/* ── MOBILE HEADER ── */}
-      <div className="md:hidden fixed top-0 left-0 right-0 h-14 bg-card/90 backdrop-blur-md border-b border-border flex items-center justify-between px-4 z-30 shadow-sm">
-        <div className="flex items-center gap-3">
+      <div className="md:hidden fixed top-0 left-0 right-0 h-14 bg-card border-b border-border flex items-center justify-between px-4 z-40">
+        <div className="flex items-center gap-2">
           <div className="w-8 h-8 rounded-lg flex items-center justify-center overflow-hidden shadow-sm shadow-primary/20 bg-white">
             <img src="/logo.png" alt="CiviFix" className="w-full h-full object-cover" />
           </div>
           <h2 className="font-bold text-foreground tracking-tight text-lg">CiviFix</h2>
-        </div>
-        <div className="flex items-center gap-4">
-          <Link href="/notifications" className="text-muted-foreground hover:text-foreground transition-colors relative block">
-            <Bell className="w-5 h-5" />
-            <span className="absolute top-0 right-0 w-2 h-2 bg-destructive rounded-full border border-card"></span>
-          </Link>
         </div>
       </div>
 
       {/* ── MOBILE BOTTOM NAVIGATION ── */}
       <div className="md:hidden fixed bottom-0 left-0 right-0 h-16 bg-card border-t border-border flex items-center justify-around px-2 z-40 pb-safe shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
         {navItems.slice(0, 5).map((item) => {
-          const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
+          const isActive = 
+            item.href === "/dashboard" ? pathname === "/dashboard" :
+            item.href === "/complaints/create" ? pathname === "/complaints/create" :
+            item.href === "/complaints" ? (pathname === "/complaints" || (pathname.startsWith("/complaints/") && pathname !== "/complaints/create")) :
+            pathname === item.href || pathname.startsWith(item.href + "/");
           const Icon = item.icon;
           return (
             <Link
@@ -146,17 +150,24 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       {/* ── MAIN CONTENT AREA ── */}
       <main className="flex-1 md:ml-72 pt-14 pb-16 md:pt-0 md:pb-0 min-h-screen flex flex-col relative w-full overflow-x-hidden">
         {/* Desktop Header/Topbar (Optional but good for premium feel) */}
-        <div className="hidden md:flex h-20 items-center justify-end px-8 bg-transparent w-full z-10 absolute top-0 right-0 pointer-events-none">
-           <div className="pointer-events-auto flex items-center gap-4">
-             <Link href="/notifications" className="w-10 h-10 rounded-full bg-card shadow-sm border border-border flex items-center justify-center text-muted-foreground hover:text-primary hover:border-primary/50 transition-all cursor-pointer">
-               <Bell className="w-5 h-5" />
-             </Link>
-             <Link href="/profile" className="flex items-center gap-3 bg-card py-2 px-3 rounded-full shadow-sm border border-border cursor-pointer hover:border-primary/50 transition-all block">
-                <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-sm">
-                  {user?.name?.charAt(0) || "U"}
+         <div className="hidden md:flex h-20 items-center justify-end px-8 bg-transparent w-full z-10 absolute top-0 right-0 pointer-events-none">
+            <div className="pointer-events-auto flex items-center gap-4">
+              <Link href="/profile" className="flex items-center gap-3 bg-card py-2 px-4 rounded-full shadow-sm border border-border cursor-pointer hover:border-primary/50 transition-all block">
+                <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center text-primary font-black text-sm shrink-0 border border-primary/20">
+                  {user?.name 
+                    ? user.name.split(" ").map(n => n[0]).join("").substring(0, 2).toUpperCase()
+                    : (user?.email?.charAt(0).toUpperCase() || "U")
+                  }
                 </div>
-                <div className="hidden lg:block pr-2">
-                  <p className="text-sm font-semibold text-foreground leading-none">{user?.name || "User"}</p>
+                <div className="hidden lg:flex flex-col justify-center text-left max-w-[200px]">
+                  <p className="text-sm font-bold text-foreground leading-tight truncate">
+                    {user?.name || user?.email || "Account"}
+                  </p>
+                  {user?.name && user?.email && (
+                    <p className="text-[10px] font-semibold text-muted-foreground leading-tight truncate mt-0.5">
+                      {user.email}
+                    </p>
+                  )}
                 </div>
              </Link>
            </div>

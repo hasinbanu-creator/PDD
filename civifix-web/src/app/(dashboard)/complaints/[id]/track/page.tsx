@@ -17,7 +17,9 @@ const STATUS_CONFIG: Record<string, { color: string, bg: string, border: string,
   OPEN:        { color: "text-blue-600", bg: "bg-blue-50", border: "border-blue-200", label: "Open" },
   ASSIGNED:    { color: "text-purple-600", bg: "bg-purple-50", border: "border-purple-200", label: "Assigned" },
   WORKING:     { color: "text-cyan-600", bg: "bg-cyan-50", border: "border-cyan-200", label: "In Progress" },
+  IN_PROGRESS: { color: "text-cyan-600", bg: "bg-cyan-50", border: "border-cyan-200", label: "In Progress" },
   CLOSED:      { color: "text-emerald-600", bg: "bg-emerald-50", border: "border-emerald-200", label: "Resolved" },
+  RESOLVED:    { color: "text-emerald-600", bg: "bg-emerald-50", border: "border-emerald-200", label: "Resolved" },
   REJECTED:    { color: "text-red-600", bg: "bg-red-50", border: "border-red-200", label: "Rejected" },
 };
 

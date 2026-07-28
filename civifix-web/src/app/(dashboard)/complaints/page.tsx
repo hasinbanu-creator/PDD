@@ -326,8 +326,9 @@ export default function ComplaintsListPage() {
                                 </div>
                               </div>
                             </td>
-                            <td className="p-4 text-sm font-medium text-muted-foreground truncate max-w-[200px]">
-                              {complaint.ward?.ward_name || complaint.address || "Location unavailable"}
+                            <td className="p-4 text-sm font-medium text-muted-foreground truncate max-w-[200px]" title={complaint.address}>
+                              {complaint.address || complaint.ward?.ward_name || "Location unavailable"}
+                              {complaint.landmark ? ` (Landmark: ${complaint.landmark})` : ""}
                             </td>
                             <td className="p-4 text-sm font-bold text-muted-foreground">
                               {new Date(complaint.created_at).toLocaleDateString()}
@@ -389,7 +390,10 @@ export default function ComplaintsListPage() {
 
                           {isInspector || isWorker ? (
                             <div className="mb-4 space-y-1.5">
-                              <p className="text-sm font-medium text-muted-foreground line-clamp-1">{complaint.address || complaint.description}</p>
+                              <p className="text-sm font-medium text-muted-foreground line-clamp-1" title={complaint.address}>
+                                {complaint.address || complaint.description}
+                                {complaint.landmark ? ` (Landmark: ${complaint.landmark})` : ""}
+                              </p>
                               {complaint.ward?.ward_name && (
                                 <p className="text-xs font-bold text-muted-foreground">Ward: <span className="text-foreground">{complaint.ward.ward_name}</span></p>
                               )}
@@ -406,9 +410,16 @@ export default function ComplaintsListPage() {
                               </div>
                             </div>
                           ) : (
-                            <p className="text-sm font-medium text-muted-foreground line-clamp-2 mb-4">
-                              {complaint.description}
-                            </p>
+                            <div className="mb-4 space-y-1.5">
+                              <p className="text-sm font-medium text-muted-foreground line-clamp-2">
+                                {complaint.description}
+                              </p>
+                              {complaint.address && (
+                                <p className="text-xs font-bold text-muted-foreground line-clamp-1">
+                                  Location: <span className="text-foreground">{complaint.address}{complaint.landmark ? ` (Landmark: ${complaint.landmark})` : ""}</span>
+                                </p>
+                              )}
+                            </div>
                           )}
 
                           <div className="flex items-center justify-between mt-2 pt-4 border-t border-border/50">

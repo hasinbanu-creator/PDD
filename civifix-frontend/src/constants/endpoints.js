@@ -63,10 +63,6 @@ export const ENDPOINTS = {
   GET_PROFILE: "/auth/me",
   UPDATE_PROFILE: "/auth/me",
 
-  // Notification endpoints
-  GET_NOTIFICATIONS: "/notifications",
-  MARK_NOTIFICATION_READ: (id) => `/notifications/${id}/read`,
-  MARK_ALL_NOTIFICATIONS_READ: "/notifications/read-all",
 
   // Uploads
   UPLOAD_IMAGES: "/upload",

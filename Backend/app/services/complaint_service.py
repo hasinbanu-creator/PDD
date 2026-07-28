@@ -45,13 +45,11 @@ class ComplaintService:
         self,
         complaint_repo: ComplaintRepository,
         ward_repo: WardRepository,
-        user_repo=None,
-        notification_service=None
+        user_repo=None
     ):
         self.complaint_repo = complaint_repo
         self.ward_repo = ward_repo
         self.user_repo = user_repo
-        self.notification_service = notification_service
 
     async def create_complaint(
         self,
@@ -136,12 +134,6 @@ class ComplaintService:
                 {"increment_total": True, "new_status": "OPEN"}
             )
 
-            if self.notification_service and inspector_id:
-                await self.notification_service.notify_complaint_created(
-                    complaint_id,
-                    inspector_id,
-                    complaint_doc.get("complaint_id")
-                )
 
             created = await self.complaint_repo.get_by_id(complaint_id)
             
@@ -228,12 +220,6 @@ class ComplaintService:
             }
             await self.complaint_repo.add_history(history_data)
 
-            if self.notification_service:
-                await self.notification_service.notify_worker_assigned(
-                    complaint_id,
-                    assignment_data.worker_id,
-                    assignment_data.deadline
-                )
 
             updated = await self.complaint_repo.get_by_id(complaint_id)
             
@@ -291,11 +277,6 @@ class ComplaintService:
             }
             await self.complaint_repo.add_history(history_data)
 
-            if self.notification_service:
-                await self.notification_service.notify_work_submitted(
-                    complaint_id,
-                    str(complaint.get("inspector_id"))
-                )
 
             updated = await self.complaint_repo.get_by_id(complaint_id)
             
@@ -353,12 +334,6 @@ class ComplaintService:
             }
             await self.complaint_repo.add_history(history_data)
 
-            if self.notification_service:
-                await self.notification_service.notify_complaint_approved(
-                    complaint_id,
-                    str(complaint.get("user_id")),
-                    str(complaint.get("worker_id"))
-                )
 
             await self.ward_repo.update_complaint_counts(
                 str(complaint.get("ward_id")),
@@ -420,12 +395,6 @@ class ComplaintService:
             }
             await self.complaint_repo.add_history(history_data)
 
-            if self.notification_service:
-                await self.notification_service.notify_complaint_rejected(
-                    complaint_id,
-                    str(complaint.get("worker_id")),
-                    reject_data.reason
-                )
 
             updated = await self.complaint_repo.get_by_id(complaint_id)
             
@@ -557,6 +526,7 @@ class ComplaintService:
             "latitude": complaint.get("latitude"),
             "longitude": complaint.get("longitude"),
             "address": complaint.get("address"),
+            "landmark": complaint.get("landmark"),
             "image_urls": complaint.get("image_urls", []),
             "proof_images": complaint.get("proof_images", []),
             "citizen_note": complaint.get("citizen_note"),

@@ -19,6 +19,7 @@ def complaint_document(data) -> dict:
         "latitude": data.latitude,
         "longitude": data.longitude,
         "address": data.address if hasattr(data, "address") else None,
+        "landmark": data.landmark if hasattr(data, "landmark") else None,
         "image_urls": data.image_urls if hasattr(data, "image_urls") else [],
         "proof_images": [],
         "citizen_note": data.citizen_note if hasattr(data, "citizen_note") else None,

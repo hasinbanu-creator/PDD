@@ -11,7 +11,6 @@ import {
   MapPin,
   ClipboardList,
   UserCog,
-  Bell,
   Settings,
   HelpCircle,
   Info,
@@ -144,6 +143,12 @@ export default function ProfilePage() {
                   <span className="text-sm font-semibold">{district}</span>
                 </div>
               )}
+              {user?.ward && (
+                <div className="flex items-center gap-2 text-white/90">
+                  <MapPin className="w-4 h-4" />
+                  <span className="text-sm font-semibold">Ward: {user.ward}</span>
+                </div>
+              )}
             </div>
 
             <div className="mt-5">
@@ -192,24 +197,15 @@ export default function ProfilePage() {
           bgClass="bg-primary/10" 
           onClick={() => router.push("/settings")}
         />
+
         <MenuItem 
-          icon={Bell} 
-          title="Notifications" 
-          subtitle="Manage your alerts" 
-          colorClass="text-accent" 
-          bgClass="bg-accent/10"
-          onClick={() => router.push("/notifications")}
-        />
-        <MenuItem 
-          icon={Settings} 
-          title="Notification Settings" 
-          subtitle="App preferences" 
+          icon={HelpCircle} 
+          title="Contact Support" 
+          subtitle="Get help with your queries" 
           colorClass="text-secondary" 
           bgClass="bg-secondary/10" 
-          onClick={() => router.push("/settings")}
+          onClick={() => router.push("/support")}
         />
-
-        {/* Support Section Removed (Placeholder items removed to adhere to no dead UI) */}
 
         {/* Session Section */}
         <SectionLabel>Session</SectionLabel>

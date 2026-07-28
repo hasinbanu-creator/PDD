@@ -57,6 +57,35 @@ async def get_current_user(
     # Stringify _id to make it JSON-serializable
     if "_id" in user:
         user["_id"] = str(user["_id"])
+
+    # Resolve district name and map district_id
+    if "district" in user and user["district"]:
+        dist_val = user["district"]
+        # If it is already a valid ObjectId hex string
+        try:
+            from bson import ObjectId
+            from app.db.mongodb import db as motor_db
+            dist_obj_id = ObjectId(str(dist_val))
+            user["district_id"] = str(dist_val)
+            dist_doc = await motor_db.districts.find_one({"_id": dist_obj_id})
+            if dist_doc:
+                user["district"] = dist_doc.get("name")
+        except Exception:
+            user["district_id"] = str(dist_val)
+
+    # Resolve ward name and map ward_id
+    if "ward" in user and user["ward"]:
+        ward_val = user["ward"]
+        try:
+            from bson import ObjectId
+            from app.db.mongodb import db as motor_db
+            ward_obj_id = ObjectId(str(ward_val))
+            user["ward_id"] = str(ward_val)
+            ward_doc = await motor_db.wards.find_one({"_id": ward_obj_id})
+            if ward_doc:
+                user["ward"] = ward_doc.get("ward_name")
+        except Exception:
+            user["ward_id"] = str(ward_val)
     
     # Ensure essential fields from JWT are always present as fallbacks
     user.setdefault("user_id", user_id)

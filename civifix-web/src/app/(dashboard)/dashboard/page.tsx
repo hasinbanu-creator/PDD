@@ -9,7 +9,6 @@ import {
   FlaskConical, 
   Search, 
   MapPin, 
-  Bell, 
   ChevronRight,
   ClipboardList,
   AlertCircle,
@@ -124,7 +123,9 @@ function ComplaintItem({ complaint, index, total }: any) {
         
         {isInspector ? (
           <div className="mt-1.5 space-y-1.5">
-            <p className="text-sm font-medium text-muted-foreground truncate">Location: <span className="text-foreground">{complaint.address || desc}</span></p>
+            <p className="text-sm font-medium text-muted-foreground truncate" title={complaint.address}>
+              Location: <span className="text-foreground">{complaint.address || desc}{complaint.landmark ? ` (Landmark: ${complaint.landmark})` : ""}</span>
+            </p>
             {complaint.ward?.ward_name && (
               <p className="text-xs font-semibold text-muted-foreground">Ward: <span className="text-foreground">{complaint.ward.ward_name}</span></p>
             )}
@@ -150,6 +151,11 @@ function ComplaintItem({ complaint, index, total }: any) {
         ) : (
           <>
             <p className="text-sm font-medium text-muted-foreground truncate mt-1">{desc}</p>
+            {complaint.address && (
+              <p className="text-xs font-semibold text-muted-foreground truncate mt-1">
+                Location: <span className="text-foreground">{complaint.address}{complaint.landmark ? ` (Landmark: ${complaint.landmark})` : ""}</span>
+              </p>
+            )}
             <p className="text-xs font-bold text-muted-foreground mt-1.5 uppercase tracking-wider">
               {complaint.complaint_id || complaint._id || "#CIV-NEW"}
             </p>
@@ -258,10 +264,9 @@ function CitizenDashboard() {
 
       <div className="px-4 md:px-0">
         <SectionTitle left="Quick Actions" />
-        <div className="grid grid-cols-4 gap-3 md:gap-4">
+        <div className="grid grid-cols-3 gap-3 md:gap-4">
           <QuickActionBtn icon={FlaskConical} title="Raise\nComplaint" colorClass="text-primary" bgClass="bg-primary/10" href="/complaints/create" />
           <QuickActionBtn icon={Search} title="Track\nStatus" colorClass="text-secondary" bgClass="bg-secondary/10" href="/complaints" />
-          <QuickActionBtn icon={Bell} title="Notifications" colorClass="text-accent" bgClass="bg-accent/10" href="/notifications" />
           <QuickActionBtn icon={User} title="Profile" colorClass="text-muted-foreground" bgClass="bg-muted" href="/profile" />
         </div>
 
@@ -295,10 +300,11 @@ function InspectorDashboard() {
   const router = useRouter();
   const [wards, setWards] = useState<any[]>([]);
   const [selectedWardId, setSelectedWardId] = useState<string>("all");
-  const { data: res, isLoading: isLoadingComplaints, refetch } = useWardComplaints({
+  const { data: rawRes, isLoading: isLoadingComplaints, refetch } = useWardComplaints({
     ward_id: selectedWardId === "all" ? "" : selectedWardId,
     limit: 100,
   });
+  const res: any = rawRes;
 
   const [loadError, setLoadError] = useState<string | null>(null);
   const [isLoadingWards, setIsLoadingWards] = useState<boolean>(true);
@@ -341,7 +347,7 @@ function InspectorDashboard() {
   }, []);
 
   const filteredComplaints = useMemo(() => {
-    return complaints.filter(c => {
+    return complaints.filter((c: any) => {
       if (statusFilter !== "All") {
         if (statusFilter === "Pending" && !["OPEN", "PENDING"].includes(c.status)) return false;
         if (statusFilter === "In Progress" && !["IN_PROGRESS", "WORKING", "ACCEPTED", "FIELD_VISIT", "APPROVAL"].includes(c.status)) return false;
@@ -461,7 +467,7 @@ function InspectorDashboard() {
              <h3 className="text-lg font-bold text-slate-800">
                {selectedWardId === "all" ? "All Complaints" : `Complaints in ${wards.find(w => (w._id||w.id) === selectedWardId)?.ward_name || "Selected Ward"}`}
              </h3>
-             <button onClick={() => refreshData(selectedWardId)} className="text-teal-600 hover:text-teal-700 text-sm font-bold flex items-center gap-2 transition-colors">
+             <button onClick={() => refreshData()} className="text-teal-600 hover:text-teal-700 text-sm font-bold flex items-center gap-2 transition-colors">
                Refresh <Activity className="w-4 h-4" />
              </button>
           </div>
@@ -697,9 +703,6 @@ export default function DashboardPage() {
               <p className="text-sm font-semibold text-white/80 mt-1">{greeting.sub}</p>
             </div>
           </div>
-          <Link href="/notifications" className="w-12 h-12 rounded-full bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center hover:bg-white/20 transition-colors md:hidden">
-            <Bell className="w-5 h-5 text-white" />
-          </Link>
         </div>
 
         {/* User Greeting */}

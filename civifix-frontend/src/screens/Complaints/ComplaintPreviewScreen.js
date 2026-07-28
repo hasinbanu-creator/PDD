@@ -27,6 +27,7 @@ const ComplaintPreviewScreen = ({ route, navigation }) => {
       formData.append("latitude", String(form.latitude));
       formData.append("longitude", String(form.longitude));
       if (form.address) formData.append("address", String(form.address));
+      if (form.landmark) formData.append("landmark", String(form.landmark));
       if (form.citizen_note) formData.append("citizen_note", String(form.citizen_note).trim());
       
       if (Array.isArray(form.images)) {
@@ -89,6 +90,9 @@ const ComplaintPreviewScreen = ({ route, navigation }) => {
             <Text style={styles.sectionTitle}>Location</Text>
           </View>
           <Text style={styles.addressText}>{form.address}</Text>
+          {!!form.landmark && (
+            <Text style={styles.addressText}>Landmark: {form.landmark}</Text>
+          )}
           <Text style={styles.wardText}>Ward: {ward?.label}</Text>
 
           {form.latitude && form.longitude && (

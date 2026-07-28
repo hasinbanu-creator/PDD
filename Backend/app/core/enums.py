@@ -58,18 +58,3 @@ class ComplaintHistoryAction(str, Enum):
     CLOSED = "CLOSED"
     IMAGE_ADDED = "IMAGE_ADDED"
     NOTE_ADDED = "NOTE_ADDED"
-
-
-class NotificationType(str, Enum):
-    """Types of notifications"""
-    EMAIL = "EMAIL"
-    PUSH = "PUSH"
-    IN_APP = "IN_APP"
-
-
-class NotificationStatus(str, Enum):
-    """Notification delivery status"""
-    PENDING = "PENDING"
-    SENT = "SENT"
-    FAILED = "FAILED"
-    DELIVERED = "DELIVERED"

@@ -17,7 +17,6 @@ from app.schemas.complaint_schema import (
     ComplaintRejectSchema
 )
 from app.services.complaint_service import ComplaintService
-from app.services.notification_service import NotificationService
 from app.repositories.complaint_repository import ComplaintRepository
 from app.repositories.ward_repository import WardRepository
 from app.repositories.user_repository import UserRepository
@@ -33,10 +32,8 @@ def get_complaint_service(db=Depends(get_database)):
     """Dependency for complaint service"""
     complaint_repo = ComplaintRepository(db)
     ward_repo = WardRepository(db)
-    # UserRepository uses classmethods and does not require instantiation
     user_repo = UserRepository
-    notification_service = NotificationService()
-    return ComplaintService(complaint_repo, ward_repo, user_repo, notification_service)
+    return ComplaintService(complaint_repo, ward_repo, user_repo)
 
 
 @router.post(
@@ -53,6 +50,7 @@ async def create_complaint(
     latitude: float = Form(...),
     longitude: float = Form(...),
     address: Optional[str] = Form(None),
+    landmark: str = Form(...),
     citizen_note: Optional[str] = Form(None),
     priority: Optional[str] = Form(Priority.MEDIUM),
     images: List[UploadFile] = File(default=[]),
@@ -90,6 +88,7 @@ async def create_complaint(
             latitude=latitude,
             longitude=longitude,
             address=address,
+            landmark=landmark,
             citizen_note=citizen_note,
             priority=Priority(priority) if priority else Priority.MEDIUM,
             image_urls=image_urls

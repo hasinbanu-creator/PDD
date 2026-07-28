@@ -193,22 +193,6 @@ const buildMenuSections = ({ role, navigation, meData }) => {
         color: COLORS.primary,
         onPress: () => navigation.navigate("EditProfile"),
       },
-      {
-        id: "notifications",
-        title: "My Notifications",
-        subtitle: "View your latest alerts",
-        icon: "bell",
-        color: "#D97706",
-        onPress: () => navigation.navigate("MyNotifications"),
-      },
-      {
-        id: "settings",
-        title: "Notification Settings",
-        subtitle: "Manage your alert preferences",
-        icon: "cog",
-        color: COLORS.primary,
-        onPress: () => navigation.navigate("NotificationPreferences"),
-      },
     ],
     support: [
       {

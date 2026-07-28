@@ -1,4 +1,5 @@
 import api, { unwrapResponse } from "@/lib/api";
+import { ENDPOINTS } from "@/constants/endpoints";
 
 export const complaintsApi = {
   updateStatus: async (id: string, status: string) => {
@@ -28,19 +29,3 @@ export const complaintsApi = {
   }
 };
 
-export const notificationsApi = {
-  getNotifications: async (page = 1, limit = 20) => {
-    const res = await api.get(`/notifications`, { params: { page, limit } });
-    return unwrapResponse(res);
-  },
-  
-  markAsRead: async (id: string) => {
-    const res = await api.put(`/notifications/${id}/read`);
-    return unwrapResponse(res);
-  },
-
-  markAllAsRead: async () => {
-    const res = await api.put(`/notifications/read-all`);
-    return unwrapResponse(res);
-  }
-};

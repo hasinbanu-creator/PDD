@@ -72,6 +72,7 @@ class ComplaintCreateSchema(BaseModel):
     latitude: float = Field(..., ge=-90, le=90, description="GPS latitude")
     longitude: float = Field(..., ge=-180, le=180, description="GPS longitude")
     address: Optional[str] = Field(None, max_length=500, description="Complaint location address")
+    landmark: str = Field(..., min_length=3, max_length=500, description="Detailed landmark/door number")
     citizen_note: Optional[str] = Field(None, max_length=500)
     image_urls: Optional[List[str]] = Field(default_factory=list, description="List of complaint images")
     priority: Optional[Priority] = Field(default=Priority.MEDIUM)
@@ -178,6 +179,7 @@ class ComplaintResponseSchema(BaseModel):
     latitude: float
     longitude: float
     address: Optional[str]
+    landmark: Optional[str] = None
     image_urls: List[str]
     proof_images: List[str]
     inspector_notes: Optional[List[dict]] = Field(default_factory=list)

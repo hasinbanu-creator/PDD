@@ -233,6 +233,7 @@ async def get_ward_complaints(
                 "status": complaint.get("status"),
                 "priority": complaint.get("priority", "MEDIUM"),
                 "address": complaint.get("address"),
+                "landmark": complaint.get("landmark"),
                 "latitude": complaint.get("latitude"),
                 "longitude": complaint.get("longitude"),
                 "created_at": complaint.get("created_at").isoformat() if complaint.get("created_at") else None,

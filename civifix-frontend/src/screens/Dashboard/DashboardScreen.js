@@ -220,23 +220,24 @@ const QuickActionBtn = ({ icon, title, color, onPress }) => (
     activeOpacity={0.82}
     onPress={onPress}
     style={{
-      width: "31%", minHeight: 78, borderRadius: 12,
+      width: "48%", minHeight: 100, borderRadius: 16,
       backgroundColor: COLORS.card, alignItems: "center",
-      justifyContent: "center", paddingHorizontal: 4, ...SHADOWS.md,
+      justifyContent: "center", paddingHorizontal: 8,
+      paddingVertical: 12, ...SHADOWS.md,
     }}
   >
     <View style={{
-      width: 34, height: 34, borderRadius: 17,
+      width: 44, height: 44, borderRadius: 22,
       backgroundColor: `${color}14`, alignItems: "center",
-      justifyContent: "center", marginBottom: 6,
+      justifyContent: "center", marginBottom: 8,
     }}>
-      <Icon name={icon} size={19} color={color} />
+      <Icon name={icon} size={22} color={color} />
     </View>
     <Text
       numberOfLines={2}
       adjustsFontSizeToFit
       minimumFontScale={0.8}
-      style={{ color: COLORS.textDark, fontSize: 9.5, lineHeight: 12, fontWeight: "800", textAlign: "center" }}
+      style={{ color: COLORS.textDark, fontSize: 12, lineHeight: 15, fontWeight: "800", textAlign: "center" }}
     >
       {title}
     </Text>
@@ -340,7 +341,7 @@ const SuperAdminDashboard = ({ navigation, meData, user }) => {
     <>
       <UserProfileCard meData={meData} user={user} stats={profileStats} />
       <SectionTitle left="Quick Actions" />
-      <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
+      <View style={{ flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between", rowGap: 12 }}>
         {quickActions.map((a, i) => <QuickActionBtn key={i} {...a} />)}
       </View>
       <SectionTitle left="Overview" />
@@ -520,7 +521,9 @@ const InspectorComplaintItem = ({ complaint, index, total, onPress }) => {
         </View>
         <View style={{ flexDirection: "row", alignItems: "center", gap: 4, width: "100%", marginTop: 4 }}>
           <Icon name="map-marker-radius-outline" size={14} color={COLORS.textLight} />
-          <Text numberOfLines={1} style={{ color: COLORS.textLight, fontSize: FONT_SIZES.xs, flex: 1 }}>{address}</Text>
+          <Text numberOfLines={1} style={{ color: COLORS.textLight, fontSize: FONT_SIZES.xs, flex: 1 }}>
+            {address}{complaint.landmark ? ` (Landmark: ${complaint.landmark})` : ""}
+          </Text>
         </View>
         {hasImages && (
           <View style={{ flexDirection: "row", alignItems: "center", gap: 4, marginTop: 4 }}>
@@ -995,14 +998,13 @@ const CitizenDashboard = ({ navigation, meData, user }) => {
   const quickActions = [
     { icon: "flask-outline",      title: "Raise\nComplaint", color: COLORS.secondary, onPress: () => navigation.navigate("CreateComplaint") },
     { icon: "magnify",            title: "Track\nStatus",    color: COLORS.primary,   onPress: () => navigation.getParent()?.navigate("Complaints") },
-    { icon: "bell-outline",       title: "Notifications",    color: COLORS.darkBg,    onPress: () => navigation.getParent()?.navigate("Profile") },
   ];
 
   return (
     <>
       <UserProfileCard meData={meData} user={user} stats={profileStats} />
       <SectionTitle left="Quick Actions" />
-      <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
+      <View style={{ flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between", rowGap: 12 }}>
         {quickActions.map((a, i) => <QuickActionBtn key={i} {...a} />)}
       </View>
       <SectionTitle left="My Complaints" right="View All" onRight={() => navigation.getParent()?.navigate("Complaints")} />
@@ -1134,17 +1136,7 @@ export const DashboardScreen = ({ navigation }) => {
 
             {/* Action Buttons */}
             <View style={{ flexDirection: "row", alignItems: "center", gap: 16 }}>
-              <TouchableOpacity
-                onPress={() => navigation.getParent()?.navigate("Profile", { screen: "MyNotifications" })}
-                style={{
-                  width: 38, height: 38, borderRadius: 19,
-                  backgroundColor: "rgba(255,255,255,0.15)",
-                  alignItems: "center", justifyContent: "center",
-                }}
-              >
-                <Icon name="bell-outline" size={20} color="#FFFFFF" />
-              </TouchableOpacity>
-              
+
               <TouchableOpacity
                 onPress={() => navigation.getParent()?.navigate("Profile")}
                 style={{

@@ -7,8 +7,6 @@ import { AuthContext } from "../context/AuthContext";
 import DashboardScreen from "../screens/Dashboard/DashboardScreen";
 import ProfileScreen from "../screens/Profile/ProfileScreen";
 import EditProfileScreen from "../screens/Profile/EditProfileScreen";
-import MyNotificationsScreen from "../screens/Profile/MyNotificationsScreen";
-import NotificationPreferencesScreen from "../screens/Profile/NotificationPreferencesScreen";
 import FAQScreen from "../screens/Profile/FAQScreen";
 import ContactSupportScreen from "../screens/Profile/ContactSupportScreen";
 import ComplaintsListScreen from "../screens/Complaints/ComplaintsListScreen";
@@ -72,8 +70,6 @@ const ProfileStack = () => {
     >
       <Stack.Screen name="ProfileHome" component={ProfileScreen} />
       <Stack.Screen name="EditProfile" component={EditProfileScreen} />
-      <Stack.Screen name="MyNotifications" component={MyNotificationsScreen} />
-      <Stack.Screen name="NotificationPreferences" component={NotificationPreferencesScreen} />
       <Stack.Screen name="FAQ" component={FAQScreen} />
       <Stack.Screen name="ContactSupport" component={ContactSupportScreen} />
     </Stack.Navigator>

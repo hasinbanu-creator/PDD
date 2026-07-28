@@ -51,12 +51,6 @@ async def create_indexes(db: AsyncIOMotorDatabase):
         await db["complaint_history"].create_index("timestamp")
         await db["complaint_history"].create_index([("complaint_id", 1), ("timestamp", -1)])
         
-        # Notification indexes
-        await db["notifications"].create_index("user_id")
-        await db["notifications"].create_index("complaint_id")
-        await db["notifications"].create_index("status")
-        await db["notifications"].create_index("created_at")
-        
         logger.info("All MongoDB indexes created successfully")
         
     except Exception as e:

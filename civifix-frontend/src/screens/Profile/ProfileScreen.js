@@ -19,7 +19,7 @@ import authService from "../../services/authService";
 const ROLE_META = {
   SUPER_ADMIN:    { label: "Super Admin",     color: COLORS.primary, bg: "#DBEAFE", gradient: ["#0052CC", "#172B4D"] },
   DISTRICT_ADMIN: { label: "District Admin",  color: "#7C3AED",      bg: "#EDE9FE", gradient: ["#5B21B6", "#2D1B69"] },
-  INSPECTOR:      { label: "Inspector",       color: "#0891B2",      bg: "#CFFAFE", gradient: ["#0E7490", "#164E63"] },
+  INSPECTOR:      { label: "Inspector",       color: "#0F8A83",      bg: "#DDF8F5", gradient: ["#0F8A83", "#0B6E69"] },
   WORKER:         { label: "Worker",          color: "#059669",      bg: "#D1FAE5", gradient: ["#065F46", "#022C22"] },
   CITIZEN:        { label: "Citizen",         color: "#D97706",      bg: "#FEF3C7", gradient: ["#0052CC", "#172B4D"] },
 };

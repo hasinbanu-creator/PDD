@@ -28,6 +28,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const router = useRouter();
 
   const role = user?.role || "CITIZEN";
+  const isInspector = role === "INSPECTOR";
+  const activeBgClass = isInspector ? "bg-[#0F8A83]" : "bg-primary";
+  const activeTextClass = isInspector ? "text-white" : "text-primary-foreground";
+  const activeShadowClass = isInspector ? "shadow-[#0F8A83]/20" : "shadow-primary/20";
+  const activeMobileTextClass = isInspector ? "text-[#0F8A83]" : "text-primary";
 
   // Define navigation based on role
   let navItems = [];
@@ -89,11 +94,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 href={item.href}
                 className={`flex items-center gap-4 px-5 py-3.5 rounded-2xl transition-all duration-200 font-medium text-sm ${
                   isActive 
-                    ? "bg-primary text-primary-foreground shadow-md shadow-primary/20 scale-[1.02]" 
+                    ? `${activeBgClass} ${activeTextClass} shadow-md ${activeShadowClass} scale-[1.02]` 
                     : "text-muted-foreground hover:bg-muted hover:text-foreground hover:scale-[1.02]"
                 }`}
               >
-                <Icon className={`w-5 h-5 ${isActive ? "text-primary-foreground" : "text-muted-foreground"}`} />
+                <Icon className={`w-5 h-5 ${isActive ? (isInspector ? "text-white" : "text-primary-foreground") : "text-muted-foreground"}`} />
                 {item.name}
               </Link>
             );
@@ -135,11 +140,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               key={item.href}
               href={item.href}
               className={`flex flex-col items-center justify-center w-full h-full space-y-1 ${
-                isActive ? "text-primary" : "text-muted-foreground"
+                isActive ? activeMobileTextClass : "text-muted-foreground"
               }`}
             >
-              <Icon className={`w-5 h-5 ${isActive ? "text-primary" : "text-muted-foreground"}`} />
-              <span className={`text-[10px] font-medium ${isActive ? "text-primary font-semibold" : "text-muted-foreground"}`}>
+              <Icon className={`w-5 h-5 ${isActive ? activeMobileTextClass : "text-muted-foreground"}`} />
+              <span className={`text-[10px] font-medium ${isActive ? `${activeMobileTextClass} font-semibold` : "text-muted-foreground"}`}>
                 {item.name.split(' ')[0]} {/* Shorten name for bottom nav */}
               </span>
             </Link>

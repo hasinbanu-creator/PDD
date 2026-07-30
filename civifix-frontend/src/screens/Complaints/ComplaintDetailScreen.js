@@ -23,6 +23,7 @@ import * as ImagePicker from '../../services/ImagePicker';
 import { API_URL } from "../../constants/endpoints";
 import { resolveImageUri } from "../../utils/imageUri";
 import { getComplaintStatusMeta, normalizeComplaintStatus } from "../../utils/status";
+import { ImageViewer } from "../../components";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
@@ -99,11 +100,14 @@ function PriorityBadge({ priority }) {
 }
 
 function InfoRow({ icon, label, value }) {
+  const { user } = React.useContext(AuthContext);
+  const isInspector = user?.role === "INSPECTOR";
+  const iconColor = isInspector ? "#0F8A83" : PRIMARY;
   if (!value) return null;
   return (
     <View style={styles.infoRow}>
       <View style={styles.infoIconWrap}>
-        <Icon name={icon} size={15} color={PRIMARY} />
+        <Icon name={icon} size={15} color={iconColor} />
       </View>
       <View style={styles.infoTextWrap}>
         <Text style={styles.infoLabel}>{label}</Text>
@@ -127,10 +131,14 @@ function NoteCard({ icon, label, value, color }) {
 }
 
 function SectionTitle({ title, icon }) {
+  const { user } = React.useContext(AuthContext);
+  const isInspector = user?.role === "INSPECTOR";
+  const iconColor = isInspector ? "#0F8A83" : PRIMARY;
+  const bgColor = isInspector ? "#DDF8F5" : PRIMARY_LIGHT;
   return (
     <View style={styles.sectionTitle}>
-      <View style={styles.sectionIconWrap}>
-        <Icon name={icon} size={14} color={PRIMARY} />
+      <View style={[styles.sectionIconWrap, { backgroundColor: bgColor }]}>
+        <Icon name={icon} size={14} color={iconColor} />
       </View>
       <Text style={styles.sectionTitleText}>{title}</Text>
     </View>
@@ -174,9 +182,21 @@ function HistoryItem({ item, complaint, isLast }) {
         ) : null}
         {item.new_status && (item.new_status.toUpperCase() === "RESOLVED" || item.new_status.toUpperCase() === "CLOSED") && complaint?.proof_images?.length > 0 && (
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 8 }}>
-            {complaint.proof_images.map((img, idx) => (
-              <Image key={idx} source={{ uri: getFinalImageUri(img) }} style={{ width: 80, height: 80, borderRadius: 8, marginRight: 8 }} />
-            ))}
+            {complaint.proof_images.map((img, idx) => {
+              const uri = getFinalImageUri(img);
+              return (
+                <TouchableOpacity
+                  key={idx}
+                  activeOpacity={0.8}
+                  onPress={() => {
+                    setViewerImageUrl(uri);
+                    setViewerVisible(true);
+                  }}
+                >
+                  <Image source={{ uri }} style={{ width: 80, height: 80, borderRadius: 8, marginRight: 8 }} />
+                </TouchableOpacity>
+              );
+            })}
           </ScrollView>
         )}
         {item.created_at && (
@@ -221,6 +241,8 @@ export const ComplaintDetailScreen = ({ route, navigation }) => {
   const [submitting, setSubmitting] = useState(false);
   const [selectedProofImages, setSelectedProofImages] = useState([]);
   const [resolveNote, setResolveNote] = useState("");
+  const [viewerVisible, setViewerVisible] = useState(false);
+  const [viewerImageUrl, setViewerImageUrl] = useState("");
 
   const { user } = useContext(AuthContext);
   const isCitizen = user?.role === "CITIZEN";
@@ -425,10 +447,10 @@ export const ComplaintDetailScreen = ({ route, navigation }) => {
 
   return (
     <View style={styles.flex}>
-      <StatusBar barStyle="light-content" backgroundColor={PRIMARY} />
+      <StatusBar barStyle="light-content" backgroundColor={isInspector ? "#0F8A83" : PRIMARY} />
 
       {/* ── HEADER ── */}
-      <View style={styles.headerBar}>
+      <View style={[styles.headerBar, isInspector && { backgroundColor: "#0F8A83" }]}>
         <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
           <Icon name="arrow-left" size={20} color="#fff" />
         </TouchableOpacity>
@@ -439,13 +461,13 @@ export const ComplaintDetailScreen = ({ route, navigation }) => {
           </Text>
         </View>
         {complaint && (
-          <View style={[styles.headerStatusDot, { backgroundColor: statusCfg.color }]} />
+          <View style={[styles.headerStatusDot, { backgroundColor: statusCfg.color }, isInspector && { borderColor: "rgba(255,255,255,0.3)" }]} />
         )}
       </View>
 
       {loading ? (
         <View style={styles.centerState}>
-          <ActivityIndicator size="large" color={PRIMARY} />
+          <ActivityIndicator size="large" color={isInspector ? "#0F8A83" : PRIMARY} />
           <Text style={styles.centerStateText}>Loading details…</Text>
         </View>
       ) : error ? (
@@ -455,7 +477,7 @@ export const ComplaintDetailScreen = ({ route, navigation }) => {
           </View>
           <Text style={styles.errorTitle}>Couldn't load complaint</Text>
           <Text style={styles.errorSub}>{error}</Text>
-          <TouchableOpacity style={styles.retryBtn} onPress={() => navigation.navigate("ComplaintsHome")}>
+          <TouchableOpacity style={[styles.retryBtn, isInspector && { backgroundColor: "#0F8A83" }]} onPress={() => navigation.navigate("ComplaintsHome")}>
             <Text style={styles.retryText}>Back to Complaints</Text>
           </TouchableOpacity>
         </View>
@@ -500,9 +522,21 @@ export const ComplaintDetailScreen = ({ route, navigation }) => {
                 <View style={styles.cardDivider} />
                 <SectionTitle title="Attached Photos" icon="image-multiple-outline" />
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.imageRow}>
-                  {complaintImages.map((img, idx) => (
-                    <Image key={`${img}-${idx}`} source={{ uri: getFinalImageUri(img) }} style={styles.previewImage} />
-                  ))}
+                  {complaintImages.map((img, idx) => {
+                    const uri = getFinalImageUri(img);
+                    return (
+                      <TouchableOpacity
+                        key={`${img}-${idx}`}
+                        activeOpacity={0.8}
+                        onPress={() => {
+                          setViewerImageUrl(uri);
+                          setViewerVisible(true);
+                        }}
+                      >
+                        <Image source={{ uri }} style={styles.previewImage} />
+                      </TouchableOpacity>
+                    );
+                  })}
                 </ScrollView>
               </>
             )}
@@ -598,10 +632,10 @@ export const ComplaintDetailScreen = ({ route, navigation }) => {
                   <Text style={{ fontSize: 14, fontWeight: '700', marginBottom: 10, color: '#333' }}>Attach Proof (Required)</Text>
                   
                   <View style={{ flexDirection: "row", gap: 10, marginBottom: 15 }}>
-                    <TouchableOpacity style={[styles.actionBtn, { flex: 1, backgroundColor: '#0284c7' }]} onPress={takeProofPhoto}>
+                    <TouchableOpacity style={[styles.actionBtn, { flex: 1, backgroundColor: '#0F8A83' }]} onPress={takeProofPhoto}>
                       <Text style={styles.actionBtnText}>Camera</Text>
                     </TouchableOpacity>
-                    <TouchableOpacity style={[styles.actionBtn, { flex: 1, backgroundColor: '#4f46e5' }]} onPress={pickProofImages}>
+                    <TouchableOpacity style={[styles.actionBtn, { flex: 1, backgroundColor: '#0B6E69' }]} onPress={pickProofImages}>
                       <Text style={styles.actionBtnText}>Gallery</Text>
                     </TouchableOpacity>
                   </View>
@@ -672,6 +706,11 @@ export const ComplaintDetailScreen = ({ route, navigation }) => {
           <View style={{ height: 32 }} />
         </ScrollView>
       )}
+      <ImageViewer
+        visible={viewerVisible}
+        imageUrl={viewerImageUrl}
+        onClose={() => setViewerVisible(false)}
+      />
     </View>
   );
 };

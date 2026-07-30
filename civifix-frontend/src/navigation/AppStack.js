@@ -98,7 +98,7 @@ export const AppStack = () => {
     <Tab.Navigator
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: COLORS.primary,
+        tabBarActiveTintColor: user?.role === "INSPECTOR" ? "#0F8A83" : COLORS.primary,
         tabBarInactiveTintColor: COLORS.textGray,
         tabBarStyle: {
           borderTopWidth: 1,

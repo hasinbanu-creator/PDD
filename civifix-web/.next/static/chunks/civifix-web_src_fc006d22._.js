@@ -371,9 +371,9 @@ const ROLE_META = {
     },
     INSPECTOR: {
         label: "Inspector",
-        color: "text-teal-100",
-        bg: "bg-teal-800/40",
-        gradient: "from-teal-800 to-teal-600"
+        color: "text-[#0F8A83]",
+        bg: "bg-[#DDF8F5]",
+        gradient: "from-[#0F8A83] to-[#0B6E69]"
     },
     WORKER: {
         label: "Worker",
@@ -1294,7 +1294,7 @@ function InspectorDashboard() {
             className: "p-10 flex flex-col items-center gap-3",
             children: [
                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$civifix$2d$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                    className: "w-10 h-10 border-4 border-teal-500 border-t-transparent rounded-full animate-spin"
+                    className: "w-10 h-10 border-4 border-[#0F8A83] border-t-transparent rounded-full animate-spin"
                 }, void 0, false, {
                     fileName: "[project]/civifix-web/src/app/(dashboard)/dashboard/page.tsx",
                     lineNumber: 372,
@@ -1351,7 +1351,7 @@ function InspectorDashboard() {
                 }, this),
                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$civifix$2d$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
                     onClick: ()=>window.location.reload(),
-                    className: "mt-4 px-4 py-2 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-sm font-bold transition-colors",
+                    className: "mt-4 px-4 py-2 rounded-xl bg-[#0F8A83] hover:bg-[#0D7D76] text-white text-sm font-bold transition-colors",
                     children: "Retry"
                 }, void 0, false, {
                     fileName: "[project]/civifix-web/src/app/(dashboard)/dashboard/page.tsx",
@@ -1381,19 +1381,19 @@ function InspectorDashboard() {
                         label: "Pending",
                         value: stats.pending || 0,
                         filter: "Pending",
-                        color: "text-teal-600"
+                        color: "text-[#0F8A83]"
                     },
                     {
                         label: "In Progress",
                         value: stats.in_progress || 0,
                         filter: "In Progress",
-                        color: "text-teal-500"
+                        color: "text-[#0D7D76]"
                     },
                     {
                         label: "Resolved",
                         value: stats.resolved || 0,
                         filter: "Resolved",
-                        color: "text-teal-400"
+                        color: "text-[#0F8A83]"
                     },
                     {
                         label: "Rejected",
@@ -1403,7 +1403,7 @@ function InspectorDashboard() {
                     }
                 ].map((s, idx)=>/*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$civifix$2d$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
                         onClick: ()=>setStatusFilter(s.filter),
-                        className: "flex-1 text-center py-2 px-2 hover:bg-slate-50 rounded-xl transition-colors ".concat(idx !== 4 ? 'border-r border-slate-100' : '', " ").concat(statusFilter === s.filter ? 'ring-2 ring-teal-100 bg-teal-50/50' : ''),
+                        className: "flex-1 text-center py-2 px-2 hover:bg-slate-50 rounded-xl transition-colors ".concat(idx !== 4 ? 'border-r border-slate-100' : '', " ").concat(statusFilter === s.filter ? 'ring-2 ring-[#8EE5DA] bg-[#DDF8F5]/50' : ''),
                         children: [
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$civifix$2d$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
                                 className: "text-3xl font-black ".concat(s.color),
@@ -1452,7 +1452,7 @@ function InspectorDashboard() {
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$civifix$2d$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("select", {
                                         value: selectedWardId,
                                         onChange: (e)=>setSelectedWardId(e.target.value),
-                                        className: "bg-white text-slate-700 font-semibold text-sm px-4 py-3 rounded-2xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-teal-500 min-w-[200px] shadow-sm cursor-pointer",
+                                        className: "bg-white text-slate-700 font-semibold text-sm px-4 py-3 rounded-2xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#0F8A83] min-w-[200px] shadow-sm cursor-pointer",
                                         children: [
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$civifix$2d$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("option", {
                                                 value: "all",
@@ -1502,7 +1502,7 @@ function InspectorDashboard() {
                                         placeholder: "Search ID, type, location or name...",
                                         value: searchQuery,
                                         onChange: (e)=>setSearchQuery(e.target.value),
-                                        className: "w-full bg-white border border-slate-200 rounded-2xl pl-12 pr-4 py-3 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-teal-500 shadow-sm"
+                                        className: "w-full bg-white border border-slate-200 rounded-2xl pl-12 pr-4 py-3 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#0F8A83] shadow-sm"
                                     }, void 0, false, {
                                         fileName: "[project]/civifix-web/src/app/(dashboard)/dashboard/page.tsx",
                                         lineNumber: 434,
@@ -1530,11 +1530,11 @@ function InspectorDashboard() {
                             "Rejected"
                         ].map((filter)=>/*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$civifix$2d$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
                                 onClick: ()=>setStatusFilter(filter),
-                                className: "px-4 py-2 rounded-full text-sm font-bold transition-all shadow-sm flex items-center ".concat(statusFilter === filter ? "bg-teal-600 text-white shadow-teal-500/30 ring-2 ring-teal-200 ring-offset-1" : "bg-white text-slate-600 border border-slate-200 hover:bg-slate-50"),
+                                className: "px-4 py-2 rounded-full text-sm font-bold transition-all shadow-sm flex items-center ".concat(statusFilter === filter ? "bg-[#0F8A83] text-white shadow-[#0F8A83]/30 ring-2 ring-[#8EE5DA] ring-offset-1" : "bg-white text-slate-600 border border-slate-200 hover:bg-slate-50"),
                                 children: [
                                     filter,
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$civifix$2d$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
-                                        className: "ml-2 px-2 py-0.5 rounded-full text-xs font-black ".concat(statusFilter === filter ? 'bg-teal-700 text-teal-100' : 'bg-slate-100 text-slate-500'),
+                                        className: "ml-2 px-2 py-0.5 rounded-full text-xs font-black ".concat(statusFilter === filter ? 'bg-[#0B6E69] text-[#DDF8F5]' : 'bg-slate-100 text-slate-500'),
                                         children: filter === "All" ? stats.total : filter === "Pending" ? stats.pending : filter === "In Progress" ? stats.in_progress : filter === "Resolved" ? stats.resolved : stats.rejected
                                     }, void 0, false, {
                                         fileName: "[project]/civifix-web/src/app/(dashboard)/dashboard/page.tsx",
@@ -1568,7 +1568,7 @@ function InspectorDashboard() {
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$civifix$2d$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
                                         onClick: ()=>refreshData(),
-                                        className: "text-teal-600 hover:text-teal-700 text-sm font-bold flex items-center gap-2 transition-colors",
+                                        className: "text-[#0F8A83] hover:text-[#0D7D76] text-sm font-bold flex items-center gap-2 transition-colors",
                                         children: [
                                             "Refresh ",
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$civifix$2d$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$civifix$2d$web$2f$node_modules$2f$lucide$2d$react$2f$dist$2f$esm$2f$icons$2f$activity$2e$mjs__$5b$app$2d$client$5d$__$28$ecmascript$29$__$3c$export__default__as__Activity$3e$__["Activity"], {
@@ -1672,7 +1672,7 @@ function InspectorDashboard() {
                                                     colSpan: 7,
                                                     className: "p-10 text-center",
                                                     children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$civifix$2d$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                                                        className: "w-8 h-8 border-4 border-teal-500 border-t-transparent rounded-full animate-spin mx-auto"
+                                                        className: "w-8 h-8 border-4 border-[#0F8A83] border-t-transparent rounded-full animate-spin mx-auto"
                                                     }, void 0, false, {
                                                         fileName: "[project]/civifix-web/src/app/(dashboard)/dashboard/page.tsx",
                                                         lineNumber: 492,
@@ -1744,7 +1744,7 @@ function InspectorDashboard() {
                                                             className: "p-5",
                                                             children: [
                                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$civifix$2d$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
-                                                                    className: "text-sm font-black text-slate-700 hover:text-teal-600 transition-colors",
+                                                                    className: "text-sm font-black text-slate-700 hover:text-[#0F8A83] transition-colors",
                                                                     children: c.complaint_id || "#CIV-NEW"
                                                                 }, void 0, false, {
                                                                     fileName: "[project]/civifix-web/src/app/(dashboard)/dashboard/page.tsx",

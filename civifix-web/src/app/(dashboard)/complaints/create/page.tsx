@@ -82,6 +82,20 @@ export default function CreateComplaintPage() {
   }, [wardsData]);
   const createComplaint = useCreateComplaint();
 
+  useEffect(() => {
+    if (user && user.role !== "CITIZEN") {
+      router.replace("/dashboard");
+    }
+  }, [user, router]);
+
+  if (user && user.role !== "CITIZEN") {
+    return (
+      <div className="flex items-center justify-center min-h-[50vh]">
+        <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+      </div>
+    );
+  }
+
   const updateField = (field: string, value: string) => {
     setForm((prev) => ({ ...prev, [field]: value }));
     if (errors[field]) setErrors((prev) => ({ ...prev, [field]: "" }));

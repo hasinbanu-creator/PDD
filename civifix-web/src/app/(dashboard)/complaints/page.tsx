@@ -75,8 +75,12 @@ export default function ComplaintsListPage() {
   const isCitizen = role === "CITIZEN";
   const isInspector = role === "INSPECTOR";
   const isWorker = role === "WORKER";
+  const isPrivileged = isInspector || isWorker;
   
-  // We fetch all complaints without status filter so we can filter client-side
+  const activeTabBorder = isPrivileged ? "border-[#0F8A83]" : "border-primary";
+  const activeTabBg = isPrivileged ? "bg-[#0F8A83]" : "bg-primary";
+  const activeTabShadow = isPrivileged ? "shadow-[#0F8A83]/20" : "shadow-primary/20";
+  const activeBadgeBg = isPrivileged ? "bg-[#DDF8F5] text-[#0F8A83]" : "bg-primary-foreground/20 text-primary-foreground";
   const queryParams = { limit: 100 };
 
   const citizenQuery = useComplaints(queryParams, { enabled: isCitizen || role === "SUPER_ADMIN" || role === "DISTRICT_ADMIN" });
@@ -148,18 +152,20 @@ export default function ComplaintsListPage() {
     <div className="flex-1 bg-background min-h-screen pb-20 md:pb-8">
       
       {/* Header */}
-      <div className="bg-primary pt-12 pb-16 px-6 md:px-12 md:rounded-b-[60px] rounded-b-[40px] shadow-lg flex items-center justify-between sticky top-0 z-20 md:static">
+      <div className={`${isPrivileged ? "bg-gradient-to-br from-[#0F8A83] to-[#0B6E69]" : "bg-primary"} pt-12 pb-16 px-6 md:px-12 md:rounded-b-[60px] rounded-b-[40px] shadow-lg flex items-center justify-between sticky top-0 z-20 md:static`}>
         <div className="max-w-7xl mx-auto w-full flex items-center justify-between">
            <div>
              <h1 className="text-3xl font-black text-white tracking-tight">My Complaints</h1>
              <p className="text-white/80 font-semibold mt-2">Track your civic issues</p>
            </div>
-           <Link 
-             href="/complaints/create"
-             className="w-12 h-12 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center hover:bg-white/30 transition-colors shadow-sm"
-           >
-             <Plus className="w-6 h-6 text-white" />
-           </Link>
+           {isCitizen && (
+             <Link 
+               href="/complaints/create"
+               className="w-12 h-12 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center hover:bg-white/30 transition-colors shadow-sm"
+             >
+               <Plus className="w-6 h-6 text-white" />
+             </Link>
+           )}
         </div>
       </div>
 
@@ -192,7 +198,7 @@ export default function ComplaintsListPage() {
                     onClick={() => setActiveFilter(f.key)}
                     className={`flex items-center gap-2 px-5 py-2.5 rounded-full whitespace-nowrap transition-all duration-200 border-2 ${
                       isSelected 
-                        ? 'border-primary bg-primary text-primary-foreground shadow-md shadow-primary/20' 
+                        ? `${activeTabBorder} ${activeTabBg} text-primary-foreground shadow-md ${activeTabShadow}` 
                         : 'border-border bg-card text-muted-foreground hover:bg-muted/50'
                     }`}
                   >
@@ -202,7 +208,7 @@ export default function ComplaintsListPage() {
                     </span>
                     {count > 0 && (
                       <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${
-                        isSelected ? 'bg-primary-foreground/20 text-primary-foreground' : 'bg-muted text-muted-foreground'
+                        isSelected ? activeBadgeBg : 'bg-muted text-muted-foreground'
                       }`}>
                         {count}
                       </span>
@@ -224,7 +230,7 @@ export default function ComplaintsListPage() {
                 placeholder="Search complaints..." 
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-12 pr-4 py-3 bg-card border border-border rounded-2xl text-sm font-semibold text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50" 
+                className={`w-full pl-12 pr-4 py-3 bg-card border border-border rounded-2xl text-sm font-semibold text-foreground focus:outline-none focus:ring-2 ${isPrivileged ? 'focus:ring-[#0F8A83]/50' : 'focus:ring-primary/50'}`} 
               />
             </div>
             <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest pl-2">
@@ -246,7 +252,7 @@ export default function ComplaintsListPage() {
         <div className="px-6 md:px-12 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 pb-12 mt-4">
           {loading ? (
             <div className="flex flex-col items-center justify-center py-20 col-span-full">
-              <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+              <div className={`w-10 h-10 border-4 ${isPrivileged ? 'border-[#0F8A83]' : 'border-primary'} border-t-transparent rounded-full animate-spin`}></div>
               <p className="text-sm font-bold text-muted-foreground mt-4">Loading complaints...</p>
             </div>
           ) : complaints.length === 0 ? (
@@ -255,14 +261,20 @@ export default function ComplaintsListPage() {
                 <ClipboardList className="w-12 h-12 text-muted-foreground" />
               </div>
               <h3 className="text-xl font-black text-foreground mb-2">No complaints yet</h3>
-              <p className="text-sm font-semibold text-muted-foreground mb-8 max-w-md">Raise your first civic issue and follow its status right here.</p>
-              <Link 
-                href="/complaints/create"
-                className="flex items-center gap-2 bg-primary text-primary-foreground px-8 py-4 rounded-2xl font-bold hover:bg-primary/90 transition-all shadow-md shadow-primary/20 hover:-translate-y-1"
-              >
-                <Plus className="w-5 h-5" />
-                Raise a Complaint
-              </Link>
+              <p className="text-sm font-semibold text-muted-foreground mb-8 max-w-md">
+                {isCitizen 
+                  ? "Raise your first civic issue and follow its status right here."
+                  : "No complaints have been assigned or registered in your scope yet."}
+              </p>
+              {isCitizen && (
+                <Link 
+                  href="/complaints/create"
+                  className="flex items-center gap-2 bg-primary text-primary-foreground px-8 py-4 rounded-2xl font-bold hover:bg-primary/90 transition-all shadow-md shadow-primary/20 hover:-translate-y-1"
+                >
+                  <Plus className="w-5 h-5" />
+                  Raise a Complaint
+                </Link>
+              )}
             </div>
           ) : filteredComplaints.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-20 text-center col-span-full bg-card rounded-3xl border border-border shadow-sm">
@@ -270,7 +282,7 @@ export default function ComplaintsListPage() {
               <p className="text-sm font-bold text-muted-foreground">No complaints match your criteria.</p>
               <button 
                 onClick={() => { setActiveFilter("ALL"); setSearchTerm(""); }}
-                className="text-primary font-black text-sm mt-4 hover:underline"
+                className={`${isPrivileged ? 'text-[#0F8A83]' : 'text-primary'} font-black text-sm mt-4 hover:underline`}
               >
                 Clear filters and search
               </button>
@@ -287,7 +299,7 @@ export default function ComplaintsListPage() {
                       placeholder="Search complaints..." 
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
-                      className="pl-10 pr-4 py-2 bg-muted border border-border rounded-full text-sm font-semibold text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 w-64" 
+                      className={`pl-10 pr-4 py-2 bg-muted border border-border rounded-full text-sm font-semibold text-foreground focus:outline-none focus:ring-2 ${isPrivileged ? 'focus:ring-[#0F8A83]/50' : 'focus:ring-primary/50'} w-64`} 
                     />
                   </div>
                 </div>
@@ -344,8 +356,8 @@ export default function ComplaintsListPage() {
                               )}
                             </td>
                             <td className="p-4 pr-6 text-right">
-                              <div className="w-8 h-8 rounded-full group-hover:bg-primary/10 flex items-center justify-center ml-auto transition-colors">
-                                <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-primary" />
+                              <div className={`w-8 h-8 rounded-full ${isPrivileged ? 'group-hover:bg-[#0F8A83]/10' : 'group-hover:bg-primary/10'} flex items-center justify-center ml-auto transition-colors`}>
+                                <ChevronRight className={`w-5 h-5 text-muted-foreground ${isPrivileged ? 'group-hover:text-[#0F8A83]' : 'group-hover:text-primary'}`} />
                               </div>
                             </td>
                           </tr>
@@ -438,8 +450,8 @@ export default function ComplaintsListPage() {
                               )}
                             </div>
 
-                            <div className="w-10 h-10 rounded-full bg-muted group-hover:bg-primary/10 flex items-center justify-center transition-colors">
-                              <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-primary transition-colors" />
+                            <div className={`w-10 h-10 rounded-full bg-muted ${isPrivileged ? 'group-hover:bg-[#0F8A83]/10' : 'group-hover:bg-primary/10'} flex items-center justify-center transition-colors`}>
+                              <ChevronRight className={`w-5 h-5 text-muted-foreground ${isPrivileged ? 'group-hover:text-[#0F8A83]' : 'group-hover:text-primary'} transition-colors`} />
                             </div>
                           </div>
                         </div>
@@ -453,7 +465,7 @@ export default function ComplaintsListPage() {
         </div>
 
         {/* Floating Action Button (Mobile mostly) */}
-        {!loading && complaints.length > 0 && (
+        {!loading && complaints.length > 0 && isCitizen && (
           <Link
             href="/complaints/create"
             className="md:hidden fixed bottom-6 right-6 w-16 h-16 bg-primary rounded-full flex items-center justify-center shadow-xl shadow-primary/40 text-primary-foreground z-20 hover:scale-105 transition-transform"

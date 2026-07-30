@@ -32,6 +32,11 @@ function DashboardLayout(param) {
     const pathname = (0, __TURBOPACK__imported__module__$5b$project$5d2f$civifix$2d$web$2f$node_modules$2f$next$2f$navigation$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["usePathname"])();
     const router = (0, __TURBOPACK__imported__module__$5b$project$5d2f$civifix$2d$web$2f$node_modules$2f$next$2f$navigation$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useRouter"])();
     const role = (user === null || user === void 0 ? void 0 : user.role) || "CITIZEN";
+    const isInspector = role === "INSPECTOR";
+    const activeBgClass = isInspector ? "bg-[#0F8A83]" : "bg-primary";
+    const activeTextClass = isInspector ? "text-white" : "text-primary-foreground";
+    const activeShadowClass = isInspector ? "shadow-[#0F8A83]/20" : "shadow-primary/20";
+    const activeMobileTextClass = isInspector ? "text-[#0F8A83]" : "text-primary";
     // Define navigation based on role
     let navItems = [];
     if (role === "CITIZEN") {
@@ -135,12 +140,12 @@ function DashboardLayout(param) {
                                     className: "w-full h-full object-cover"
                                 }, void 0, false, {
                                     fileName: "[project]/civifix-web/src/components/layout/DashboardLayout.tsx",
-                                    lineNumber: 70,
+                                    lineNumber: 75,
                                     columnNumber: 13
                                 }, this)
                             }, void 0, false, {
                                 fileName: "[project]/civifix-web/src/components/layout/DashboardLayout.tsx",
-                                lineNumber: 69,
+                                lineNumber: 74,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$civifix$2d$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -150,7 +155,7 @@ function DashboardLayout(param) {
                                         children: "CiviFix"
                                     }, void 0, false, {
                                         fileName: "[project]/civifix-web/src/components/layout/DashboardLayout.tsx",
-                                        lineNumber: 73,
+                                        lineNumber: 78,
                                         columnNumber: 13
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$civifix$2d$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -158,19 +163,19 @@ function DashboardLayout(param) {
                                         children: role
                                     }, void 0, false, {
                                         fileName: "[project]/civifix-web/src/components/layout/DashboardLayout.tsx",
-                                        lineNumber: 74,
+                                        lineNumber: 79,
                                         columnNumber: 13
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/civifix-web/src/components/layout/DashboardLayout.tsx",
-                                lineNumber: 72,
+                                lineNumber: 77,
                                 columnNumber: 11
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/civifix-web/src/components/layout/DashboardLayout.tsx",
-                        lineNumber: 68,
+                        lineNumber: 73,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$civifix$2d$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("nav", {
@@ -180,26 +185,26 @@ function DashboardLayout(param) {
                             const Icon = item.icon;
                             return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$civifix$2d$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$civifix$2d$web$2f$node_modules$2f$next$2f$dist$2f$client$2f$app$2d$dir$2f$link$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"], {
                                 href: item.href,
-                                className: "flex items-center gap-4 px-5 py-3.5 rounded-2xl transition-all duration-200 font-medium text-sm ".concat(isActive ? "bg-primary text-primary-foreground shadow-md shadow-primary/20 scale-[1.02]" : "text-muted-foreground hover:bg-muted hover:text-foreground hover:scale-[1.02]"),
+                                className: "flex items-center gap-4 px-5 py-3.5 rounded-2xl transition-all duration-200 font-medium text-sm ".concat(isActive ? "".concat(activeBgClass, " ").concat(activeTextClass, " shadow-md ").concat(activeShadowClass, " scale-[1.02]") : "text-muted-foreground hover:bg-muted hover:text-foreground hover:scale-[1.02]"),
                                 children: [
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$civifix$2d$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(Icon, {
-                                        className: "w-5 h-5 ".concat(isActive ? "text-primary-foreground" : "text-muted-foreground")
+                                        className: "w-5 h-5 ".concat(isActive ? isInspector ? "text-white" : "text-primary-foreground" : "text-muted-foreground")
                                     }, void 0, false, {
                                         fileName: "[project]/civifix-web/src/components/layout/DashboardLayout.tsx",
-                                        lineNumber: 96,
+                                        lineNumber: 101,
                                         columnNumber: 17
                                     }, this),
                                     item.name
                                 ]
                             }, item.href, true, {
                                 fileName: "[project]/civifix-web/src/components/layout/DashboardLayout.tsx",
-                                lineNumber: 87,
+                                lineNumber: 92,
                                 columnNumber: 15
                             }, this);
                         })
                     }, void 0, false, {
                         fileName: "[project]/civifix-web/src/components/layout/DashboardLayout.tsx",
-                        lineNumber: 78,
+                        lineNumber: 83,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$civifix$2d$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -212,25 +217,25 @@ function DashboardLayout(param) {
                                     className: "w-5 h-5"
                                 }, void 0, false, {
                                     fileName: "[project]/civifix-web/src/components/layout/DashboardLayout.tsx",
-                                    lineNumber: 108,
+                                    lineNumber: 113,
                                     columnNumber: 13
                                 }, this),
                                 "Sign Out"
                             ]
                         }, void 0, true, {
                             fileName: "[project]/civifix-web/src/components/layout/DashboardLayout.tsx",
-                            lineNumber: 104,
+                            lineNumber: 109,
                             columnNumber: 11
                         }, this)
                     }, void 0, false, {
                         fileName: "[project]/civifix-web/src/components/layout/DashboardLayout.tsx",
-                        lineNumber: 103,
+                        lineNumber: 108,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/civifix-web/src/components/layout/DashboardLayout.tsx",
-                lineNumber: 67,
+                lineNumber: 72,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$civifix$2d$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -246,12 +251,12 @@ function DashboardLayout(param) {
                                 className: "w-full h-full object-cover"
                             }, void 0, false, {
                                 fileName: "[project]/civifix-web/src/components/layout/DashboardLayout.tsx",
-                                lineNumber: 118,
+                                lineNumber: 123,
                                 columnNumber: 13
                             }, this)
                         }, void 0, false, {
                             fileName: "[project]/civifix-web/src/components/layout/DashboardLayout.tsx",
-                            lineNumber: 117,
+                            lineNumber: 122,
                             columnNumber: 11
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$civifix$2d$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("h2", {
@@ -259,18 +264,18 @@ function DashboardLayout(param) {
                             children: "CiviFix"
                         }, void 0, false, {
                             fileName: "[project]/civifix-web/src/components/layout/DashboardLayout.tsx",
-                            lineNumber: 120,
+                            lineNumber: 125,
                             columnNumber: 11
                         }, this)
                     ]
                 }, void 0, true, {
                     fileName: "[project]/civifix-web/src/components/layout/DashboardLayout.tsx",
-                    lineNumber: 116,
+                    lineNumber: 121,
                     columnNumber: 9
                 }, this)
             }, void 0, false, {
                 fileName: "[project]/civifix-web/src/components/layout/DashboardLayout.tsx",
-                lineNumber: 115,
+                lineNumber: 120,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$civifix$2d$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -280,36 +285,36 @@ function DashboardLayout(param) {
                     const Icon = item.icon;
                     return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$civifix$2d$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$civifix$2d$web$2f$node_modules$2f$next$2f$dist$2f$client$2f$app$2d$dir$2f$link$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"], {
                         href: item.href,
-                        className: "flex flex-col items-center justify-center w-full h-full space-y-1 ".concat(isActive ? "text-primary" : "text-muted-foreground"),
+                        className: "flex flex-col items-center justify-center w-full h-full space-y-1 ".concat(isActive ? activeMobileTextClass : "text-muted-foreground"),
                         children: [
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$civifix$2d$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(Icon, {
-                                className: "w-5 h-5 ".concat(isActive ? "text-primary" : "text-muted-foreground")
+                                className: "w-5 h-5 ".concat(isActive ? activeMobileTextClass : "text-muted-foreground")
                             }, void 0, false, {
                                 fileName: "[project]/civifix-web/src/components/layout/DashboardLayout.tsx",
-                                lineNumber: 141,
+                                lineNumber: 146,
                                 columnNumber: 15
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$civifix$2d$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
-                                className: "text-[10px] font-medium ".concat(isActive ? "text-primary font-semibold" : "text-muted-foreground"),
+                                className: "text-[10px] font-medium ".concat(isActive ? "".concat(activeMobileTextClass, " font-semibold") : "text-muted-foreground"),
                                 children: [
                                     item.name.split(' ')[0],
                                     " "
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/civifix-web/src/components/layout/DashboardLayout.tsx",
-                                lineNumber: 142,
+                                lineNumber: 147,
                                 columnNumber: 15
                             }, this)
                         ]
                     }, item.href, true, {
                         fileName: "[project]/civifix-web/src/components/layout/DashboardLayout.tsx",
-                        lineNumber: 134,
+                        lineNumber: 139,
                         columnNumber: 13
                     }, this);
                 })
             }, void 0, false, {
                 fileName: "[project]/civifix-web/src/components/layout/DashboardLayout.tsx",
-                lineNumber: 125,
+                lineNumber: 130,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$civifix$2d$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("main", {
@@ -328,7 +333,7 @@ function DashboardLayout(param) {
                                         children: (user === null || user === void 0 ? void 0 : user.name) ? user.name.split(" ").map((n)=>n[0]).join("").substring(0, 2).toUpperCase() : (user === null || user === void 0 ? void 0 : (_user_email = user.email) === null || _user_email === void 0 ? void 0 : _user_email.charAt(0).toUpperCase()) || "U"
                                     }, void 0, false, {
                                         fileName: "[project]/civifix-web/src/components/layout/DashboardLayout.tsx",
-                                        lineNumber: 156,
+                                        lineNumber: 161,
                                         columnNumber: 17
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$civifix$2d$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -339,7 +344,7 @@ function DashboardLayout(param) {
                                                 children: (user === null || user === void 0 ? void 0 : user.name) || (user === null || user === void 0 ? void 0 : user.email) || "Account"
                                             }, void 0, false, {
                                                 fileName: "[project]/civifix-web/src/components/layout/DashboardLayout.tsx",
-                                                lineNumber: 163,
+                                                lineNumber: 168,
                                                 columnNumber: 19
                                             }, this),
                                             (user === null || user === void 0 ? void 0 : user.name) && (user === null || user === void 0 ? void 0 : user.email) && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$civifix$2d$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -347,29 +352,29 @@ function DashboardLayout(param) {
                                                 children: user.email
                                             }, void 0, false, {
                                                 fileName: "[project]/civifix-web/src/components/layout/DashboardLayout.tsx",
-                                                lineNumber: 167,
+                                                lineNumber: 172,
                                                 columnNumber: 21
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/civifix-web/src/components/layout/DashboardLayout.tsx",
-                                        lineNumber: 162,
+                                        lineNumber: 167,
                                         columnNumber: 17
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/civifix-web/src/components/layout/DashboardLayout.tsx",
-                                lineNumber: 155,
+                                lineNumber: 160,
                                 columnNumber: 15
                             }, this)
                         }, void 0, false, {
                             fileName: "[project]/civifix-web/src/components/layout/DashboardLayout.tsx",
-                            lineNumber: 154,
+                            lineNumber: 159,
                             columnNumber: 13
                         }, this)
                     }, void 0, false, {
                         fileName: "[project]/civifix-web/src/components/layout/DashboardLayout.tsx",
-                        lineNumber: 153,
+                        lineNumber: 158,
                         columnNumber: 10
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$civifix$2d$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -377,19 +382,19 @@ function DashboardLayout(param) {
                         children: children
                     }, void 0, false, {
                         fileName: "[project]/civifix-web/src/components/layout/DashboardLayout.tsx",
-                        lineNumber: 177,
+                        lineNumber: 182,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/civifix-web/src/components/layout/DashboardLayout.tsx",
-                lineNumber: 151,
+                lineNumber: 156,
                 columnNumber: 7
             }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/civifix-web/src/components/layout/DashboardLayout.tsx",
-        lineNumber: 65,
+        lineNumber: 70,
         columnNumber: 5
     }, this);
 }

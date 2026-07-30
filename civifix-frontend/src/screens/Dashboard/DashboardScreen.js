@@ -50,7 +50,7 @@ const TYPE_META = {
 const ROLE_META = {
   SUPER_ADMIN:    { label: "Super Admin",    color: COLORS.primary, bg: "#DBEAFE" },
   DISTRICT_ADMIN: { label: "District Admin", color: "#7C3AED",      bg: "#EDE9FE" },
-  INSPECTOR:      { label: "Inspector",      color: "#0891B2",      bg: "#CFFAFE" },
+  INSPECTOR:      { label: "Inspector",      color: "#0F8A83",      bg: "#DDF8F5" },
   WORKER:         { label: "Worker",         color: "#059669",      bg: "#D1FAE5" },
   CITIZEN:        { label: "Citizen",        color: "#D97706",      bg: "#FEF3C7" },
 };
@@ -71,7 +71,7 @@ const getWardDisplayLabel = (complaint) => {
 const ROLE_GRADIENT = {
   SUPER_ADMIN:    ["#0052CC", "#172B4D"],
   DISTRICT_ADMIN: ["#5B21B6", "#2D1B69"],
-  INSPECTOR:      ["#0E7490", "#164E63"],
+  INSPECTOR:      ["#0F8A83", "#0B6E69"],
   WORKER:         ["#065F46", "#022C22"],
   CITIZEN:        ["#0052CC", "#172B4D"],
 };
@@ -527,8 +527,8 @@ const InspectorComplaintItem = ({ complaint, index, total, onPress }) => {
         </View>
         {hasImages && (
           <View style={{ flexDirection: "row", alignItems: "center", gap: 4, marginTop: 4 }}>
-            <Icon name="image-outline" size={14} color={COLORS.primary} />
-            <Text style={{ color: COLORS.primary, fontSize: FONT_SIZES.xs }}>View Images</Text>
+            <Icon name="image-outline" size={14} color="#0F8A83" />
+            <Text style={{ color: "#0F8A83", fontSize: FONT_SIZES.xs }}>View Images</Text>
           </View>
         )}
       </View>
@@ -670,7 +670,7 @@ const InspectorDashboard = ({ navigation, meData, user }) => {
   if (loadingWards) {
     return (
       <View style={{ alignItems: "center", paddingVertical: SPACING.xxl }}>
-        <ActivityIndicator size="large" color={COLORS.primary} />
+        <ActivityIndicator size="large" color="#0F8A83" />
         <Text style={{ color: COLORS.textLight, fontSize: FONT_SIZES.sm, marginTop: SPACING.md }}>
           Loading wards…
         </Text>
@@ -691,7 +691,7 @@ const InspectorDashboard = ({ navigation, meData, user }) => {
         </Text>
         <TouchableOpacity
           onPress={loadWards}
-          style={{ marginTop: SPACING.lg, backgroundColor: COLORS.primary, borderRadius: 10, paddingHorizontal: 24, paddingVertical: 10 }}
+          style={{ marginTop: SPACING.lg, backgroundColor: "#0F8A83", borderRadius: 10, paddingHorizontal: 24, paddingVertical: 10 }}
         >
           <Text style={{ color: "#FFFFFF", fontWeight: "800", fontSize: FONT_SIZES.sm }}>Retry</Text>
         </TouchableOpacity>
@@ -748,7 +748,7 @@ const InspectorDashboard = ({ navigation, meData, user }) => {
           }}
         >
           <View style={{ flexDirection: "row", alignItems: "center" }}>
-            <Icon name="map-marker-radius" size={20} color={COLORS.primary} />
+            <Icon name="map-marker-radius" size={20} color="#0F8A83" />
             <Text style={{ marginLeft: SPACING.sm, color: COLORS.textDark, fontSize: FONT_SIZES.md, fontWeight: "600" }}>
               {selectedWardLabel}
             </Text>
@@ -774,11 +774,11 @@ const InspectorDashboard = ({ navigation, meData, user }) => {
                       paddingHorizontal: SPACING.md,
                       borderBottomWidth: 1,
                       borderBottomColor: COLORS.border,
-                      backgroundColor: isSelected ? `${COLORS.primary}15` : COLORS.card,
+                      backgroundColor: isSelected ? "#DDF8F5" : COLORS.card,
                     }}
                   >
                     <Text style={{
-                      color: isSelected ? COLORS.primary : COLORS.textDark,
+                      color: isSelected ? "#0F8A83" : COLORS.textDark,
                       fontSize: FONT_SIZES.sm,
                       fontWeight: isSelected ? "800" : "500",
                     }}>
@@ -814,9 +814,9 @@ const InspectorDashboard = ({ navigation, meData, user }) => {
                 paddingHorizontal: 16,
                 paddingVertical: 8,
                 borderRadius: 20,
-                backgroundColor: isSelected ? COLORS.primary : COLORS.card,
+                backgroundColor: isSelected ? "#0F8A83" : COLORS.card,
                 borderWidth: 1,
-                borderColor: isSelected ? COLORS.primary : COLORS.border,
+                borderColor: isSelected ? "#0F8A83" : COLORS.border,
                 marginRight: 8,
                 ...SHADOWS.sm,
               }}
@@ -839,7 +839,7 @@ const InspectorDashboard = ({ navigation, meData, user }) => {
         rightComponent={
           <View style={{ flexDirection: "row", gap: 12 }}>
             <TouchableOpacity onPress={() => selectedWardId && loadComplaints(selectedWardId)}>
-              <Icon name="refresh" size={20} color={COLORS.primary} />
+              <Icon name="refresh" size={20} color="#0F8A83" />
             </TouchableOpacity>
           </View>
         }
@@ -860,7 +860,7 @@ const InspectorDashboard = ({ navigation, meData, user }) => {
         }
       >
         {loadingComplaints
-          ? <View style={{ padding: SPACING.xl }}><ActivityIndicator color={COLORS.primary} /></View>
+          ? <View style={{ padding: SPACING.xl }}><ActivityIndicator color="#0F8A83" /></View>
           : complaints.filter(c => {
               if (statusFilter === "All") return true;
               if (statusFilter === "Pending") return ["OPEN", "PENDING"].includes(c.status);

@@ -8,12 +8,15 @@ import { API_URL } from "../../constants/endpoints";
 import authService from "../../services/authService";
 import { getErrorMessage } from "../../services/api";
 import { resolveImageUri } from "../../utils/imageUri";
+import { ImageViewer } from "../../components";
 
 const { height: SCREEN_HEIGHT, width: SCREEN_WIDTH } = Dimensions.get("window");
 
 const ComplaintPreviewScreen = ({ route, navigation }) => {
   const { form, ward, selectedType, selectedPri } = route.params;
   const [submitting, setSubmitting] = useState(false);
+  const [viewerVisible, setViewerVisible] = useState(false);
+  const [viewerImageUrl, setViewerImageUrl] = useState("");
 
   const handleSubmit = async () => {
     try {
@@ -135,9 +138,21 @@ const ComplaintPreviewScreen = ({ route, navigation }) => {
               <Text style={styles.sectionTitle}>Attached Photos</Text>
             </View>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.imageScroll}>
-              {form.images.map((img, idx) => (
-                <Image key={`img-${idx}`} source={{ uri: img.uri }} style={styles.previewImage} />
-              ))}
+              {form.images.map((img, idx) => {
+                const uri = img.uri || img;
+                return (
+                  <TouchableOpacity
+                    key={`img-${idx}`}
+                    activeOpacity={0.8}
+                    onPress={() => {
+                      setViewerImageUrl(uri);
+                      setViewerVisible(true);
+                    }}
+                  >
+                    <Image source={{ uri }} style={styles.previewImage} />
+                  </TouchableOpacity>
+                );
+              })}
             </ScrollView>
           </View>
         ) : null}
@@ -158,6 +173,11 @@ const ComplaintPreviewScreen = ({ route, navigation }) => {
           )}
         </TouchableOpacity>
       </View>
+      <ImageViewer
+        visible={viewerVisible}
+        imageUrl={viewerImageUrl}
+        onClose={() => setViewerVisible(false)}
+      />
     </View>
   );
 };

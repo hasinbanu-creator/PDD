@@ -39,6 +39,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/context/auth-context";
 import { complaintsApi } from "@/services/api";
+import ImageLightbox from "@/components/ImageLightbox";
 
 const STATUS_CONFIG: Record<string, { color: string, bg: string, border: string, icon: any, label: string }> = {
   PENDING:     { color: "text-accent", bg: "bg-accent/10", border: "border-accent/20", icon: Clock, label: "Pending" },
@@ -317,7 +318,7 @@ export default function ComplaintDetailsPage() {
     <div className="flex-1 bg-background min-h-screen pb-20 md:pb-8">
       
       {/* Header */}
-      <div className={`${isInspectorOrWorker ? "bg-gradient-to-br from-teal-800 to-teal-600" : "bg-primary"} pt-10 pb-16 px-6 md:px-12 md:rounded-b-[60px] rounded-b-[40px] shadow-lg flex items-start justify-between`}>
+      <div className={`${isInspectorOrWorker ? "bg-gradient-to-br from-[#0F8A83] to-[#0B6E69]" : "bg-primary"} pt-10 pb-16 px-6 md:px-12 md:rounded-b-[60px] rounded-b-[40px] shadow-lg flex items-start justify-between`}>
         <div className="max-w-3xl mx-auto w-full flex items-start justify-between">
           <div className="flex items-start gap-4">
             <button 
@@ -530,8 +531,8 @@ export default function ComplaintDetailsPage() {
             {complaint.status === "OPEN" && (
               <div className="bg-white rounded-[2rem] p-6 shadow-sm border border-slate-200 mb-6">
                 <div className="flex items-center gap-3 mb-6 pb-4 border-b border-slate-100">
-                  <div className="w-10 h-10 rounded-xl bg-teal-50 flex items-center justify-center">
-                    <MoreVertical className="w-5 h-5 text-teal-600" />
+                  <div className="w-10 h-10 rounded-xl bg-[#DDF8F5] flex items-center justify-center">
+                    <MoreVertical className="w-5 h-5 text-[#0F8A83]" />
                   </div>
                   <h3 className="text-lg font-black text-slate-800">Complaint Actions</h3>
                 </div>
@@ -558,15 +559,15 @@ export default function ComplaintDetailsPage() {
             {complaint.status === "IN_PROGRESS" && (
               <div className="bg-white rounded-[2rem] p-6 shadow-sm border border-slate-200 mb-6">
                 <div className="flex items-center gap-3 mb-6 pb-4 border-b border-slate-100">
-                  <div className="w-10 h-10 rounded-xl bg-teal-50 flex items-center justify-center">
-                    <CheckCircle2 className="w-5 h-5 text-teal-600" />
+                  <div className="w-10 h-10 rounded-xl bg-[#DDF8F5] flex items-center justify-center">
+                    <CheckCircle2 className="w-5 h-5 text-[#0F8A83]" />
                   </div>
                   <h3 className="text-lg font-black text-slate-800">Complaint Actions</h3>
                 </div>
                 <button
                   disabled={updating}
                   onClick={() => setShowResolveModal(true)}
-                  className="w-full flex items-center justify-center gap-2 bg-teal-600 hover:bg-teal-700 text-white rounded-2xl py-4 text-sm font-bold shadow-md shadow-teal-600/20 disabled:opacity-50 transition-all hover:-translate-y-0.5"
+                  className="w-full flex items-center justify-center gap-2 bg-[#0F8A83] hover:bg-[#0D7D76] text-white rounded-2xl py-4 text-sm font-bold shadow-md shadow-[#0F8A83]/20 disabled:opacity-50 transition-all hover:-translate-y-0.5"
                 >
                   <Check className="w-5 h-5" /> Resolve Complaint
                 </button>
@@ -763,7 +764,7 @@ export default function ComplaintDetailsPage() {
                 <button
                   disabled={updating}
                   onClick={handleResolveConfirm}
-                  className="flex-1 bg-teal-600 hover:bg-teal-700 text-white font-bold py-3.5 rounded-2xl shadow-md shadow-teal-600/20 disabled:opacity-50 transition-colors"
+                  className="flex-1 bg-[#0F8A83] hover:bg-[#0D7D76] text-white font-bold py-3.5 rounded-2xl shadow-md shadow-[#0F8A83]/20 disabled:opacity-50 transition-colors"
                 >
                   Confirm
                 </button>
@@ -773,14 +774,10 @@ export default function ComplaintDetailsPage() {
         )}
 
         {/* Fullscreen Image Preview Modal */}
-        {selectedImagePreview && (
-          <div className="fixed inset-0 bg-black/90 backdrop-blur-md z-50 flex items-center justify-center" onClick={() => setSelectedImagePreview(null)}>
-            <button className="absolute top-6 right-6 w-12 h-12 bg-white/10 rounded-full flex items-center justify-center hover:bg-white/20 transition-colors">
-              <X className="w-6 h-6 text-white" />
-            </button>
-            <img src={selectedImagePreview} alt="Fullscreen Preview" className="max-w-[90vw] max-h-[90vh] object-contain rounded-xl" />
-          </div>
-        )}
+        <ImageLightbox
+          imageUrl={selectedImagePreview}
+          onClose={() => setSelectedImagePreview(null)}
+        />
 
       </div>
     </div>

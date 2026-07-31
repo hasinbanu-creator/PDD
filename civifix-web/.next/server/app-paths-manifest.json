@@ -4,5 +4,7 @@
   "/(dashboard)/complaints/page": "app/(dashboard)/complaints/page.js",
   "/(dashboard)/dashboard/page": "app/(dashboard)/dashboard/page.js",
   "/(dashboard)/profile/page": "app/(dashboard)/profile/page.js",
-  "/page": "app/page.js"
+  "/(dashboard)/settings/page": "app/(dashboard)/settings/page.js",
+  "/(dashboard)/support/page": "app/(dashboard)/support/page.js",
+  "/login/page": "app/login/page.js"
 }

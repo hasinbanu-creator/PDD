@@ -408,6 +408,14 @@ async def start_work(
             "remarks": "Work started by inspector",
             "timestamp": datetime.utcnow()
         })
+        
+        # Trigger email notification asynchronously
+        try:
+            from app.services.email_service import EmailService
+            logger.info("Calling the email service.")
+            EmailService.send_complaint_notification_background(complaint.get("_id"), "WORK_STARTED")
+        except Exception as email_err:
+            logger.error(f"Failed to trigger WORK_STARTED email notification: {str(email_err)}")
 
         return ResponseHandler.success(
             message="Complaint moved to IN_PROGRESS",
@@ -465,6 +473,18 @@ async def reject_complaint_simplified(
             "remarks": "Complaint rejected by inspector after physical inspection",
             "timestamp": datetime.utcnow()
         })
+        
+        # Trigger email notification asynchronously
+        try:
+            from app.services.email_service import EmailService
+            logger.info("Calling the email service.")
+            EmailService.send_complaint_notification_background(
+                complaint.get("_id"),
+                "REJECTED",
+                reject_reason="Complaint rejected by inspector after physical inspection"
+            )
+        except Exception as email_err:
+            logger.error(f"Failed to trigger REJECTED email notification: {str(email_err)}")
 
         return ResponseHandler.success(
             message="Complaint rejected successfully",
@@ -555,6 +575,14 @@ async def resolve_complaint(
             "remarks": note or "Issue verified and resolved by inspector",
             "timestamp": datetime.utcnow()
         })
+        
+        # Trigger email notification asynchronously
+        try:
+            from app.services.email_service import EmailService
+            logger.info("Calling the email service.")
+            EmailService.send_complaint_notification_background(complaint.get("_id"), "RESOLVED")
+        except Exception as email_err:
+            logger.error(f"Failed to trigger RESOLVED email notification: {str(email_err)}")
 
         return ResponseHandler.success(
             message="Complaint resolved successfully",
@@ -620,6 +648,28 @@ async def update_complaint_status(
             "remarks": payload.note or f"Status updated to {new_status}",
             "timestamp": datetime.utcnow()
         })
+        
+        # Trigger email notification asynchronously based on new_status
+        try:
+            from app.services.email_service import EmailService
+            if new_status == "ASSIGNED":
+                logger.info("Calling the email service.")
+                EmailService.send_complaint_notification_background(complaint.get("_id"), "ASSIGNED")
+            elif new_status in ["IN_PROGRESS", "ACCEPTED"]:
+                logger.info("Calling the email service.")
+                EmailService.send_complaint_notification_background(complaint.get("_id"), "WORK_STARTED")
+            elif new_status == "RESOLVED":
+                logger.info("Calling the email service.")
+                EmailService.send_complaint_notification_background(complaint.get("_id"), "RESOLVED")
+            elif new_status == "REJECTED":
+                logger.info("Calling the email service.")
+                EmailService.send_complaint_notification_background(
+                    complaint.get("_id"),
+                    "REJECTED",
+                    reject_reason=payload.note or "Complaint rejected by inspector"
+                )
+        except Exception as email_err:
+            logger.error(f"Failed to trigger status update email notification: {str(email_err)}")
 
         return ResponseHandler.success(
             message=f"Complaint status updated to {new_status}",

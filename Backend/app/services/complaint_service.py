@@ -59,6 +59,7 @@ class ComplaintService:
     ) -> dict:
         """Create new complaint with comprehensive validations"""
         try:
+            logger.info("Complaint creation started.")
             if user_role != Roles.CITIZEN:
                 raise UnauthorizedError("Only citizens can create complaints")
 
@@ -136,6 +137,17 @@ class ComplaintService:
 
 
             created = await self.complaint_repo.get_by_id(complaint_id)
+            logger.info(f"Complaint created successfully: {complaint_doc.get('complaint_id')}")
+            
+            # Trigger email notifications asynchronously
+            try:
+                from app.services.email_service import EmailService
+                logger.info("Calling the email service.")
+                EmailService.send_complaint_notification_background(created, "SUBMITTED")
+                if inspector_id:
+                    EmailService.send_complaint_notification_background(created, "ASSIGNED")
+            except Exception as email_err:
+                logger.error(f"Failed to trigger creation email notification: {str(email_err)}")
             
             logger.info(f"Complaint created: {complaint_doc.get('complaint_id')} by user {user_id}")
             return self._format_complaint(created)

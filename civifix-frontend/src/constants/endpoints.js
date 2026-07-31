@@ -2,7 +2,7 @@ import { Platform } from "react-native";
 import Config from "react-native-config";
 import DeviceInfo from "react-native-device-info";
 
-const DEFAULT_API_URL = "https://cv.onenism.org/api/v1";
+const DEFAULT_API_URL = "http://localhost:8000/api/v1";
 
 const isLocalhostLike = (url) => {
   if (!url) return true;

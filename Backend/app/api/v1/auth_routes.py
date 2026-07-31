@@ -1,5 +1,5 @@
 """Authentication API routes"""
-from fastapi import APIRouter, HTTPException, status, Depends
+from fastapi import APIRouter, HTTPException, status, Depends, BackgroundTasks
 from typing import Dict, Any
 from app.schemas.auth_schema import (
     RegisterSchema,
@@ -26,6 +26,19 @@ from app.services.auth_service import AuthService
 from app.services.email_service import EmailService
 from app.dependencies.auth_dependency import get_current_user
 from app.repositories.user_repository import UserRepository
+async def send_registration_otp_bg(email: str, otp: str):
+    try:
+        await EmailService.send_otp_email(email, otp)
+    except Exception as e:
+        import logging
+        logging.error(f"Failed to send background registration OTP email: {str(e)}")
+
+async def send_login_otp_bg(email: str, otp: str):
+    try:
+        await EmailService.send_login_otp_email(email, otp)
+    except Exception as e:
+        import logging
+        logging.error(f"Failed to send background login OTP email: {str(e)}")
 
 router = APIRouter()
 
@@ -43,7 +56,7 @@ router = APIRouter()
         500: {"description": "Internal server error"}
     }
 )
-async def register(payload: RegisterSchema):
+async def register(payload: RegisterSchema, background_tasks: BackgroundTasks):
     """
     Register a new user with email and mobile number.
     
@@ -58,14 +71,9 @@ async def register(payload: RegisterSchema):
             district=payload.district
         )
         
-        # Send OTP email
+        # Send OTP email in the background to prevent client timeout
         otp = result.get("otp")
-        email_sent = await EmailService.send_otp_email(payload.email, otp)
-        if not email_sent:
-            return ResponseHandler.error(
-                message="Failed to send OTP email. Please try again.",
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
+        background_tasks.add_task(send_registration_otp_bg, payload.email, otp)
         
         return ResponseHandler.success(
             message="Registration successful. OTP sent to email.",
@@ -161,7 +169,7 @@ async def verify_registration_otp(payload: VerifyOTPSchema):
         429: {"description": "Rate limit exceeded"}
     }
 )
-async def login(payload: LoginSchema):
+async def login(payload: LoginSchema, background_tasks: BackgroundTasks):
     """
     Request OTP for login.
     
@@ -170,15 +178,10 @@ async def login(payload: LoginSchema):
     try:
         result = await AuthService.login_user(email=payload.email)
         
-        # Send OTP email
+        # Send OTP email in the background to prevent client timeout
         otp = result.get("otp")
         print(f"\n========================================\n[DEV ONLY] LOGIN OTP FOR {payload.email}: {otp}\n========================================\n", flush=True)
-        email_sent = await EmailService.send_login_otp_email(payload.email, otp)
-        if not email_sent:
-            return ResponseHandler.error(
-                message="Failed to send login OTP email. Please try again.",
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
+        background_tasks.add_task(send_login_otp_bg, payload.email, otp)
         
         return ResponseHandler.success(
             message="Login OTP sent to registered email",

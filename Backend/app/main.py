@@ -198,6 +198,8 @@ async def startup_event():
     logger.info("Civifix Backend Starting")
     logger.info(f"Environment: {settings.ENV}")
     logger.info(f"Database: {settings.DATABASE_NAME}")
+    logger.info(f"SMTP Username Loaded: {settings.SMTP_USERNAME}")
+    logger.info(f"Sender Email Loaded: {settings.SENDER_EMAIL}")
     logger.info("=" * 50)
     
     # Initialize default roles

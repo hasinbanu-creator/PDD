@@ -739,6 +739,16 @@ async def assign_complaint(
             "timestamp": datetime.utcnow()
         })
         
+        # Trigger email notification asynchronously
+        try:
+            import logging
+            from app.services.email_service import EmailService
+            logging.info("Calling the email service.")
+            EmailService.send_complaint_notification_background(complaint_id, "ASSIGNED")
+        except Exception as email_err:
+            import logging
+            logging.error(f"Failed to trigger assigned email notification: {str(email_err)}")
+        
         # Log to audit_logs
         await db.audit_logs.insert_one({
             "action": "ASSIGN_COMPLAINT",

@@ -287,10 +287,7 @@ export const authService = {
     return unwrapResponse(response);
   },
 
-  reopenComplaint: async (id, reason) => {
-    const response = await api.put(ENDPOINTS.REOPEN_COMPLAINT(id), null, { params: { reason } });
-    return unwrapResponse(response);
-  },
+
 
   // --- Uploads ---
   uploadImages: async (formData) => {

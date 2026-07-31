@@ -73,7 +73,7 @@ export const ENDPOINTS = {
   GET_COMPLAINT: (id) => `/complaints/${id}`,
   SAVE_COMPLAINT_DRAFT: "/complaints/draft",
   SUBMIT_FEEDBACK: (id) => `/complaints/${id}/feedback`,
-  REOPEN_COMPLAINT: (id) => `/complaints/${id}/reopen`,
+
 
   // Ward/admin endpoints
   GET_WARDS_BY_DISTRICT: (districtId) => `/wards/district/${districtId}`,

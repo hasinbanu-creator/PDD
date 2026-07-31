@@ -1,25 +1,19 @@
 {
   "pages": {
     "/login/page": [
-      "static/chunks/6860e_next_dist_daa891d2._.js",
-      "static/chunks/civifix-web_src_app_favicon_ico_mjs_ef25e657._.js",
-      "static/chunks/[root-of-the-server]__94d98ccb._.css",
-      "static/chunks/6860e_5b4ea704._.js",
-      "static/chunks/civifix-web_src_efd154f5._.js",
-      "static/chunks/civifix-web_src_app_layout_tsx_f0fca629._.js",
-      "static/chunks/6860e_next_dist_client_components_builtin_global-error_9342b4f6.js",
-      "static/chunks/6860e_44ace803._.js",
-      "static/chunks/civifix-web_src_app_login_page_tsx_d02c48ee._.js",
-      "static/chunks/civifix-web_src_app_login_page_tsx_9342b4f6._.js",
-      "static/chunks/[turbopack]_browser_dev_hmr-client_hmr-client_ts_5519efa5._.js",
-      "static/chunks/6860e_next_dist_compiled_react-dom_426de1a7._.js",
-      "static/chunks/6860e_next_dist_compiled_next-devtools_index_ad585bf0.js",
-      "static/chunks/6860e_next_dist_compiled_c348beb6._.js",
-      "static/chunks/6860e_next_dist_client_a7fd8955._.js",
-      "static/chunks/6860e_next_dist_b28f98ec._.js",
-      "static/chunks/6860e_@swc_helpers_cjs_a7acec7a._.js",
-      "static/chunks/civifix-web_a0ff3932._.js",
-      "static/chunks/turbopack-civifix-web_4f50cf2d._.js"
+      "static/chunks/b99d6d697906f3b2.js",
+      "static/chunks/4c2e4aaa9bd54755.js",
+      "static/chunks/0087b8c38097473f.css",
+      "static/chunks/aea6fbf6f324e887.js",
+      "static/chunks/21cc0a31788af849.js",
+      "static/chunks/601155bfb41beae0.js",
+      "static/chunks/ac968f7b8ff9dd31.js",
+      "static/chunks/29ba727bbe9a8119.js",
+      "static/chunks/5220ac2b79dcfe4c.js",
+      "static/chunks/88b5f48b62074ae1.js",
+      "static/chunks/625e211741f800bb.js",
+      "static/chunks/4af353d5f10a4eaa.js",
+      "static/chunks/turbopack-2478dc4e3463b7dd.js"
     ]
   }
 }

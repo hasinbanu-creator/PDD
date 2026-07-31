@@ -148,7 +148,6 @@ export default function ComplaintDetailsPage() {
 
   const [rating, setRating] = useState(0);
   const [feedback, setFeedback] = useState("");
-  const [reopenReason, setReopenReason] = useState("");
   const [rejectReason, setRejectReason] = useState("");
 
   const updateStatus = async (newStatus: string) => {
@@ -193,19 +192,7 @@ export default function ComplaintDetailsPage() {
     }
   };
 
-  const handleReopen = async () => {
-    if (!reopenReason.trim()) return alert("Please provide a reason to reopen");
-    try {
-      setUpdating(true);
-      await complaintsApi.reopenComplaint(id, reopenReason);
-      alert("Complaint reopened successfully!");
-      refetch();
-    } catch (e: any) {
-      alert("Failed to reopen complaint");
-    } finally {
-      setUpdating(false);
-    }
-  };
+
 
   const handleRejectConfirm = async () => {
     if (!rejectReason.trim()) {
@@ -394,33 +381,58 @@ export default function ComplaintDetailsPage() {
               complaintImages = complaint.images;
             } else if (Array.isArray(complaint.image_urls) && complaint.image_urls.length > 0) {
               complaintImages = complaint.image_urls;
-            } else if (Array.isArray(complaint.proof_images) && complaint.proof_images.length > 0) {
-              complaintImages = complaint.proof_images;
             }
 
-            if (complaintImages.length > 0) {
-              return (
-                <div className="mt-8 pt-6 border-t border-border/50">
-                  <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-widest mb-4">Attached Photos</h3>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    {complaintImages.map((url: string, index: number) => {
-                      const finalUrl = getFinalImageUri(url);
-                      console.log(`[Web] Rendering Image: ${url} -> ${finalUrl}`);
-                      return (
-                        <div 
-                          key={index} 
-                          className="relative aspect-square rounded-2xl overflow-hidden border border-border shadow-sm cursor-pointer group"
-                          onClick={() => setSelectedImagePreview(finalUrl)}
-                        >
-                          <img src={finalUrl} alt={`Complaint ${index+1}`} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              );
+            let resolutionImages: string[] = [];
+            if (Array.isArray(complaint.proof_images) && complaint.proof_images.length > 0) {
+              resolutionImages = complaint.proof_images;
             }
-            return null;
+
+            return (
+              <>
+                {complaintImages.length > 0 && (
+                  <div className="mt-8 pt-6 border-t border-border/50">
+                    <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-widest mb-4">Attached Photos</h3>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                      {complaintImages.map((url: string, index: number) => {
+                        const finalUrl = getFinalImageUri(url);
+                        console.log(`[Web] Rendering Image: ${url} -> ${finalUrl}`);
+                        return (
+                          <div 
+                            key={index} 
+                            className="relative aspect-square rounded-2xl overflow-hidden border border-border shadow-sm cursor-pointer group"
+                            onClick={() => setSelectedImagePreview(finalUrl)}
+                          >
+                            <img src={finalUrl} alt={`Complaint ${index+1}`} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {resolutionImages.length > 0 && (
+                  <div className="mt-8 pt-6 border-t border-border/50">
+                    <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-widest mb-4">Proof of Resolution</h3>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                      {resolutionImages.map((url: string, index: number) => {
+                        const finalUrl = getFinalImageUri(url);
+                        console.log(`[Web] Rendering Proof Image: ${url} -> ${finalUrl}`);
+                        return (
+                          <div 
+                            key={index} 
+                            className="relative aspect-square rounded-2xl overflow-hidden border border-border shadow-sm cursor-pointer group"
+                            onClick={() => setSelectedImagePreview(finalUrl)}
+                          >
+                            <img src={finalUrl} alt={`Resolution Proof ${index+1}`} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </>
+            );
           })()}
 
           {(complaint.citizen_note || complaint.worker_note || complaint.inspector_note || complaint.rejection_reason) && (
@@ -491,16 +503,56 @@ export default function ComplaintDetailsPage() {
             </div>
             <div className="relative pl-8 border-l-2 border-border ml-5 pb-4 mt-4">
               {complaint.history.map((h: any, i: number) => {
-                const s = STATUS_CONFIG[h.status] || STATUS_CONFIG.PENDING;
+                const action = (h.action || "").toUpperCase();
+                const newStatus = (h.new_status || "").toUpperCase();
+                const isCitizen = user?.role === "CITIZEN";
+                
+                let statusKey = "SUBMITTED";
+                if (action === "CREATED" || newStatus === "PENDING" || newStatus === "OPEN") {
+                  statusKey = "SUBMITTED";
+                } else if (newStatus === "IN_PROGRESS" || newStatus === "WORKING" || action === "ASSIGNED") {
+                  statusKey = "IN_PROGRESS";
+                } else if (newStatus === "RESOLVED" || newStatus === "CLOSED") {
+                  statusKey = "RESOLVED";
+                } else if (newStatus === "REJECTED") {
+                  statusKey = "REJECTED";
+                } else {
+                  if (action === "REJECTED") {
+                    statusKey = "REJECTED";
+                  } else if (action === "APPROVED") {
+                    statusKey = "RESOLVED";
+                  }
+                }
+
+                let title = "Complaint Submitted";
+                let dotColorClass = "bg-amber-500";
+                let defaultRemarks = "Complaint submitted by citizen.";
+
+                if (statusKey === "IN_PROGRESS") {
+                  title = isCitizen ? "Work Started by Inspector" : "Work Started";
+                  dotColorClass = "bg-blue-500";
+                  defaultRemarks = "Inspector started working on the complaint.";
+                } else if (statusKey === "RESOLVED") {
+                  title = isCitizen ? "Complaint Resolved" : "Complaint Resolved";
+                  dotColorClass = "bg-emerald-500";
+                  defaultRemarks = "Inspector resolved the complaint.";
+                } else if (statusKey === "REJECTED") {
+                  title = "Complaint Rejected";
+                  dotColorClass = "bg-red-500";
+                  defaultRemarks = "Inspector rejected the complaint.";
+                }
+
+                const remarksText = h.remarks || defaultRemarks;
+
                 return (
                   <div key={i} className="mb-8 relative">
-                    <div className={`absolute -left-[41px] w-5 h-5 rounded-full border-[4px] border-card ${s.bg.replace('bg-', 'bg-').replace('10', '500')} shadow-sm`}></div>
-                    <p className="text-sm font-black text-foreground">{s.label}</p>
+                    <div className={`absolute -left-[41px] w-5 h-5 rounded-full border-[4px] border-card ${dotColorClass} shadow-sm`}></div>
+                    <p className="text-sm font-black text-foreground">{title}</p>
                     <p className="text-xs font-bold text-muted-foreground mt-1">
                       {new Date(h.timestamp || h.created_at).toLocaleString()}
                     </p>
-                    {h.remarks && (
-                      <p className="text-sm font-medium text-muted-foreground mt-3 bg-muted/30 p-4 rounded-2xl border border-border/50">{h.remarks}</p>
+                    {remarksText && (
+                      <p className="text-sm font-medium text-muted-foreground mt-3 bg-muted/30 p-4 rounded-2xl border border-border/50">{remarksText}</p>
                     )}
                   </div>
                 );
@@ -614,23 +666,6 @@ export default function ComplaintDetailsPage() {
               </div>
             )}
 
-            <div className="border-t border-slate-100 pt-6 mt-2">
-              <h3 className="text-lg font-black text-slate-800 mb-4">Not Satisfied?</h3>
-              <textarea 
-                value={reopenReason} 
-                onChange={(e) => setReopenReason(e.target.value)}
-                placeholder="Reason for reopening..."
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl p-4 mb-4 text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
-                rows={3}
-              />
-              <button
-                disabled={updating}
-                onClick={handleReopen}
-                className="w-full bg-red-500 hover:bg-red-600 text-white font-bold py-3 rounded-xl transition-colors disabled:opacity-50"
-              >
-                Reopen Complaint
-              </button>
-            </div>
           </div>
         )}
 

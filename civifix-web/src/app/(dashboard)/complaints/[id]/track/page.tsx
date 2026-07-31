@@ -2,46 +2,29 @@
 
 import { useParams, useRouter } from "next/navigation";
 import { useComplaint } from "@/hooks/use-complaints";
+import { useAuth } from "@/context/auth-context";
 import {
   ArrowLeft,
   Activity,
   Check,
   X,
-  ArrowRight,
   Clock,
-  AlertCircle
+  FileText,
+  Wrench,
+  CheckCircle2,
+  XCircle
 } from "lucide-react";
-
-const STATUS_CONFIG: Record<string, { color: string, bg: string, border: string, label: string }> = {
-  PENDING:     { color: "text-amber-600", bg: "bg-amber-50", border: "border-amber-200", label: "Pending" },
-  OPEN:        { color: "text-blue-600", bg: "bg-blue-50", border: "border-blue-200", label: "Open" },
-  ASSIGNED:    { color: "text-purple-600", bg: "bg-purple-50", border: "border-purple-200", label: "Assigned" },
-  WORKING:     { color: "text-cyan-600", bg: "bg-cyan-50", border: "border-cyan-200", label: "In Progress" },
-  IN_PROGRESS: { color: "text-cyan-600", bg: "bg-cyan-50", border: "border-cyan-200", label: "In Progress" },
-  CLOSED:      { color: "text-emerald-600", bg: "bg-emerald-50", border: "border-emerald-200", label: "Resolved" },
-  RESOLVED:    { color: "text-emerald-600", bg: "bg-emerald-50", border: "border-emerald-200", label: "Resolved" },
-  REJECTED:    { color: "text-red-600", bg: "bg-red-50", border: "border-red-200", label: "Rejected" },
-};
-
-function StatusBadge({ status }: { status: string }) {
-  const cfg = STATUS_CONFIG[status.toUpperCase()] || STATUS_CONFIG.PENDING;
-  return (
-    <span className={`px-2 py-0.5 rounded-full text-[10px] font-black tracking-widest uppercase border ${cfg.border} ${cfg.bg} ${cfg.color}`}>
-      {cfg.label}
-    </span>
-  );
-}
 
 export default function StatusTrackingPage() {
   const params = useParams();
   const router = useRouter();
   const id = params.id as string;
   const { data, isLoading: loading } = useComplaint(id);
+  const { user } = useAuth();
   const complaint: any = data;
 
   // Default to empty array if no history
   const history = complaint?.history || [];
-
 
   if (loading) {
     return (
@@ -88,19 +71,57 @@ export default function StatusTrackingPage() {
             <div className="space-y-0 pb-4">
               {history.map((item: any, idx: number) => {
                 const isLast = idx === history.length - 1;
-                const isPositive = !["rejected", "closed"].includes((item.new_status || "").toLowerCase());
-                const dotColorClass = isPositive ? "bg-emerald-500" : "bg-red-500";
+                const action = (item.action || "").toUpperCase();
+                const newStatus = (item.new_status || "").toUpperCase();
+                const isCitizen = user?.role === "CITIZEN";
+                
+                let statusKey = "SUBMITTED";
+                if (action === "CREATED" || newStatus === "PENDING" || newStatus === "OPEN") {
+                  statusKey = "SUBMITTED";
+                } else if (newStatus === "IN_PROGRESS" || newStatus === "WORKING" || action === "ASSIGNED") {
+                  statusKey = "IN_PROGRESS";
+                } else if (newStatus === "RESOLVED" || newStatus === "CLOSED") {
+                  statusKey = "RESOLVED";
+                } else if (newStatus === "REJECTED") {
+                  statusKey = "REJECTED";
+                } else {
+                  if (action === "REJECTED") {
+                    statusKey = "REJECTED";
+                  } else if (action === "APPROVED") {
+                    statusKey = "RESOLVED";
+                  }
+                }
+
+                let title = "Complaint Submitted";
+                let dotColorClass = "bg-amber-500 shadow-amber-500/20";
+                let defaultRemarks = "Complaint submitted by citizen.";
+                let Icon = FileText;
+
+                if (statusKey === "IN_PROGRESS") {
+                  title = isCitizen ? "Work Started by Inspector" : "Work Started";
+                  dotColorClass = "bg-blue-500 shadow-blue-500/20";
+                  defaultRemarks = "Inspector started working on the complaint.";
+                  Icon = Wrench;
+                } else if (statusKey === "RESOLVED") {
+                  title = isCitizen ? "Complaint Resolved" : "Complaint Resolved";
+                  dotColorClass = "bg-emerald-500 shadow-emerald-500/20";
+                  defaultRemarks = "Inspector resolved the complaint.";
+                  Icon = CheckCircle2;
+                } else if (statusKey === "REJECTED") {
+                  title = "Complaint Rejected";
+                  dotColorClass = "bg-red-500 shadow-red-500/20";
+                  defaultRemarks = "Inspector rejected the complaint.";
+                  Icon = XCircle;
+                }
+
+                const remarksText = item.remarks || defaultRemarks;
                 
                 return (
-                  <div key={item._id} className="flex gap-4">
+                  <div key={item._id || idx} className="flex gap-4">
                     {/* Timeline Line & Dot */}
                     <div className="flex flex-col items-center">
-                      <div className={`w-8 h-8 rounded-full ${dotColorClass} flex items-center justify-center shadow-lg shadow-slate-200 shrink-0 z-10`}>
-                        {isPositive ? (
-                          <Check className="w-4 h-4 text-white" />
-                        ) : (
-                          <X className="w-4 h-4 text-white" />
-                        )}
+                      <div className={`w-8 h-8 rounded-full ${dotColorClass} flex items-center justify-center shadow-lg shrink-0 z-10`}>
+                        <Icon className="w-4 h-4 text-white" />
                       </div>
                       {!isLast && (
                         <div className="w-1 bg-slate-100 flex-1 my-1 rounded-full"></div>
@@ -108,33 +129,23 @@ export default function StatusTrackingPage() {
                     </div>
                     
                     {/* Content */}
-                    <div className={`flex-1 pb-8 ${isLast ? '' : ''}`}>
-                      <h3 className="text-base font-extrabold text-slate-800 mb-2">
-                        {item.action || "Status updated"}
+                    <div className="flex-1 pb-8">
+                      <h3 className="text-base font-extrabold text-slate-800 mb-1">
+                        {title}
                       </h3>
                       
-                      {(item.old_status || item.new_status) && (
-                        <div className="flex flex-wrap items-center gap-2 mb-3">
-                          {item.old_status && <StatusBadge status={item.old_status} />}
-                          {item.old_status && item.new_status && (
-                            <ArrowRight className="w-4 h-4 text-slate-300" />
-                          )}
-                          {item.new_status && <StatusBadge status={item.new_status} />}
-                        </div>
-                      )}
-                      
-                      {item.remarks && (
+                      {remarksText && (
                         <div className="bg-slate-50 border border-slate-100 rounded-xl p-3 mb-3">
                           <p className="text-sm font-medium text-slate-600 leading-relaxed">
-                            {item.remarks}
+                            {remarksText}
                           </p>
                         </div>
                       )}
                       
-                      {item.created_at && (
+                      {(item.timestamp || item.created_at) && (
                         <div className="flex items-center gap-1.5 text-xs font-bold text-slate-400">
                           <Clock className="w-3.5 h-3.5" />
-                          {new Date(item.created_at).toLocaleDateString("en-IN", { 
+                          {new Date(item.timestamp || item.created_at).toLocaleDateString("en-IN", { 
                             day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" 
                           })}
                         </div>

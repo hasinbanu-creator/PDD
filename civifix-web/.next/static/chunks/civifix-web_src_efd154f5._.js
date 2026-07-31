@@ -28,7 +28,6 @@ const ENDPOINTS = {
     CREATE_COMPLAINT: "/complaints",
     GET_COMPLAINT: (id)=>"/complaints/".concat(id),
     SUBMIT_FEEDBACK: (id)=>"/complaints/".concat(id, "/feedback"),
-    REOPEN_COMPLAINT: (id)=>"/complaints/".concat(id, "/reopen"),
     // Ward/admin endpoints
     GET_WARDS_BY_DISTRICT: (districtId)=>"/wards/district/".concat(districtId),
     SEARCH_WARDS: (districtId)=>"/wards/search/".concat(districtId),

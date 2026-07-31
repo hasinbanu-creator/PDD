@@ -146,16 +146,61 @@ function SectionTitle({ title, icon }) {
 }
 
 function HistoryItem({ item, complaint, isLast }) {
-  const isPositive = !["rejected", "closed"].includes((item.new_status || "").toLowerCase());
-  const dotColor = isPositive ? "#059669" : "#DC2626";
+  const { user } = React.useContext(AuthContext);
+  const isCitizen = user?.role === "CITIZEN";
+  
+  const action = (item.action || "").toUpperCase();
+  const newStatus = (item.new_status || "").toUpperCase();
+  
+  let statusKey = "SUBMITTED";
+  if (action === "CREATED" || newStatus === "PENDING" || newStatus === "OPEN") {
+    statusKey = "SUBMITTED";
+  } else if (newStatus === "IN_PROGRESS" || newStatus === "WORKING" || action === "ASSIGNED") {
+    statusKey = "IN_PROGRESS";
+  } else if (newStatus === "RESOLVED" || newStatus === "CLOSED") {
+    statusKey = "RESOLVED";
+  } else if (newStatus === "REJECTED") {
+    statusKey = "REJECTED";
+  } else {
+    if (action === "REJECTED") {
+      statusKey = "REJECTED";
+    } else if (action === "APPROVED") {
+      statusKey = "RESOLVED";
+    }
+  }
+
+  let title = "Complaint Submitted";
+  let dotColor = "#D97706"; // Yellow
+  let defaultRemarks = "Complaint submitted by citizen.";
+  let dotIcon = "file-document-outline";
+
+  if (statusKey === "IN_PROGRESS") {
+    title = isCitizen ? "Work Started by Inspector" : "Work Started";
+    dotColor = "#2563EB"; // Blue
+    defaultRemarks = "Inspector started working on the complaint.";
+    dotIcon = "progress-wrench";
+  } else if (statusKey === "RESOLVED") {
+    title = isCitizen ? "Complaint Resolved" : "Complaint Resolved";
+    dotColor = "#059669"; // Green
+    defaultRemarks = "Inspector resolved the complaint.";
+    dotIcon = "check-circle-outline";
+  } else if (statusKey === "REJECTED") {
+    title = "Complaint Rejected";
+    dotColor = "#DC2626"; // Red
+    defaultRemarks = "Inspector rejected the complaint.";
+    dotIcon = "close-circle-outline";
+  }
+
+  const remarksText = item.remarks || defaultRemarks;
+  
   return (
     <View style={styles.historyItem}>
       {/* timeline line */}
       <View style={styles.timelineCol}>
         <View style={[styles.timelineDot, { backgroundColor: dotColor }]}>
           <Icon
-            name={isPositive ? "check" : "close"}
-            size={10}
+            name={dotIcon}
+            size={11}
             color="#fff"
           />
         </View>
@@ -163,24 +208,13 @@ function HistoryItem({ item, complaint, isLast }) {
       </View>
       {/* content */}
       <View style={styles.historyContent}>
-        <Text style={styles.historyAction}>{item.action || "Status updated"}</Text>
-        {(item.old_status || item.new_status) && (
-          <View style={styles.historyStatusRow}>
-            {item.old_status && (
-              <StatusBadge status={item.old_status} />
-            )}
-            {item.old_status && item.new_status && (
-              <Icon name="arrow-right" size={12} color={GRAY_400} style={{ marginHorizontal: 4 }} />
-            )}
-            {item.new_status && (
-              <StatusBadge status={item.new_status} />
-            )}
-          </View>
-        )}
-        {item.remarks ? (
-          <Text style={styles.historyRemarks}>{item.remarks}</Text>
+        <Text style={styles.historyAction}>{title}</Text>
+        
+        {remarksText ? (
+          <Text style={styles.historyRemarks}>{remarksText}</Text>
         ) : null}
-        {item.new_status && (item.new_status.toUpperCase() === "RESOLVED" || item.new_status.toUpperCase() === "CLOSED") && complaint?.proof_images?.length > 0 && (
+        
+        {statusKey === "RESOLVED" && complaint?.proof_images?.length > 0 && (
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 8 }}>
             {complaint.proof_images.map((img, idx) => {
               const uri = getFinalImageUri(img);
@@ -199,8 +233,8 @@ function HistoryItem({ item, complaint, isLast }) {
             })}
           </ScrollView>
         )}
-        {item.created_at && (
-          <Text style={styles.historyTime}>{formatDate(item.created_at)}</Text>
+        {(item.timestamp || item.created_at) && (
+          <Text style={styles.historyTime}>{formatDate(item.timestamp || item.created_at)}</Text>
         )}
       </View>
     </View>
@@ -237,7 +271,6 @@ export const ComplaintDetailScreen = ({ route, navigation }) => {
 
   const [rating, setRating] = useState(0);
   const [feedback, setFeedback] = useState("");
-  const [reopenReason, setReopenReason] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [selectedProofImages, setSelectedProofImages] = useState([]);
   const [resolveNote, setResolveNote] = useState("");
@@ -290,21 +323,7 @@ export const ComplaintDetailScreen = ({ route, navigation }) => {
     }
   };
 
-  const handleReopen = async () => {
-    if (!reopenReason.trim()) return alert("Please provide a reason to reopen");
-    try {
-      setSubmitting(true);
-      await authService.reopenComplaint(complaintId, reopenReason);
-      alert("Complaint reopened successfully!");
-      // Reload complaint
-      const data = await authService.getComplaint(complaintId);
-      setComplaint(data);
-    } catch (err) {
-      alert(getErrorMessage(err, "Failed to reopen complaint"));
-    } finally {
-      setSubmitting(false);
-    }
-  };
+
 
   const handleAccept = async () => {
     try {
@@ -430,8 +449,11 @@ export const ComplaintDetailScreen = ({ route, navigation }) => {
     complaintImages = complaint.images;
   } else if (Array.isArray(complaint?.image_urls) && complaint.image_urls.length > 0) {
     complaintImages = complaint.image_urls;
-  } else if (Array.isArray(complaint?.proof_images) && complaint.proof_images.length > 0) {
-    complaintImages = complaint.proof_images;
+  }
+
+  let resolutionImages = [];
+  if (Array.isArray(complaint?.proof_images) && complaint.proof_images.length > 0) {
+    resolutionImages = complaint.proof_images;
   }
 
 
@@ -541,6 +563,30 @@ export const ComplaintDetailScreen = ({ route, navigation }) => {
               </>
             )}
 
+            {resolutionImages.length > 0 && (
+              <>
+                <View style={styles.cardDivider} />
+                <SectionTitle title="Proof of Resolution" icon="shield-check-outline" />
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.imageRow}>
+                  {resolutionImages.map((img, idx) => {
+                    const uri = getFinalImageUri(img);
+                    return (
+                      <TouchableOpacity
+                        key={`resolve-${img}-${idx}`}
+                        activeOpacity={0.8}
+                        onPress={() => {
+                          setViewerImageUrl(uri);
+                          setViewerVisible(true);
+                        }}
+                      >
+                        <Image source={{ uri }} style={styles.previewImage} />
+                      </TouchableOpacity>
+                    );
+                  })}
+                </ScrollView>
+              </>
+            )}
+
             {/* Notes section */}
             {(complaint?.citizen_note || complaint?.worker_note ||
               complaint?.inspector_note || complaint?.rejection_reason) && (
@@ -594,24 +640,6 @@ export const ComplaintDetailScreen = ({ route, navigation }) => {
             </View>
           )}
 
-          {/* ── REOPEN COMPLAINT (If CLOSED/RESOLVED) ── */}
-          {isCitizen && complaint && ["closed", "resolved"].includes(normalizedStatus.toLowerCase()) && (
-            <View style={styles.card}>
-              <SectionTitle title="Issue not fixed?" icon="refresh" />
-              <TextInput
-                style={styles.textInput}
-                placeholder="Explain why this needs to be reopened..."
-                placeholderTextColor={GRAY_400}
-                value={reopenReason}
-                onChangeText={setReopenReason}
-                multiline
-                numberOfLines={3}
-              />
-              <TouchableOpacity style={[styles.actionBtn, { backgroundColor: ERROR }]} onPress={handleReopen} disabled={submitting}>
-                {submitting ? <ActivityIndicator size="small" color="#fff" /> : <Text style={styles.actionBtnText}>Reopen Complaint</Text>}
-              </TouchableOpacity>
-            </View>
-          )}
 
           {/* ── INSPECTOR ACTIONS ── */}
           {isInspector && complaint && (

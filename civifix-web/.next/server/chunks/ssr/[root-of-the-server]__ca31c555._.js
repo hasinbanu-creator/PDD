@@ -129,7 +129,6 @@ const ENDPOINTS = {
     CREATE_COMPLAINT: "/complaints",
     GET_COMPLAINT: (id)=>`/complaints/${id}`,
     SUBMIT_FEEDBACK: (id)=>`/complaints/${id}/feedback`,
-    REOPEN_COMPLAINT: (id)=>`/complaints/${id}/reopen`,
     // Ward/admin endpoints
     GET_WARDS_BY_DISTRICT: (districtId)=>`/wards/district/${districtId}`,
     SEARCH_WARDS: (districtId)=>`/wards/search/${districtId}`,

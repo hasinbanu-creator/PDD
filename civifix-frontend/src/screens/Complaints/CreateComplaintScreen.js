@@ -688,13 +688,7 @@ export const CreateComplaintScreen = ({ route, navigation }) => {
               editable={false}
             />
 
-            <InputField
-              label="Assembly Constituency"
-              icon="city"
-              placeholder="Assembly Constituency"
-              value={user?.constituency_name ?? user?.assembly_constituency_name ?? ""}
-              editable={false}
-            />
+
 
             <Dropdown
               label="Ward"

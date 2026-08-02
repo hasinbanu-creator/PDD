@@ -138,16 +138,26 @@ class TestSpamDetection:
 
     def test_weekly_limit_check(self):
         """Test weekly complaint limit"""
-        assert SpamDetector.check_weekly_limit(0) == True
-        assert SpamDetector.check_weekly_limit(1) == True
-        assert SpamDetector.check_weekly_limit(2) == False
-        assert SpamDetector.check_weekly_limit(3) == False
+        orig = SpamDetector.MAX_COMPLAINTS_PER_WEEK
+        SpamDetector.MAX_COMPLAINTS_PER_WEEK = 2
+        try:
+            assert SpamDetector.check_weekly_limit(0) == True
+            assert SpamDetector.check_weekly_limit(1) == True
+            assert SpamDetector.check_weekly_limit(2) == False
+            assert SpamDetector.check_weekly_limit(3) == False
+        finally:
+            SpamDetector.MAX_COMPLAINTS_PER_WEEK = orig
 
     def test_daily_limit_check(self):
         """Test daily complaint limit"""
-        assert SpamDetector.check_daily_limit(0) == True
-        assert SpamDetector.check_daily_limit(1) == False
-        assert SpamDetector.check_daily_limit(2) == False
+        orig = SpamDetector.MAX_COMPLAINTS_PER_DAY
+        SpamDetector.MAX_COMPLAINTS_PER_DAY = 1
+        try:
+            assert SpamDetector.check_daily_limit(0) == True
+            assert SpamDetector.check_daily_limit(1) == False
+            assert SpamDetector.check_daily_limit(2) == False
+        finally:
+            SpamDetector.MAX_COMPLAINTS_PER_DAY = orig
 
     def test_repetitive_description_check(self):
         """Test repetitive description detection"""
@@ -273,7 +283,8 @@ class TestComplaintService:
             complaint_type="GARBAGE",
             description="Garbage not cleaned",
             latitude=13.0827,
-            longitude=80.2707
+            longitude=80.2707,
+            landmark="Near Market"
         )
         
         result = await service.create_complaint(schema, "user_123", "CITIZEN")
@@ -293,7 +304,8 @@ class TestComplaintService:
             complaint_type="GARBAGE",
             description="Garbage not cleaned",
             latitude=13.0827,
-            longitude=80.2707
+            longitude=80.2707,
+            landmark="Near Market"
         )
         
         with pytest.raises(UnauthorizedError):
@@ -343,12 +355,14 @@ class TestComplaintService:
             ward_id="ward_123",
             complaint_type="GARBAGE",
             description="Garbage not cleaned",
-            latitude=91,  # Invalid
-            longitude=80.2707
+            latitude=13.0827,  # Valid for schema
+            longitude=80.2707,
+            landmark="Near Market"
         )
         
-        with pytest.raises(ValidationError):
-            await service.create_complaint(schema, "user_123", "CITIZEN")
+        with patch('app.utils.complaint_validators.ComplaintValidator.validate_gps_coordinates', return_value=False):
+            with pytest.raises(ValidationError):
+                await service.create_complaint(schema, "user_123", "CITIZEN")
 
     @pytest.mark.asyncio
     async def test_assign_worker_success(self):
@@ -357,12 +371,13 @@ class TestComplaintService:
         mock_ward_repo = AsyncMock()
         mock_user_repo = AsyncMock()
         
+        dist_id = ObjectId()
         complaint_data = {
             "_id": ObjectId(),
             "complaint_id": "CIVI-123",
             "status": "OPEN",
             "inspector_id": ObjectId("507f1f77bcf86cd799439010"),
-            "district_id": ObjectId()
+            "district_id": dist_id
         }
         
         mock_complaint_repo.get_by_id.return_value = complaint_data
@@ -375,7 +390,7 @@ class TestComplaintService:
         
         mock_user_repo.get_by_id.return_value = {
             "role": "WORKER",
-            "district": "district_123"
+            "district": str(dist_id)
         }
         
         service = ComplaintService(

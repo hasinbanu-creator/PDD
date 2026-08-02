@@ -271,7 +271,12 @@ export const RegisterScreen = ({ navigation }) => {
     setConstituenciesLoading(true);
     authService.getConstituenciesByDistrict(formData.district_id)
       .then((data) => {
-        setConstituencies(data || []);
+        const list = data || [];
+        setConstituencies(list);
+        if (list.length > 0) {
+          const defaultConstId = list[0]._id || list[0].id;
+          updateField("constituency_id", defaultConstId);
+        }
       })
       .catch((err) => {
         console.error("Constituency load error:", err);
@@ -474,16 +479,7 @@ export const RegisterScreen = ({ navigation }) => {
             />
           </Field>
 
-          <Field label="Assembly Constituency" error={errors.constituency_id}>
-            <ConstituencyDropdown
-              value={formData.constituency_id}
-              constituencies={constituencies}
-              loading={constituenciesLoading}
-              onSelect={(id) => updateField("constituency_id", id)}
-              error={errors.constituency_id}
-              disabled={!formData.district_id}
-            />
-          </Field>
+
 
           <View style={styles.sectionDivider} />
 

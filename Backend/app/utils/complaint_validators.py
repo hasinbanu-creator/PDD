@@ -15,7 +15,7 @@ class ComplaintValidator:
     @staticmethod
     def validate_description(description: str) -> bool:
         """Validate complaint description meets minimum requirements"""
-        return description and len(description.strip()) >= 10 and len(description) <= 1000
+        return bool(description and len(description.strip()) >= 10 and len(description) <= 1000)
 
     @staticmethod
     def validate_email(email: str) -> bool:

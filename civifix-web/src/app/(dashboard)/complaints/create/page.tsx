@@ -4,7 +4,7 @@ import React, { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/auth-context";
 import authService from "@/services/auth";
-import { useConstituencyWards } from "@/hooks/use-wards";
+import { useWards } from "@/hooks/use-wards";
 import { useCreateComplaint } from "@/hooks/use-complaints";
 import {
   AlertCircle,
@@ -66,9 +66,9 @@ export default function CreateComplaintPage() {
   const [selectedImages, setSelectedImages] = useState<File[]>([]);
   const [createdComplaint, setCreatedComplaint] = useState<any>(null);
   const [step, setStep] = useState(1);
-  const { data: wardsData, isLoading: wardsLoading } = useConstituencyWards(user?.constituency_id || user?.assembly_constituency_id);
+  const { data: wardsData, isLoading: wardsLoading, isError: wardsError, refetch: refetchWards } = useWards(user?.district_id || user?.district);
   const wards = useMemo(() => {
-    const rawWards = wardsData?.data || [];
+    const rawWards = Array.isArray(wardsData) ? wardsData : wardsData?.data || [];
     return [...rawWards].sort((a: any, b: any) => {
       const numA = parseInt(a.ward_number, 10);
       const numB = parseInt(b.ward_number, 10);
@@ -228,6 +228,9 @@ export default function CreateComplaintPage() {
 
   const validate = () => {
     const next: Record<string, string> = {};
+    if (!user?.district_id && !user?.district) {
+      next.district = "District is required";
+    }
     if (!form.ward_id) next.ward_id = "Please select a ward";
     if (!form.complaint_type) next.complaint_type = "Please select a complaint type";
     if (form.description.trim().length < 10) next.description = "Description must be at least 10 characters";
@@ -240,13 +243,44 @@ export default function CreateComplaintPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!validate()) return;
+    
+    const next: Record<string, string> = {};
+    if (!user?.district_id && !user?.district) {
+      next.district = "District is required";
+    }
+    if (!form.ward_id) next.ward_id = "Please select a ward";
+    if (!form.complaint_type) next.complaint_type = "Please select a complaint type";
+    if (form.description.trim().length < 10) next.description = "Description must be at least 10 characters";
+    if (!form.latitude || !form.longitude) next.location = "Please use your current location to proceed";
+    if (!form.address || !form.address.trim()) next.address = "Address is required";
+    if (!form.landmark || !form.landmark.trim()) next.landmark = "Landmark / Door No. is required";
+    
+    setErrors(next);
+    
+    if (Object.keys(next).length > 0) {
+      if (next.complaint_type || next.description) {
+        setStep(1);
+      } else {
+        setStep(2);
+      }
+      return;
+    }
     
     setLoading(true);
     setServerError("");
     try {
+      const selectedWard = wards.find((w: any) => (w._id || w.id) === form.ward_id);
+      const wardName = selectedWard ? selectedWard.ward_name : "";
+
       const formData = new FormData();
       formData.append("ward_id", form.ward_id);
+      formData.append("wardId", form.ward_id);
+      formData.append("wardName", wardName);
+      formData.append("ward_name", wardName);
+      formData.append("district_id", user?.district_id || "");
+      formData.append("districtId", user?.district_id || "");
+      formData.append("district_name", user?.district || "");
+      formData.append("districtName", user?.district || "");
       formData.append("complaint_type", form.complaint_type);
       formData.append("description", form.description);
       formData.append("priority", form.priority);
@@ -503,25 +537,15 @@ export default function CreateComplaintPage() {
               </div>
 
               <div className="space-y-6">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                  <div>
-                    <label className="block text-xs font-bold text-muted-foreground tracking-wider mb-2 uppercase">District</label>
-                    <input
-                      type="text"
-                      value={user?.district_name || user?.district || ""}
-                      readOnly
-                      className="w-full bg-muted/20 border-2 border-border rounded-2xl px-5 py-4 text-sm font-bold text-muted-foreground outline-none cursor-not-allowed"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-bold text-muted-foreground tracking-wider mb-2 uppercase">Assembly Constituency</label>
-                    <input
-                      type="text"
-                      value={user?.constituency_name || user?.assembly_constituency_name || ""}
-                      readOnly
-                      className="w-full bg-muted/20 border-2 border-border rounded-2xl px-5 py-4 text-sm font-bold text-muted-foreground outline-none cursor-not-allowed"
-                    />
-                  </div>
+                <div>
+                  <label className="block text-xs font-bold text-muted-foreground tracking-wider mb-2 uppercase">District</label>
+                  <input
+                    type="text"
+                    value={user?.district_name || user?.district || ""}
+                    readOnly
+                    className="w-full bg-muted/20 border-2 border-border rounded-2xl px-5 py-4 text-sm font-bold text-muted-foreground outline-none cursor-not-allowed"
+                  />
+                  {errors.district && <p className="text-destructive text-xs font-bold mt-1.5 ml-1">{errors.district}</p>}
                 </div>
 
                 <div>
@@ -530,19 +554,35 @@ export default function CreateComplaintPage() {
                     <select
                       value={form.ward_id}
                       onChange={(e) => updateField("ward_id", e.target.value)}
-                      disabled={wardsLoading}
+                      disabled={wardsLoading || !user}
                       className={`w-full appearance-none bg-muted/30 border-2 ${errors.ward_id ? 'border-destructive' : 'border-border'} rounded-2xl px-5 py-4 text-sm font-bold text-foreground outline-none focus:border-primary focus:bg-card focus:ring-4 focus:ring-primary/10 transition-all duration-200 disabled:opacity-50`}
                     >
-                      <option value="" disabled>{wardsLoading ? "Loading wards..." : "Select your ward"}</option>
-                       {wards.map((w: any) => (
-                        <option key={w._id || w.id} value={w._id || w.id}>
-                          {w.ward_number ? `${String(w.ward_number).padStart(2, "0")} - ` : ""}{w.ward_name}
-                        </option>
-                      ))}
+                      {wardsLoading ? (
+                        <option value="" disabled>Loading wards...</option>
+                      ) : wards.length === 0 ? (
+                        <option value="" disabled>No wards available for the selected district.</option>
+                      ) : (
+                        <>
+                          <option value="" disabled>Select your ward</option>
+                          {wards.map((w: any) => (
+                            <option key={w._id || w.id} value={w._id || w.id}>
+                              {w.ward_number ? `${String(w.ward_number).padStart(2, "0")} - ` : ""}{w.ward_name}
+                            </option>
+                          ))}
+                        </>
+                      )}
                     </select>
                     <ChevronDown className="absolute right-5 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground pointer-events-none" />
                   </div>
                   {errors.ward_id && <p className="text-destructive text-xs font-bold mt-1.5 ml-1">{errors.ward_id}</p>}
+                  {wardsError && (
+                    <div className="text-destructive text-xs mt-1.5 ml-1 font-bold flex items-center gap-2">
+                      <span>Failed to load wards.</span>
+                      <button type="button" onClick={() => refetchWards()} className="underline text-primary hover:text-primary/80 font-bold">
+                        Retry
+                      </button>
+                    </div>
+                  )}
                 </div>
                 
                 {errors.location && <p className="text-destructive text-xs font-bold mt-1.5 ml-1">{errors.location}</p>}
@@ -612,7 +652,14 @@ export default function CreateComplaintPage() {
                   type="button"
                   onClick={() => {
                     let isValid = true;
-                    if (!form.ward_id) { updateField("ward_id", ""); isValid = false; }
+                    if (!user?.district_id && !user?.district) {
+                      setErrors((prev) => ({ ...prev, district: "District is required" }));
+                      isValid = false;
+                    }
+                    if (!form.ward_id) {
+                      setErrors((prev) => ({ ...prev, ward_id: "Please select your ward" }));
+                      isValid = false;
+                    }
                     if (!form.latitude || !form.longitude) {
                       setErrors((prev) => ({ ...prev, location: "Please use your current location to proceed" }));
                       isValid = false; 
@@ -654,9 +701,9 @@ export default function CreateComplaintPage() {
               <div className="mt-6 bg-muted/50 rounded-2xl p-4 border border-border/50">
                 <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-3">Summary</p>
                 <div className="space-y-2 text-sm font-medium">
-                   <div className="flex justify-between"><span className="text-muted-foreground">Type:</span> <span className="text-foreground">{COMPLAINT_TYPES.find(t=>t.value===form.complaint_type)?.label}</span></div>
-                   <div className="flex justify-between"><span className="text-muted-foreground">Priority:</span> <span className="text-foreground">{form.priority}</span></div>
-                   <div className="flex justify-between"><span className="text-muted-foreground">Ward:</span> <span className="text-foreground truncate ml-4">{wards.find((w:any)=>w._id===form.ward_id)?.ward_name}</span></div>
+                    <div className="flex justify-between"><span className="text-muted-foreground">Type:</span> <span className="text-foreground">{COMPLAINT_TYPES.find(t=>t.value===form.complaint_type)?.label}</span></div>
+                    <div className="flex justify-between"><span className="text-muted-foreground">Priority:</span> <span className="text-foreground">{form.priority}</span></div>
+                    <div className="flex justify-between"><span className="text-muted-foreground">Ward:</span> <span className="text-foreground truncate ml-4">{wards.find((w:any)=>(w._id || w.id)===form.ward_id)?.ward_name}</span></div>
                    {selectedImages.length > 0 && (
                      <div className="flex justify-between"><span className="text-muted-foreground">Attachments:</span> <span className="text-foreground">{selectedImages.length} photo(s)</span></div>
                    )}

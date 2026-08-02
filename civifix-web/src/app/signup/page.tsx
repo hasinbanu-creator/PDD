@@ -14,7 +14,8 @@ import {
   Phone,
   ShieldCheck,
   CheckCircle2,
-  AlertCircle
+  AlertCircle,
+  Loader2
 } from "lucide-react";
 
 const OTP_LENGTH = 6;
@@ -80,8 +81,13 @@ export default function SignupPage() {
     setLoadingConstituencies(true);
     authService.getConstituenciesByDistrict(formData.district_id)
       .then(data => {
-        setConstituencies(data || []);
+        const list = data || [];
+        setConstituencies(list);
         setLoadingConstituencies(false);
+        if (list.length > 0) {
+          const defaultConstId = list[0]._id || list[0].id;
+          setFormData(prev => ({ ...prev, constituency_id: defaultConstId }));
+        }
       })
       .catch(err => {
         console.error("Failed to fetch constituencies", err);
@@ -113,6 +119,10 @@ export default function SignupPage() {
         });
         setWards(sortedWards);
         setLoadingWards(false);
+        if (sortedWards.length > 0) {
+          const defaultWardId = sortedWards[0]._id || sortedWards[0].id;
+          setFormData(prev => ({ ...prev, ward_id: defaultWardId }));
+        }
       })
       .catch(err => {
         console.error("Failed to fetch wards", err);
@@ -200,7 +210,7 @@ export default function SignupPage() {
     setLoading(true);
     setError(null);
     try {
-      await signUp({
+      const payload = {
         name: formData.name.trim(),
         email: formData.email.trim().toLowerCase(),
         mobile_number: formData.mobile_number.replace(/\D/g, ""),
@@ -209,10 +219,23 @@ export default function SignupPage() {
         constituency_id: formData.constituency_id,
         assembly_constituency_id: formData.constituency_id,
         ward: formData.ward_id,
-      });
+      };
+
+      console.log("Axios Request URL: /auth/register");
+      console.log("Axios Request Payload:", payload);
+
+      const res = await signUp(payload);
+
+      console.log("Axios Response Data:", res);
       setStep("OTP");
     } catch (err: any) {
-      console.error(err);
+      console.error("Axios Error Response:", err);
+      if (err?.config) {
+        console.log("Axios Config:", err.config);
+      }
+      if (err?.response?.data) {
+        console.log("Axios Response Error Data:", err.response.data);
+      }
     } finally {
       setLoading(false);
     }
@@ -389,64 +412,23 @@ export default function SignupPage() {
                 {errors.address && <p className="text-destructive text-xs mt-1.5 ml-1 font-bold">{errors.address}</p>}
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-xs font-bold text-muted-foreground tracking-wider mb-2">DISTRICT</label>
-                  <div className={`border-2 rounded-2xl px-5 py-3.5 bg-muted/30 transition-all duration-200 ${errors.district_id ? 'border-destructive bg-destructive/5' : 'border-border focus-within:border-primary focus-within:bg-card focus-within:ring-4 focus-within:ring-primary/10'}`}>
-                    <select
-                      value={formData.district_id}
-                      onChange={(e) => {
-                        updateField("district_id", e.target.value);
-                      }}
-                      className="w-full bg-transparent border-none outline-none text-foreground text-sm font-medium appearance-none"
-                    >
-                      <option value="">Select District</option>
-                      {districts.map(d => (
-                        <option key={d._id || d.id} value={d._id || d.id}>{d.name}</option>
-                      ))}
-                    </select>
-                  </div>
-                  {errors.district_id && <p className="text-destructive text-xs mt-1.5 ml-1 font-bold">{errors.district_id}</p>}
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-muted-foreground tracking-wider mb-2">ASSEMBLY CONSTITUENCY</label>
-                  <div className={`border-2 rounded-2xl px-5 py-3.5 bg-muted/30 transition-all duration-200 ${errors.constituency_id ? 'border-destructive bg-destructive/5' : 'border-border focus-within:border-primary focus-within:bg-card focus-within:ring-4 focus-within:ring-primary/10'}`}>
-                    <select
-                      value={formData.constituency_id}
-                      onChange={(e) => {
-                        updateField("constituency_id", e.target.value);
-                      }}
-                      className="w-full bg-transparent border-none outline-none text-foreground text-sm font-medium appearance-none"
-                      disabled={!formData.district_id || loadingConstituencies}
-                    >
-                      <option value="">{loadingConstituencies ? "Loading..." : "Select Constituency"}</option>
-                      {constituencies.map(c => (
-                        <option key={c.id} value={c.id}>{c.name}</option>
-                      ))}
-                    </select>
-                  </div>
-                  {errors.constituency_id && <p className="text-destructive text-xs mt-1.5 ml-1 font-bold">{errors.constituency_id}</p>}
-                </div>
-              </div>
-
               <div>
-                <label className="block text-xs font-bold text-muted-foreground tracking-wider mb-2">WARD</label>
-                <div className={`border-2 rounded-2xl px-5 py-3.5 bg-muted/30 transition-all duration-200 ${errors.ward_id ? 'border-destructive bg-destructive/5' : 'border-border focus-within:border-primary focus-within:bg-card focus-within:ring-4 focus-within:ring-primary/10'}`}>
+                <label className="block text-xs font-bold text-muted-foreground tracking-wider mb-2">DISTRICT</label>
+                <div className={`border-2 rounded-2xl px-5 py-3.5 bg-muted/30 transition-all duration-200 ${errors.district_id ? 'border-destructive bg-destructive/5' : 'border-border focus-within:border-primary focus-within:bg-card focus-within:ring-4 focus-within:ring-primary/10'}`}>
                   <select
-                    value={formData.ward_id}
-                    onChange={(e) => updateField("ward_id", e.target.value)}
+                    value={formData.district_id}
+                    onChange={(e) => {
+                      updateField("district_id", e.target.value);
+                    }}
                     className="w-full bg-transparent border-none outline-none text-foreground text-sm font-medium appearance-none"
-                    disabled={!formData.constituency_id || loadingWards}
                   >
-                    <option value="">{loadingWards ? "Loading..." : "Select Ward"}</option>
-                    {wards.map(w => (
-                      <option key={w._id || w.id} value={w._id || w.id}>
-                        {w.ward_name}
-                      </option>
+                    <option value="">Select District</option>
+                    {districts.map(d => (
+                      <option key={d._id || d.id} value={d._id || d.id}>{d.name}</option>
                     ))}
                   </select>
                 </div>
-                {errors.ward_id && <p className="text-destructive text-xs mt-1.5 ml-1 font-bold">{errors.ward_id}</p>}
+                {errors.district_id && <p className="text-destructive text-xs mt-1.5 ml-1 font-bold">{errors.district_id}</p>}
               </div>
 
               <div className="flex items-start gap-3 mt-4">
@@ -480,7 +462,10 @@ export default function SignupPage() {
                   className="w-full bg-primary hover:bg-primary/90 disabled:opacity-70 text-primary-foreground font-bold text-sm py-4 rounded-2xl flex items-center justify-center gap-2 transition-all active:scale-[0.98] shadow-md shadow-primary/20"
                 >
                   {loading ? (
-                    <span className="tracking-widest">CREATING ACCOUNT...</span>
+                    <>
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                      <span className="tracking-widest">CREATING ACCOUNT...</span>
+                    </>
                   ) : (
                     <>
                       <span className="tracking-widest">CREATE ACCOUNT</span>

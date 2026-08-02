@@ -339,8 +339,8 @@ export default function ComplaintsListPage() {
                               </div>
                             </td>
                             <td className="p-4 text-sm font-medium text-muted-foreground truncate max-w-[200px]" title={complaint.address}>
-                              {complaint.address || complaint.ward?.ward_name || "Location unavailable"}
-                              {complaint.landmark ? ` (Landmark: ${complaint.landmark})` : ""}
+                              <div className="font-bold text-foreground truncate">{complaint.district_name || "District N/A"} - {complaint.ward_name || complaint.ward?.ward_name || "Ward N/A"}</div>
+                              <div className="text-xs truncate">{complaint.address || "Location unavailable"}{complaint.landmark ? ` (Landmark: ${complaint.landmark})` : ""}</div>
                             </td>
                             <td className="p-4 text-sm font-bold text-muted-foreground">
                               {new Date(complaint.created_at).toLocaleDateString()}
@@ -406,8 +406,12 @@ export default function ComplaintsListPage() {
                                 {complaint.address || complaint.description}
                                 {complaint.landmark ? ` (Landmark: ${complaint.landmark})` : ""}
                               </p>
-                              {complaint.ward?.ward_name && (
-                                <p className="text-xs font-bold text-muted-foreground">Ward: <span className="text-foreground">{complaint.ward.ward_name}</span></p>
+                              {(complaint.district_name || complaint.ward_name || complaint.ward?.ward_name) && (
+                                <p className="text-xs font-bold text-muted-foreground">
+                                  {complaint.district_name && <>District: <span className="text-foreground">{complaint.district_name}</span></>}
+                                  {complaint.district_name && (complaint.ward_name || complaint.ward?.ward_name) && <span className="mx-1.5 text-muted-foreground/30">|</span>}
+                                  {(complaint.ward_name || complaint.ward?.ward_name) && <>Ward: <span className="text-foreground">{complaint.ward_name || complaint.ward?.ward_name}</span></>}
+                                </p>
                               )}
                               <div className="flex items-center gap-2 mt-2">
                                 <span className="text-xs font-bold text-muted-foreground">
@@ -426,6 +430,13 @@ export default function ComplaintsListPage() {
                               <p className="text-sm font-medium text-muted-foreground line-clamp-2">
                                 {complaint.description}
                               </p>
+                              {(complaint.district_name || complaint.ward_name || complaint.ward?.ward_name) && (
+                                <p className="text-xs font-bold text-muted-foreground">
+                                  {complaint.district_name && <>District: <span className="text-foreground">{complaint.district_name}</span></>}
+                                  {complaint.district_name && (complaint.ward_name || complaint.ward?.ward_name) && <span className="mx-1.5 text-muted-foreground/30">|</span>}
+                                  {(complaint.ward_name || complaint.ward?.ward_name) && <>Ward: <span className="text-foreground">{complaint.ward_name || complaint.ward?.ward_name}</span></>}
+                                </p>
+                              )}
                               {complaint.address && (
                                 <p className="text-xs font-bold text-muted-foreground line-clamp-1">
                                   Location: <span className="text-foreground">{complaint.address}{complaint.landmark ? ` (Landmark: ${complaint.landmark})` : ""}</span>

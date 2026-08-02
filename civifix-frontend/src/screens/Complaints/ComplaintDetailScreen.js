@@ -534,6 +534,8 @@ export const ComplaintDetailScreen = ({ route, navigation }) => {
 
             <InfoRow icon="text-box-outline"      label="Description" value={complaint?.description} />
             <InfoRow icon="map-marker-outline"    label="Address"     value={complaint?.address} />
+            <InfoRow icon="map-outline"           label="District"    value={complaint?.district_name} />
+            <InfoRow icon="map-marker-outline"    label="Ward"        value={complaint?.ward_name} />
             {complaint?.landmark ? <InfoRow icon="home-map-marker" label="Landmark / Door No." value={complaint.landmark} /> : null}
             <InfoRow icon="crosshairs-gps"        label="Coordinates"
               value={complaint?.latitude && complaint?.longitude

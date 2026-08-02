@@ -366,6 +366,8 @@ export default function ComplaintDetailsPage() {
 
           <InfoRow icon={FileText} label="Description" value={complaint.description} />
           <InfoRow icon={MapPin} label="Address" value={complaint.address} />
+          <InfoRow icon={MapPin} label="District" value={complaint.district_name} />
+          <InfoRow icon={MapPin} label="Ward" value={complaint.ward_name || complaint.ward?.ward_name} />
           {complaint.landmark && (
             <InfoRow icon={MapPin} label="Landmark / Door No." value={complaint.landmark} />
           )}

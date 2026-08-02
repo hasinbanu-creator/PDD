@@ -126,8 +126,12 @@ function ComplaintItem({ complaint, index, total }: any) {
             <p className="text-sm font-medium text-muted-foreground truncate" title={complaint.address}>
               Location: <span className="text-foreground">{complaint.address || desc}{complaint.landmark ? ` (Landmark: ${complaint.landmark})` : ""}</span>
             </p>
-            {complaint.ward?.ward_name && (
-              <p className="text-xs font-semibold text-muted-foreground">Ward: <span className="text-foreground">{complaint.ward.ward_name}</span></p>
+            {(complaint.district_name || complaint.ward_name || complaint.ward?.ward_name) && (
+              <p className="text-xs font-bold text-muted-foreground">
+                {complaint.district_name && <>District: <span className="text-foreground">{complaint.district_name}</span></>}
+                {complaint.district_name && (complaint.ward_name || complaint.ward?.ward_name) && <span className="mx-1.5 text-muted-foreground/30">|</span>}
+                {(complaint.ward_name || complaint.ward?.ward_name) && <>Ward: <span className="text-foreground">{complaint.ward_name || complaint.ward?.ward_name}</span></>}
+              </p>
             )}
             <div className="flex items-center gap-2 mt-1">
               <span className="text-xs font-bold text-muted-foreground tracking-wider">
@@ -151,6 +155,13 @@ function ComplaintItem({ complaint, index, total }: any) {
         ) : (
           <>
             <p className="text-sm font-medium text-muted-foreground truncate mt-1">{desc}</p>
+            {(complaint.district_name || complaint.ward_name || complaint.ward?.ward_name) && (
+              <p className="text-xs font-bold text-muted-foreground mt-1">
+                {complaint.district_name && <>District: <span className="text-foreground">{complaint.district_name}</span></>}
+                {complaint.district_name && (complaint.ward_name || complaint.ward?.ward_name) && <span className="mx-1.5 text-muted-foreground/30">|</span>}
+                {(complaint.ward_name || complaint.ward?.ward_name) && <>Ward: <span className="text-foreground">{complaint.ward_name || complaint.ward?.ward_name}</span></>}
+              </p>
+            )}
             {complaint.address && (
               <p className="text-xs font-semibold text-muted-foreground truncate mt-1">
                 Location: <span className="text-foreground">{complaint.address}{complaint.landmark ? ` (Landmark: ${complaint.landmark})` : ""}</span>

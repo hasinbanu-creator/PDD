@@ -169,7 +169,9 @@ class ComplaintResponseSchema(BaseModel):
     complaint_id: str
     user_id: str
     district_id: str
+    district_name: Optional[str] = None
     ward_id: str
+    ward_name: Optional[str] = None
     inspector_id: Optional[str]
     worker_id: Optional[str]
     complaint_type: str

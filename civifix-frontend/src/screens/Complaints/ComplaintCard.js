@@ -148,6 +148,12 @@ export const ComplaintCard = ({ complaint, onPress }) => {
               <Icon name="map-marker-outline" size={14} color="#64748B" />
               <Text style={{ color: "#64748B", fontSize: FONT_SIZES.xs }}>{ward}</Text>
             </View>
+            {Boolean(complaint?.district_name) && (
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+                <Icon name="map-outline" size={14} color="#64748B" />
+                <Text style={{ color: "#64748B", fontSize: FONT_SIZES.xs }}>{complaint.district_name}</Text>
+              </View>
+            )}
             <View style={{ flexDirection: "row", alignItems: "center", gap: 4, width: "100%", marginTop: 2 }}>
               <Icon name="map-marker-radius-outline" size={14} color="#64748B" />
               <Text numberOfLines={1} style={{ color: "#64748B", fontSize: FONT_SIZES.xs, flex: 1 }}>

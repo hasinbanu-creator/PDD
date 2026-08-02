@@ -216,6 +216,16 @@ export const authService = {
     return unwrapResponse(res);
   },
 
+  getConstituenciesByDistrict: async (districtId) => {
+    const res = await api.get(`/districts/${districtId}/constituencies`);
+    return unwrapResponse(res);
+  },
+
+  getWardsByConstituency: async (constituencyId) => {
+    const res = await api.get(`/constituencies/${constituencyId}/wards`);
+    return unwrapResponse(res);
+  },
+
   /**
    * Get ALL wards for the authenticated inspector's district.
    * Calls GET /api/v1/wards — backend reads district from JWT token.

@@ -4,7 +4,7 @@ import React, { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/auth-context";
 import authService from "@/services/auth";
-import { useWards } from "@/hooks/use-wards";
+import { useConstituencyWards } from "@/hooks/use-wards";
 import { useCreateComplaint } from "@/hooks/use-complaints";
 import {
   AlertCircle,
@@ -66,7 +66,7 @@ export default function CreateComplaintPage() {
   const [selectedImages, setSelectedImages] = useState<File[]>([]);
   const [createdComplaint, setCreatedComplaint] = useState<any>(null);
   const [step, setStep] = useState(1);
-  const { data: wardsData, isLoading: wardsLoading } = useWards(user?.district_id || user?.district);
+  const { data: wardsData, isLoading: wardsLoading } = useConstituencyWards(user?.constituency_id || user?.assembly_constituency_id);
   const wards = useMemo(() => {
     const rawWards = wardsData?.data || [];
     return [...rawWards].sort((a: any, b: any) => {
@@ -503,6 +503,27 @@ export default function CreateComplaintPage() {
               </div>
 
               <div className="space-y-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-xs font-bold text-muted-foreground tracking-wider mb-2 uppercase">District</label>
+                    <input
+                      type="text"
+                      value={user?.district_name || user?.district || ""}
+                      readOnly
+                      className="w-full bg-muted/20 border-2 border-border rounded-2xl px-5 py-4 text-sm font-bold text-muted-foreground outline-none cursor-not-allowed"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-muted-foreground tracking-wider mb-2 uppercase">Assembly Constituency</label>
+                    <input
+                      type="text"
+                      value={user?.constituency_name || user?.assembly_constituency_name || ""}
+                      readOnly
+                      className="w-full bg-muted/20 border-2 border-border rounded-2xl px-5 py-4 text-sm font-bold text-muted-foreground outline-none cursor-not-allowed"
+                    />
+                  </div>
+                </div>
+
                 <div>
                   <label className="block text-xs font-bold text-muted-foreground tracking-wider mb-2 uppercase">Ward</label>
                   <div className="relative">

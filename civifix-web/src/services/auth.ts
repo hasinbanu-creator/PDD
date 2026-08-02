@@ -272,6 +272,18 @@ export const authService = {
     return unwrapResponse(res);
   },
 
+  getConstituenciesByDistrict: async (districtId: string | number): Promise<any> => {
+    if (e2eMocksEnabled) return [{ id: "e2e-const-1", name: "Velachery" }, { id: "e2e-const-2", name: "Mylapore" }];
+    const res = await api.get(`/districts/${districtId}/constituencies`);
+    return unwrapResponse(res);
+  },
+
+  getWardsByConstituency: async (constituencyId: string | number): Promise<any> => {
+    if (e2eMocksEnabled) return e2eWards;
+    const res = await api.get(`/constituencies/${constituencyId}/wards`);
+    return unwrapResponse(res);
+  },
+
   /**
    * Get ALL wards for the authenticated inspector's district.
    * Calls GET /api/v1/wards — the backend uses the JWT token's district field.

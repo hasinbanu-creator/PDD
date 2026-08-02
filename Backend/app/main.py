@@ -29,6 +29,7 @@ from app.api.v1.inspector_routes import router as inspector_router
 from app.api.v1.worker_routes import router as worker_router
 from app.api.v1.upload_routes import router as upload_router
 from app.api.v1.settings_routes import router as settings_router
+from app.api.v1.constituency_routes import router as constituency_router
 from app.db.indexes import create_indexes
 
 # Setup logging
@@ -150,6 +151,18 @@ app.include_router(
     settings_router,
     prefix="/api/v1/admin/settings",
     tags=["Admin Settings"]
+)
+
+app.include_router(
+    constituency_router,
+    prefix="/api/v1",
+    tags=["Constituencies"]
+)
+
+app.include_router(
+    constituency_router,
+    prefix="",
+    tags=["Constituencies"]
 )
 
 

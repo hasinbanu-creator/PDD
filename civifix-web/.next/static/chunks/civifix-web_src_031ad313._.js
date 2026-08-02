@@ -3,12 +3,16 @@
 "use strict";
 
 __turbopack_context__.s([
+    "useConstituencies",
+    ()=>useConstituencies,
+    "useConstituencyWards",
+    ()=>useConstituencyWards,
     "useWards",
     ()=>useWards
 ]);
 var __TURBOPACK__imported__module__$5b$project$5d2f$civifix$2d$web$2f$node_modules$2f40$tanstack$2f$react$2d$query$2f$build$2f$modern$2f$useQuery$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/civifix-web/node_modules/@tanstack/react-query/build/modern/useQuery.js [app-client] (ecmascript)");
 var __TURBOPACK__imported__module__$5b$project$5d2f$civifix$2d$web$2f$src$2f$services$2f$auth$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/civifix-web/src/services/auth.ts [app-client] (ecmascript)");
-var _s = __turbopack_context__.k.signature();
+var _s = __turbopack_context__.k.signature(), _s1 = __turbopack_context__.k.signature(), _s2 = __turbopack_context__.k.signature();
 ;
 ;
 function useWards(districtId) {
@@ -32,6 +36,42 @@ function useWards(districtId) {
     });
 }
 _s(useWards, "4ZpngI1uv+Uo3WQHEZmTQ5FNM+k=", false, function() {
+    return [
+        __TURBOPACK__imported__module__$5b$project$5d2f$civifix$2d$web$2f$node_modules$2f40$tanstack$2f$react$2d$query$2f$build$2f$modern$2f$useQuery$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useQuery"]
+    ];
+});
+function useConstituencies(districtId) {
+    _s1();
+    return (0, __TURBOPACK__imported__module__$5b$project$5d2f$civifix$2d$web$2f$node_modules$2f40$tanstack$2f$react$2d$query$2f$build$2f$modern$2f$useQuery$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useQuery"])({
+        queryKey: [
+            "constituencies",
+            districtId
+        ],
+        queryFn: {
+            "useConstituencies.useQuery": ()=>__TURBOPACK__imported__module__$5b$project$5d2f$civifix$2d$web$2f$src$2f$services$2f$auth$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].getConstituenciesByDistrict(districtId)
+        }["useConstituencies.useQuery"],
+        enabled: !!districtId
+    });
+}
+_s1(useConstituencies, "4ZpngI1uv+Uo3WQHEZmTQ5FNM+k=", false, function() {
+    return [
+        __TURBOPACK__imported__module__$5b$project$5d2f$civifix$2d$web$2f$node_modules$2f40$tanstack$2f$react$2d$query$2f$build$2f$modern$2f$useQuery$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useQuery"]
+    ];
+});
+function useConstituencyWards(constituencyId) {
+    _s2();
+    return (0, __TURBOPACK__imported__module__$5b$project$5d2f$civifix$2d$web$2f$node_modules$2f40$tanstack$2f$react$2d$query$2f$build$2f$modern$2f$useQuery$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useQuery"])({
+        queryKey: [
+            "constituency-wards",
+            constituencyId
+        ],
+        queryFn: {
+            "useConstituencyWards.useQuery": ()=>__TURBOPACK__imported__module__$5b$project$5d2f$civifix$2d$web$2f$src$2f$services$2f$auth$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].getWardsByConstituency(constituencyId)
+        }["useConstituencyWards.useQuery"],
+        enabled: !!constituencyId
+    });
+}
+_s2(useConstituencyWards, "4ZpngI1uv+Uo3WQHEZmTQ5FNM+k=", false, function() {
     return [
         __TURBOPACK__imported__module__$5b$project$5d2f$civifix$2d$web$2f$node_modules$2f40$tanstack$2f$react$2d$query$2f$build$2f$modern$2f$useQuery$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useQuery"]
     ];
@@ -325,7 +365,7 @@ function CreateComplaintPage() {
     const [selectedImages, setSelectedImages] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$civifix$2d$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])([]);
     const [createdComplaint, setCreatedComplaint] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$civifix$2d$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])(null);
     const [step, setStep] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$civifix$2d$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])(1);
-    const { data: wardsData, isLoading: wardsLoading } = (0, __TURBOPACK__imported__module__$5b$project$5d2f$civifix$2d$web$2f$src$2f$hooks$2f$use$2d$wards$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useWards"])((user === null || user === void 0 ? void 0 : user.district_id) || (user === null || user === void 0 ? void 0 : user.district));
+    const { data: wardsData, isLoading: wardsLoading } = (0, __TURBOPACK__imported__module__$5b$project$5d2f$civifix$2d$web$2f$src$2f$hooks$2f$use$2d$wards$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useConstituencyWards"])((user === null || user === void 0 ? void 0 : user.constituency_id) || (user === null || user === void 0 ? void 0 : user.assembly_constituency_id));
     const wards = (0, __TURBOPACK__imported__module__$5b$project$5d2f$civifix$2d$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useMemo"])({
         "CreateComplaintPage.useMemo[wards]": ()=>{
             const rawWards = (wardsData === null || wardsData === void 0 ? void 0 : wardsData.data) || [];
@@ -1254,13 +1294,74 @@ function CreateComplaintPage() {
                                             className: "space-y-6",
                                             children: [
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$civifix$2d$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                                    className: "grid grid-cols-1 sm:grid-cols-2 gap-6",
+                                                    children: [
+                                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$civifix$2d$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                                            children: [
+                                                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$civifix$2d$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("label", {
+                                                                    className: "block text-xs font-bold text-muted-foreground tracking-wider mb-2 uppercase",
+                                                                    children: "District"
+                                                                }, void 0, false, {
+                                                                    fileName: "[project]/civifix-web/src/app/(dashboard)/complaints/create/page.tsx",
+                                                                    lineNumber: 508,
+                                                                    columnNumber: 21
+                                                                }, this),
+                                                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$civifix$2d$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("input", {
+                                                                    type: "text",
+                                                                    value: (user === null || user === void 0 ? void 0 : user.district_name) || (user === null || user === void 0 ? void 0 : user.district) || "",
+                                                                    readOnly: true,
+                                                                    className: "w-full bg-muted/20 border-2 border-border rounded-2xl px-5 py-4 text-sm font-bold text-muted-foreground outline-none cursor-not-allowed"
+                                                                }, void 0, false, {
+                                                                    fileName: "[project]/civifix-web/src/app/(dashboard)/complaints/create/page.tsx",
+                                                                    lineNumber: 509,
+                                                                    columnNumber: 21
+                                                                }, this)
+                                                            ]
+                                                        }, void 0, true, {
+                                                            fileName: "[project]/civifix-web/src/app/(dashboard)/complaints/create/page.tsx",
+                                                            lineNumber: 507,
+                                                            columnNumber: 19
+                                                        }, this),
+                                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$civifix$2d$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                                            children: [
+                                                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$civifix$2d$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("label", {
+                                                                    className: "block text-xs font-bold text-muted-foreground tracking-wider mb-2 uppercase",
+                                                                    children: "Assembly Constituency"
+                                                                }, void 0, false, {
+                                                                    fileName: "[project]/civifix-web/src/app/(dashboard)/complaints/create/page.tsx",
+                                                                    lineNumber: 517,
+                                                                    columnNumber: 21
+                                                                }, this),
+                                                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$civifix$2d$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("input", {
+                                                                    type: "text",
+                                                                    value: (user === null || user === void 0 ? void 0 : user.constituency_name) || (user === null || user === void 0 ? void 0 : user.assembly_constituency_name) || "",
+                                                                    readOnly: true,
+                                                                    className: "w-full bg-muted/20 border-2 border-border rounded-2xl px-5 py-4 text-sm font-bold text-muted-foreground outline-none cursor-not-allowed"
+                                                                }, void 0, false, {
+                                                                    fileName: "[project]/civifix-web/src/app/(dashboard)/complaints/create/page.tsx",
+                                                                    lineNumber: 518,
+                                                                    columnNumber: 21
+                                                                }, this)
+                                                            ]
+                                                        }, void 0, true, {
+                                                            fileName: "[project]/civifix-web/src/app/(dashboard)/complaints/create/page.tsx",
+                                                            lineNumber: 516,
+                                                            columnNumber: 19
+                                                        }, this)
+                                                    ]
+                                                }, void 0, true, {
+                                                    fileName: "[project]/civifix-web/src/app/(dashboard)/complaints/create/page.tsx",
+                                                    lineNumber: 506,
+                                                    columnNumber: 17
+                                                }, this),
+                                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$civifix$2d$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                                                     children: [
                                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$civifix$2d$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("label", {
                                                             className: "block text-xs font-bold text-muted-foreground tracking-wider mb-2 uppercase",
                                                             children: "Ward"
                                                         }, void 0, false, {
                                                             fileName: "[project]/civifix-web/src/app/(dashboard)/complaints/create/page.tsx",
-                                                            lineNumber: 507,
+                                                            lineNumber: 528,
                                                             columnNumber: 19
                                                         }, this),
                                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$civifix$2d$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1278,7 +1379,7 @@ function CreateComplaintPage() {
                                                                             children: wardsLoading ? "Loading wards..." : "Select your ward"
                                                                         }, void 0, false, {
                                                                             fileName: "[project]/civifix-web/src/app/(dashboard)/complaints/create/page.tsx",
-                                                                            lineNumber: 515,
+                                                                            lineNumber: 536,
                                                                             columnNumber: 23
                                                                         }, this),
                                                                         wards.map((w)=>/*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$civifix$2d$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("option", {
@@ -1289,26 +1390,26 @@ function CreateComplaintPage() {
                                                                                 ]
                                                                             }, w._id || w.id, true, {
                                                                                 fileName: "[project]/civifix-web/src/app/(dashboard)/complaints/create/page.tsx",
-                                                                                lineNumber: 517,
+                                                                                lineNumber: 538,
                                                                                 columnNumber: 25
                                                                             }, this))
                                                                     ]
                                                                 }, void 0, true, {
                                                                     fileName: "[project]/civifix-web/src/app/(dashboard)/complaints/create/page.tsx",
-                                                                    lineNumber: 509,
+                                                                    lineNumber: 530,
                                                                     columnNumber: 21
                                                                 }, this),
                                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$civifix$2d$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$civifix$2d$web$2f$node_modules$2f$lucide$2d$react$2f$dist$2f$esm$2f$icons$2f$chevron$2d$down$2e$mjs__$5b$app$2d$client$5d$__$28$ecmascript$29$__$3c$export__default__as__ChevronDown$3e$__["ChevronDown"], {
                                                                     className: "absolute right-5 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground pointer-events-none"
                                                                 }, void 0, false, {
                                                                     fileName: "[project]/civifix-web/src/app/(dashboard)/complaints/create/page.tsx",
-                                                                    lineNumber: 522,
+                                                                    lineNumber: 543,
                                                                     columnNumber: 21
                                                                 }, this)
                                                             ]
                                                         }, void 0, true, {
                                                             fileName: "[project]/civifix-web/src/app/(dashboard)/complaints/create/page.tsx",
-                                                            lineNumber: 508,
+                                                            lineNumber: 529,
                                                             columnNumber: 19
                                                         }, this),
                                                         errors.ward_id && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$civifix$2d$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -1316,13 +1417,13 @@ function CreateComplaintPage() {
                                                             children: errors.ward_id
                                                         }, void 0, false, {
                                                             fileName: "[project]/civifix-web/src/app/(dashboard)/complaints/create/page.tsx",
-                                                            lineNumber: 524,
+                                                            lineNumber: 545,
                                                             columnNumber: 38
                                                         }, this)
                                                     ]
                                                 }, void 0, true, {
                                                     fileName: "[project]/civifix-web/src/app/(dashboard)/complaints/create/page.tsx",
-                                                    lineNumber: 506,
+                                                    lineNumber: 527,
                                                     columnNumber: 17
                                                 }, this),
                                                 errors.location && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$civifix$2d$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -1330,7 +1431,7 @@ function CreateComplaintPage() {
                                                     children: errors.location
                                                 }, void 0, false, {
                                                     fileName: "[project]/civifix-web/src/app/(dashboard)/complaints/create/page.tsx",
-                                                    lineNumber: 527,
+                                                    lineNumber: 548,
                                                     columnNumber: 37
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$civifix$2d$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -1343,14 +1444,14 @@ function CreateComplaintPage() {
                                                             className: "w-5 h-5 ".concat(gpsLoading ? 'animate-spin' : '')
                                                         }, void 0, false, {
                                                             fileName: "[project]/civifix-web/src/app/(dashboard)/complaints/create/page.tsx",
-                                                            lineNumber: 535,
+                                                            lineNumber: 556,
                                                             columnNumber: 19
                                                         }, this),
                                                         gpsLoading ? "Getting location..." : "Use my current location"
                                                     ]
                                                 }, void 0, true, {
                                                     fileName: "[project]/civifix-web/src/app/(dashboard)/complaints/create/page.tsx",
-                                                    lineNumber: 529,
+                                                    lineNumber: 550,
                                                     columnNumber: 17
                                                 }, this),
                                                 (form.latitude || form.longitude) && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$civifix$2d$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1360,7 +1461,7 @@ function CreateComplaintPage() {
                                                             className: "w-5 h-5 text-success shrink-0"
                                                         }, void 0, false, {
                                                             fileName: "[project]/civifix-web/src/app/(dashboard)/complaints/create/page.tsx",
-                                                            lineNumber: 541,
+                                                            lineNumber: 562,
                                                             columnNumber: 21
                                                         }, this),
                                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$civifix$2d$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -1372,7 +1473,7 @@ function CreateComplaintPage() {
                                                             ]
                                                         }, void 0, true, {
                                                             fileName: "[project]/civifix-web/src/app/(dashboard)/complaints/create/page.tsx",
-                                                            lineNumber: 542,
+                                                            lineNumber: 563,
                                                             columnNumber: 21
                                                         }, this),
                                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$civifix$2d$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -1386,18 +1487,18 @@ function CreateComplaintPage() {
                                                                 className: "w-5 h-5"
                                                             }, void 0, false, {
                                                                 fileName: "[project]/civifix-web/src/app/(dashboard)/complaints/create/page.tsx",
-                                                                lineNumber: 550,
+                                                                lineNumber: 571,
                                                                 columnNumber: 23
                                                             }, this)
                                                         }, void 0, false, {
                                                             fileName: "[project]/civifix-web/src/app/(dashboard)/complaints/create/page.tsx",
-                                                            lineNumber: 545,
+                                                            lineNumber: 566,
                                                             columnNumber: 21
                                                         }, this)
                                                     ]
                                                 }, void 0, true, {
                                                     fileName: "[project]/civifix-web/src/app/(dashboard)/complaints/create/page.tsx",
-                                                    lineNumber: 540,
+                                                    lineNumber: 561,
                                                     columnNumber: 19
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$civifix$2d$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1410,7 +1511,7 @@ function CreateComplaintPage() {
                                                                     children: "Address"
                                                                 }, void 0, false, {
                                                                     fileName: "[project]/civifix-web/src/app/(dashboard)/complaints/create/page.tsx",
-                                                                    lineNumber: 557,
+                                                                    lineNumber: 578,
                                                                     columnNumber: 21
                                                                 }, this),
                                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$civifix$2d$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("input", {
@@ -1421,7 +1522,7 @@ function CreateComplaintPage() {
                                                                     className: "w-full bg-muted/30 border-2 ".concat(errors.address ? 'border-destructive' : 'border-border', " rounded-2xl px-5 py-4 text-sm font-medium text-foreground outline-none focus:border-primary focus:bg-card focus:ring-4 focus:ring-primary/10 transition-all duration-200")
                                                                 }, void 0, false, {
                                                                     fileName: "[project]/civifix-web/src/app/(dashboard)/complaints/create/page.tsx",
-                                                                    lineNumber: 558,
+                                                                    lineNumber: 579,
                                                                     columnNumber: 21
                                                                 }, this),
                                                                 errors.address && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$civifix$2d$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -1429,13 +1530,13 @@ function CreateComplaintPage() {
                                                                     children: errors.address
                                                                 }, void 0, false, {
                                                                     fileName: "[project]/civifix-web/src/app/(dashboard)/complaints/create/page.tsx",
-                                                                    lineNumber: 565,
+                                                                    lineNumber: 586,
                                                                     columnNumber: 40
                                                                 }, this)
                                                             ]
                                                         }, void 0, true, {
                                                             fileName: "[project]/civifix-web/src/app/(dashboard)/complaints/create/page.tsx",
-                                                            lineNumber: 556,
+                                                            lineNumber: 577,
                                                             columnNumber: 19
                                                         }, this),
                                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$civifix$2d$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1445,7 +1546,7 @@ function CreateComplaintPage() {
                                                                     children: "Landmark / Door No."
                                                                 }, void 0, false, {
                                                                     fileName: "[project]/civifix-web/src/app/(dashboard)/complaints/create/page.tsx",
-                                                                    lineNumber: 569,
+                                                                    lineNumber: 590,
                                                                     columnNumber: 21
                                                                 }, this),
                                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$civifix$2d$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("input", {
@@ -1456,7 +1557,7 @@ function CreateComplaintPage() {
                                                                     className: "w-full bg-muted/30 border-2 ".concat(errors.landmark ? 'border-destructive' : 'border-border', " rounded-2xl px-5 py-4 text-sm font-medium text-foreground outline-none focus:border-primary focus:bg-card focus:ring-4 focus:ring-primary/10 transition-all duration-200")
                                                                 }, void 0, false, {
                                                                     fileName: "[project]/civifix-web/src/app/(dashboard)/complaints/create/page.tsx",
-                                                                    lineNumber: 570,
+                                                                    lineNumber: 591,
                                                                     columnNumber: 21
                                                                 }, this),
                                                                 errors.landmark && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$civifix$2d$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -1464,19 +1565,19 @@ function CreateComplaintPage() {
                                                                     children: errors.landmark
                                                                 }, void 0, false, {
                                                                     fileName: "[project]/civifix-web/src/app/(dashboard)/complaints/create/page.tsx",
-                                                                    lineNumber: 577,
+                                                                    lineNumber: 598,
                                                                     columnNumber: 41
                                                                 }, this)
                                                             ]
                                                         }, void 0, true, {
                                                             fileName: "[project]/civifix-web/src/app/(dashboard)/complaints/create/page.tsx",
-                                                            lineNumber: 568,
+                                                            lineNumber: 589,
                                                             columnNumber: 19
                                                         }, this)
                                                     ]
                                                 }, void 0, true, {
                                                     fileName: "[project]/civifix-web/src/app/(dashboard)/complaints/create/page.tsx",
-                                                    lineNumber: 555,
+                                                    lineNumber: 576,
                                                     columnNumber: 17
                                                 }, this)
                                             ]
@@ -1495,7 +1596,7 @@ function CreateComplaintPage() {
                                                     children: "Back"
                                                 }, void 0, false, {
                                                     fileName: "[project]/civifix-web/src/app/(dashboard)/complaints/create/page.tsx",
-                                                    lineNumber: 583,
+                                                    lineNumber: 604,
                                                     columnNumber: 17
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$civifix$2d$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -1519,13 +1620,13 @@ function CreateComplaintPage() {
                                                     children: "Continue"
                                                 }, void 0, false, {
                                                     fileName: "[project]/civifix-web/src/app/(dashboard)/complaints/create/page.tsx",
-                                                    lineNumber: 590,
+                                                    lineNumber: 611,
                                                     columnNumber: 17
                                                 }, this)
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/civifix-web/src/app/(dashboard)/complaints/create/page.tsx",
-                                            lineNumber: 582,
+                                            lineNumber: 603,
                                             columnNumber: 15
                                         }, this)
                                     ]
@@ -1553,12 +1654,12 @@ function CreateComplaintPage() {
                                                         className: "w-6 h-6"
                                                     }, void 0, false, {
                                                         fileName: "[project]/civifix-web/src/app/(dashboard)/complaints/create/page.tsx",
-                                                        lineNumber: 614,
+                                                        lineNumber: 635,
                                                         columnNumber: 19
                                                     }, this)
                                                 }, void 0, false, {
                                                     fileName: "[project]/civifix-web/src/app/(dashboard)/complaints/create/page.tsx",
-                                                    lineNumber: 613,
+                                                    lineNumber: 634,
                                                     columnNumber: 17
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$civifix$2d$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1568,7 +1669,7 @@ function CreateComplaintPage() {
                                                             children: "Review & Submit"
                                                         }, void 0, false, {
                                                             fileName: "[project]/civifix-web/src/app/(dashboard)/complaints/create/page.tsx",
-                                                            lineNumber: 617,
+                                                            lineNumber: 638,
                                                             columnNumber: 19
                                                         }, this),
                                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$civifix$2d$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -1576,19 +1677,19 @@ function CreateComplaintPage() {
                                                             children: "Add any final notes"
                                                         }, void 0, false, {
                                                             fileName: "[project]/civifix-web/src/app/(dashboard)/complaints/create/page.tsx",
-                                                            lineNumber: 618,
+                                                            lineNumber: 639,
                                                             columnNumber: 19
                                                         }, this)
                                                     ]
                                                 }, void 0, true, {
                                                     fileName: "[project]/civifix-web/src/app/(dashboard)/complaints/create/page.tsx",
-                                                    lineNumber: 616,
+                                                    lineNumber: 637,
                                                     columnNumber: 17
                                                 }, this)
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/civifix-web/src/app/(dashboard)/complaints/create/page.tsx",
-                                            lineNumber: 612,
+                                            lineNumber: 633,
                                             columnNumber: 15
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$civifix$2d$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1598,7 +1699,7 @@ function CreateComplaintPage() {
                                                     children: "Citizen Note (Optional)"
                                                 }, void 0, false, {
                                                     fileName: "[project]/civifix-web/src/app/(dashboard)/complaints/create/page.tsx",
-                                                    lineNumber: 623,
+                                                    lineNumber: 644,
                                                     columnNumber: 17
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$civifix$2d$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("textarea", {
@@ -1609,13 +1710,13 @@ function CreateComplaintPage() {
                                                     className: "w-full bg-muted/30 border-2 border-border rounded-2xl px-5 py-4 text-sm font-medium text-foreground outline-none focus:border-primary focus:bg-card focus:ring-4 focus:ring-primary/10 transition-all duration-200 resize-none"
                                                 }, void 0, false, {
                                                     fileName: "[project]/civifix-web/src/app/(dashboard)/complaints/create/page.tsx",
-                                                    lineNumber: 624,
+                                                    lineNumber: 645,
                                                     columnNumber: 17
                                                 }, this)
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/civifix-web/src/app/(dashboard)/complaints/create/page.tsx",
-                                            lineNumber: 622,
+                                            lineNumber: 643,
                                             columnNumber: 15
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$civifix$2d$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1626,7 +1727,7 @@ function CreateComplaintPage() {
                                                     children: "Summary"
                                                 }, void 0, false, {
                                                     fileName: "[project]/civifix-web/src/app/(dashboard)/complaints/create/page.tsx",
-                                                    lineNumber: 634,
+                                                    lineNumber: 655,
                                                     columnNumber: 17
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$civifix$2d$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1640,7 +1741,7 @@ function CreateComplaintPage() {
                                                                     children: "Type:"
                                                                 }, void 0, false, {
                                                                     fileName: "[project]/civifix-web/src/app/(dashboard)/complaints/create/page.tsx",
-                                                                    lineNumber: 636,
+                                                                    lineNumber: 657,
                                                                     columnNumber: 58
                                                                 }, this),
                                                                 " ",
@@ -1649,13 +1750,13 @@ function CreateComplaintPage() {
                                                                     children: (_COMPLAINT_TYPES_find = COMPLAINT_TYPES.find((t)=>t.value === form.complaint_type)) === null || _COMPLAINT_TYPES_find === void 0 ? void 0 : _COMPLAINT_TYPES_find.label
                                                                 }, void 0, false, {
                                                                     fileName: "[project]/civifix-web/src/app/(dashboard)/complaints/create/page.tsx",
-                                                                    lineNumber: 636,
+                                                                    lineNumber: 657,
                                                                     columnNumber: 111
                                                                 }, this)
                                                             ]
                                                         }, void 0, true, {
                                                             fileName: "[project]/civifix-web/src/app/(dashboard)/complaints/create/page.tsx",
-                                                            lineNumber: 636,
+                                                            lineNumber: 657,
                                                             columnNumber: 20
                                                         }, this),
                                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$civifix$2d$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1666,7 +1767,7 @@ function CreateComplaintPage() {
                                                                     children: "Priority:"
                                                                 }, void 0, false, {
                                                                     fileName: "[project]/civifix-web/src/app/(dashboard)/complaints/create/page.tsx",
-                                                                    lineNumber: 637,
+                                                                    lineNumber: 658,
                                                                     columnNumber: 58
                                                                 }, this),
                                                                 " ",
@@ -1675,13 +1776,13 @@ function CreateComplaintPage() {
                                                                     children: form.priority
                                                                 }, void 0, false, {
                                                                     fileName: "[project]/civifix-web/src/app/(dashboard)/complaints/create/page.tsx",
-                                                                    lineNumber: 637,
+                                                                    lineNumber: 658,
                                                                     columnNumber: 115
                                                                 }, this)
                                                             ]
                                                         }, void 0, true, {
                                                             fileName: "[project]/civifix-web/src/app/(dashboard)/complaints/create/page.tsx",
-                                                            lineNumber: 637,
+                                                            lineNumber: 658,
                                                             columnNumber: 20
                                                         }, this),
                                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$civifix$2d$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1692,7 +1793,7 @@ function CreateComplaintPage() {
                                                                     children: "Ward:"
                                                                 }, void 0, false, {
                                                                     fileName: "[project]/civifix-web/src/app/(dashboard)/complaints/create/page.tsx",
-                                                                    lineNumber: 638,
+                                                                    lineNumber: 659,
                                                                     columnNumber: 58
                                                                 }, this),
                                                                 " ",
@@ -1701,13 +1802,13 @@ function CreateComplaintPage() {
                                                                     children: (_wards_find = wards.find((w)=>w._id === form.ward_id)) === null || _wards_find === void 0 ? void 0 : _wards_find.ward_name
                                                                 }, void 0, false, {
                                                                     fileName: "[project]/civifix-web/src/app/(dashboard)/complaints/create/page.tsx",
-                                                                    lineNumber: 638,
+                                                                    lineNumber: 659,
                                                                     columnNumber: 111
                                                                 }, this)
                                                             ]
                                                         }, void 0, true, {
                                                             fileName: "[project]/civifix-web/src/app/(dashboard)/complaints/create/page.tsx",
-                                                            lineNumber: 638,
+                                                            lineNumber: 659,
                                                             columnNumber: 20
                                                         }, this),
                                                         selectedImages.length > 0 && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$civifix$2d$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1718,7 +1819,7 @@ function CreateComplaintPage() {
                                                                     children: "Attachments:"
                                                                 }, void 0, false, {
                                                                     fileName: "[project]/civifix-web/src/app/(dashboard)/complaints/create/page.tsx",
-                                                                    lineNumber: 640,
+                                                                    lineNumber: 661,
                                                                     columnNumber: 60
                                                                 }, this),
                                                                 " ",
@@ -1730,25 +1831,25 @@ function CreateComplaintPage() {
                                                                     ]
                                                                 }, void 0, true, {
                                                                     fileName: "[project]/civifix-web/src/app/(dashboard)/complaints/create/page.tsx",
-                                                                    lineNumber: 640,
+                                                                    lineNumber: 661,
                                                                     columnNumber: 120
                                                                 }, this)
                                                             ]
                                                         }, void 0, true, {
                                                             fileName: "[project]/civifix-web/src/app/(dashboard)/complaints/create/page.tsx",
-                                                            lineNumber: 640,
+                                                            lineNumber: 661,
                                                             columnNumber: 22
                                                         }, this)
                                                     ]
                                                 }, void 0, true, {
                                                     fileName: "[project]/civifix-web/src/app/(dashboard)/complaints/create/page.tsx",
-                                                    lineNumber: 635,
+                                                    lineNumber: 656,
                                                     columnNumber: 17
                                                 }, this)
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/civifix-web/src/app/(dashboard)/complaints/create/page.tsx",
-                                            lineNumber: 633,
+                                            lineNumber: 654,
                                             columnNumber: 15
                                         }, this),
                                         serverError && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$civifix$2d$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1758,14 +1859,14 @@ function CreateComplaintPage() {
                                                     className: "w-6 h-6 shrink-0"
                                                 }, void 0, false, {
                                                     fileName: "[project]/civifix-web/src/app/(dashboard)/complaints/create/page.tsx",
-                                                    lineNumber: 647,
+                                                    lineNumber: 668,
                                                     columnNumber: 19
                                                 }, this),
                                                 serverError
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/civifix-web/src/app/(dashboard)/complaints/create/page.tsx",
-                                            lineNumber: 646,
+                                            lineNumber: 667,
                                             columnNumber: 17
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$civifix$2d$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1778,7 +1879,7 @@ function CreateComplaintPage() {
                                                     children: "Back"
                                                 }, void 0, false, {
                                                     fileName: "[project]/civifix-web/src/app/(dashboard)/complaints/create/page.tsx",
-                                                    lineNumber: 653,
+                                                    lineNumber: 674,
                                                     columnNumber: 17
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$civifix$2d$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -1789,7 +1890,7 @@ function CreateComplaintPage() {
                                                         children: "Submitting..."
                                                     }, void 0, false, {
                                                         fileName: "[project]/civifix-web/src/app/(dashboard)/complaints/create/page.tsx",
-                                                        lineNumber: 666,
+                                                        lineNumber: 687,
                                                         columnNumber: 21
                                                     }, this) : /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$civifix$2d$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$civifix$2d$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Fragment"], {
                                                         children: [
@@ -1797,7 +1898,7 @@ function CreateComplaintPage() {
                                                                 className: "w-5 h-5"
                                                             }, void 0, false, {
                                                                 fileName: "[project]/civifix-web/src/app/(dashboard)/complaints/create/page.tsx",
-                                                                lineNumber: 669,
+                                                                lineNumber: 690,
                                                                 columnNumber: 23
                                                             }, this),
                                                             "Submit Complaint"
@@ -1805,24 +1906,24 @@ function CreateComplaintPage() {
                                                     }, void 0, true)
                                                 }, void 0, false, {
                                                     fileName: "[project]/civifix-web/src/app/(dashboard)/complaints/create/page.tsx",
-                                                    lineNumber: 660,
+                                                    lineNumber: 681,
                                                     columnNumber: 17
                                                 }, this)
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/civifix-web/src/app/(dashboard)/complaints/create/page.tsx",
-                                            lineNumber: 652,
+                                            lineNumber: 673,
                                             columnNumber: 15
                                         }, this)
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/civifix-web/src/app/(dashboard)/complaints/create/page.tsx",
-                                    lineNumber: 611,
+                                    lineNumber: 632,
                                     columnNumber: 13
                                 }, this)
                             }, void 0, false, {
                                 fileName: "[project]/civifix-web/src/app/(dashboard)/complaints/create/page.tsx",
-                                lineNumber: 610,
+                                lineNumber: 631,
                                 columnNumber: 11
                             }, this)
                         ]
@@ -1844,11 +1945,11 @@ function CreateComplaintPage() {
         columnNumber: 5
     }, this);
 }
-_s(CreateComplaintPage, "GiTzPzh/kgU0fLk61yf8zX6TZEE=", false, function() {
+_s(CreateComplaintPage, "1hw/OnI6maeCl06YTgorTJC+RRo=", false, function() {
     return [
         __TURBOPACK__imported__module__$5b$project$5d2f$civifix$2d$web$2f$node_modules$2f$next$2f$navigation$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useRouter"],
         __TURBOPACK__imported__module__$5b$project$5d2f$civifix$2d$web$2f$src$2f$context$2f$auth$2d$context$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useAuth"],
-        __TURBOPACK__imported__module__$5b$project$5d2f$civifix$2d$web$2f$src$2f$hooks$2f$use$2d$wards$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useWards"],
+        __TURBOPACK__imported__module__$5b$project$5d2f$civifix$2d$web$2f$src$2f$hooks$2f$use$2d$wards$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useConstituencyWards"],
         __TURBOPACK__imported__module__$5b$project$5d2f$civifix$2d$web$2f$src$2f$hooks$2f$use$2d$complaints$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useCreateComplaint"]
     ];
 });

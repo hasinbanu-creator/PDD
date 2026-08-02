@@ -135,6 +135,101 @@ function DistrictDropdown({ value, districts, loading, onSelect, error }) {
   );
 }
 
+/* ── ConstituencyDropdown ── */
+function ConstituencyDropdown({ value, constituencies, loading, onSelect, error, disabled }) {
+  const [open, setOpen] = useState(false);
+  const selected = constituencies.find((c) => c.id === value);
+
+  return (
+    <>
+      <TouchableOpacity
+        style={[
+          styles.inputWrap, 
+          error && styles.inputError, 
+          open && styles.inputFocused,
+          disabled && { backgroundColor: GRAY_100, opacity: 0.6 }
+        ]}
+        onPress={() => !disabled && setOpen(true)}
+        activeOpacity={0.8}
+        disabled={disabled}
+      >
+        <Icon name="city" size={18} color={value ? PRIMARY : GRAY_400} />
+        <Text style={[styles.dropdownText, !selected && styles.dropdownPlaceholder]}>
+          {loading ? "Loading constituencies…" : selected ? selected.name : "Select constituency"}
+        </Text>
+        {loading ? (
+          <ActivityIndicator size="small" color={PRIMARY} />
+        ) : (
+          <Icon
+            name={open ? "chevron-up" : "chevron-down"}
+            size={18}
+            color={GRAY_400}
+          />
+        )}
+      </TouchableOpacity>
+
+      <Modal
+        visible={open}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setOpen(false)}
+      >
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setOpen(false)}
+        >
+          <View style={styles.dropdownSheet}>
+            <View style={styles.dropdownHeader}>
+              <Text style={styles.dropdownHeaderText}>Select Constituency</Text>
+              <TouchableOpacity onPress={() => setOpen(false)}>
+                <Icon name="close" size={20} color={GRAY_600} />
+              </TouchableOpacity>
+            </View>
+            <FlatList
+              data={constituencies}
+              keyExtractor={(item) => item.id}
+              showsVerticalScrollIndicator={false}
+              ItemSeparatorComponent={() => <View style={styles.dropdownSep} />}
+              renderItem={({ item }) => {
+                const isSelected = item.id === value;
+                return (
+                  <TouchableOpacity
+                    style={[styles.dropdownItem, isSelected && styles.dropdownItemActive]}
+                    onPress={() => {
+                      onSelect(item.id);
+                      setOpen(false);
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <View style={styles.dropdownItemLeft}>
+                      <View style={[styles.districtDot, isSelected && styles.districtDotActive]} />
+                      <View>
+                        <Text style={[styles.dropdownItemName, isSelected && styles.dropdownItemNameActive]}>
+                          {item.name}
+                        </Text>
+                      </View>
+                    </View>
+                    {isSelected && (
+                      <Icon name="check-circle" size={18} color={PRIMARY} />
+                    )}
+                  </TouchableOpacity>
+                );
+              }}
+              ListEmptyComponent={
+                <View style={styles.dropdownEmpty}>
+                  <Icon name="map-marker-off-outline" size={32} color={GRAY_400} />
+                  <Text style={styles.dropdownEmptyText}>No constituencies found</Text>
+                </View>
+              }
+            />
+          </View>
+        </TouchableOpacity>
+      </Modal>
+    </>
+  );
+}
+
 /* ── Field component ── */
 function Field({ label, icon, error, children, style }) {
   return (
@@ -154,6 +249,7 @@ export const RegisterScreen = ({ navigation }) => {
     email: "",
     address: "",
     district_id: "",
+    constituency_id: "",
   });
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
@@ -161,8 +257,28 @@ export const RegisterScreen = ({ navigation }) => {
   const [districts, setDistricts] = useState([]);
   const [districtsLoading, setDistrictsLoading] = useState(true);
   const [districtsError, setDistrictsError] = useState(false);
+  const [constituencies, setConstituencies] = useState([]);
+  const [constituenciesLoading, setConstituenciesLoading] = useState(false);
 
   const { signUp, error: authError } = useContext(AuthContext);
+
+  useEffect(() => {
+    if (!formData.district_id) {
+      setConstituencies([]);
+      updateField("constituency_id", "");
+      return;
+    }
+    setConstituenciesLoading(true);
+    authService.getConstituenciesByDistrict(formData.district_id)
+      .then((data) => {
+        setConstituencies(data || []);
+      })
+      .catch((err) => {
+        console.error("Constituency load error:", err);
+        setConstituencies([]);
+      })
+      .finally(() => setConstituenciesLoading(false));
+  }, [formData.district_id]);
 
   const loadDistricts = () => {
     setDistrictsLoading(true);
@@ -198,6 +314,7 @@ export const RegisterScreen = ({ navigation }) => {
     if (formData.address.trim().length < 5)
       newErrors.address = "Address must be at least 5 characters";
     if (!formData.district_id) newErrors.district_id = "Please select a district";
+    if (!formData.constituency_id) newErrors.constituency_id = "Please select your Assembly Constituency";
     if (!agreedToTerms) newErrors.terms = "You must agree to Terms & Conditions";
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -205,7 +322,6 @@ export const RegisterScreen = ({ navigation }) => {
 
   const handleRegister = async () => {
     if (!validateForm()) return;
-    const selected = districts.find((d) => d._id === formData.district_id);
     setLoading(true);
     try {
       await signUp({
@@ -214,6 +330,8 @@ export const RegisterScreen = ({ navigation }) => {
         mobile_number: formData.mobile_number.replace(/\D/g, ""),
         address: formData.address.trim(),
         district: formData.district_id,
+        constituency_id: formData.constituency_id,
+        assembly_constituency_id: formData.constituency_id,
       });
       navigation.navigate("VerifyRegister", {
         email: formData.email.trim().toLowerCase(),
@@ -348,8 +466,22 @@ export const RegisterScreen = ({ navigation }) => {
               value={formData.district_id}
               districts={districts}
               loading={districtsLoading}
-              onSelect={(id) => updateField("district_id", id)}
+              onSelect={(id) => {
+                updateField("district_id", id);
+                updateField("constituency_id", "");
+              }}
               error={errors.district_id}
+            />
+          </Field>
+
+          <Field label="Assembly Constituency" error={errors.constituency_id}>
+            <ConstituencyDropdown
+              value={formData.constituency_id}
+              constituencies={constituencies}
+              loading={constituenciesLoading}
+              onSelect={(id) => updateField("constituency_id", id)}
+              error={errors.constituency_id}
+              disabled={!formData.district_id}
             />
           </Field>
 

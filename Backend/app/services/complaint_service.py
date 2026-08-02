@@ -110,11 +110,37 @@ class ComplaintService:
                         f"A similar complaint already exists in this location (ID: {existing.get('complaint_id')})"
                     )
 
+            # Resolve district and constituency names
+            import re
+            district_name = None
+            if district_id:
+                dist_doc = await self.complaint_repo.db.districts.find_one({"_id": ObjectId(str(district_id)) if len(str(district_id)) == 24 else district_id})
+                if dist_doc:
+                    district_name = dist_doc.get("name")
+            
+            constituency_id = ward.get("constituency_id") or ward.get("assembly_constituency_id")
+            constituency_name = None
+            if constituency_id:
+                const_doc = await self.complaint_repo.db.constituencies.find_one({"_id": ObjectId(str(constituency_id)) if len(str(constituency_id)) == 24 else constituency_id})
+                if const_doc:
+                    constituency_name = const_doc.get("name")
+
             complaint_doc = complaint_document(complaint_data)
             complaint_doc["_id"] = ObjectId()
             complaint_doc["user_id"] = self._normalize_id(user_id)
             complaint_doc["district_id"] = self._normalize_id(district_id)
+            complaint_doc["district_name"] = district_name
+            complaint_doc["constituency_id"] = self._normalize_id(constituency_id) if constituency_id else None
+            complaint_doc["constituency_name"] = constituency_name
             complaint_doc["ward_id"] = self._normalize_id(complaint_data.ward_id)
+            wn = ward.get("ward_number")
+            try:
+                digits = re.findall(r'\d+', str(wn))
+                ward_num = int(digits[0]) if digits else 0
+            except Exception:
+                ward_num = 0
+            complaint_doc["ward_number"] = ward_num
+            complaint_doc["ward_name"] = ward.get("ward_name")
             complaint_doc["inspector_id"] = self._normalize_id(inspector_id) if inspector_id else None
             complaint_doc["complaint_id"] = self._generate_complaint_id()
             complaint_doc["status"] = ComplaintStatus.OPEN

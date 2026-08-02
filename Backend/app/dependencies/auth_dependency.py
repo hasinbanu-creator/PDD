@@ -86,6 +86,23 @@ async def get_current_user(
                 user["ward"] = ward_doc.get("ward_name")
         except Exception:
             user["ward_id"] = str(ward_val)
+
+    # Resolve constituency name and map constituency_id
+    const_val = user.get("constituency_id") or user.get("assembly_constituency_id")
+    if const_val:
+        try:
+            from bson import ObjectId
+            from app.db.mongodb import db as motor_db
+            const_obj_id = ObjectId(str(const_val))
+            user["constituency_id"] = str(const_val)
+            user["assembly_constituency_id"] = str(const_val)
+            const_doc = await motor_db.constituencies.find_one({"_id": const_obj_id})
+            if const_doc:
+                user["constituency_name"] = const_doc.get("name")
+                user["assembly_constituency_name"] = const_doc.get("name")
+        except Exception:
+            user["constituency_id"] = str(const_val)
+            user["assembly_constituency_id"] = str(const_val)
     
     # Ensure essential fields from JWT are always present as fallbacks
     user.setdefault("user_id", user_id)

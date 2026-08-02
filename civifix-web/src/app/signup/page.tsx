@@ -35,16 +35,19 @@ export default function SignupPage() {
     email: "",
     address: "",
     district_id: "",
+    constituency_id: "",
     ward_id: "",
     password: "",
     confirmPassword: ""
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  // District & Ward Data
+  // District, Constituency & Ward Data
   const [districts, setDistricts] = useState<any[]>([]);
+  const [constituencies, setConstituencies] = useState<any[]>([]);
   const [wards, setWards] = useState<any[]>([]);
   const [loadingDistricts, setLoadingDistricts] = useState(true);
+  const [loadingConstituencies, setLoadingConstituencies] = useState(false);
   const [loadingWards, setLoadingWards] = useState(false);
   const [gpsLoading, setGpsLoading] = useState(false);
 
@@ -68,13 +71,34 @@ export default function SignupPage() {
   }, []);
 
   useEffect(() => {
-    // Fetch wards when district changes
+    // Fetch constituencies when district changes
     if (!formData.district_id) {
+      setConstituencies([]);
+      setFormData(prev => ({ ...prev, constituency_id: "", ward_id: "" }));
+      return;
+    }
+    setLoadingConstituencies(true);
+    authService.getConstituenciesByDistrict(formData.district_id)
+      .then(data => {
+        setConstituencies(data || []);
+        setLoadingConstituencies(false);
+      })
+      .catch(err => {
+        console.error("Failed to fetch constituencies", err);
+        setConstituencies([]);
+        setLoadingConstituencies(false);
+      });
+  }, [formData.district_id]);
+
+  useEffect(() => {
+    // Fetch wards when constituency changes
+    if (!formData.constituency_id) {
       setWards([]);
+      setFormData(prev => ({ ...prev, ward_id: "" }));
       return;
     }
     setLoadingWards(true);
-    authService.getWardsByDistrict(formData.district_id)
+    authService.getWardsByConstituency(formData.constituency_id)
       .then(data => {
         const rawWards = Array.isArray(data) ? data : data?.data || [];
         const sortedWards = [...rawWards].sort((a: any, b: any) => {
@@ -95,7 +119,7 @@ export default function SignupPage() {
         setWards([]);
         setLoadingWards(false);
       });
-  }, [formData.district_id]);
+  }, [formData.constituency_id]);
 
   const updateField = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -159,6 +183,7 @@ export default function SignupPage() {
     const newErrors: Record<string, string> = {};
     if (formData.address.trim().length < 5) newErrors.address = "Address must be at least 5 characters";
     if (!formData.district_id) newErrors.district_id = "Please select a district";
+    if (!formData.constituency_id) newErrors.constituency_id = "Please select your Assembly Constituency";
     if (!formData.ward_id) newErrors.ward_id = "Please select a ward";
     if (!agreedToTerms) newErrors.terms = "You must agree to Terms & Conditions";
     
@@ -181,6 +206,8 @@ export default function SignupPage() {
         mobile_number: formData.mobile_number.replace(/\D/g, ""),
         address: formData.address.trim(),
         district: formData.district_id,
+        constituency_id: formData.constituency_id,
+        assembly_constituency_id: formData.constituency_id,
         ward: formData.ward_id,
       });
       setStep("OTP");
@@ -368,7 +395,9 @@ export default function SignupPage() {
                   <div className={`border-2 rounded-2xl px-5 py-3.5 bg-muted/30 transition-all duration-200 ${errors.district_id ? 'border-destructive bg-destructive/5' : 'border-border focus-within:border-primary focus-within:bg-card focus-within:ring-4 focus-within:ring-primary/10'}`}>
                     <select
                       value={formData.district_id}
-                      onChange={(e) => updateField("district_id", e.target.value)}
+                      onChange={(e) => {
+                        updateField("district_id", e.target.value);
+                      }}
                       className="w-full bg-transparent border-none outline-none text-foreground text-sm font-medium appearance-none"
                     >
                       <option value="">Select District</option>
@@ -380,24 +409,44 @@ export default function SignupPage() {
                   {errors.district_id && <p className="text-destructive text-xs mt-1.5 ml-1 font-bold">{errors.district_id}</p>}
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-muted-foreground tracking-wider mb-2">WARD</label>
-                  <div className={`border-2 rounded-2xl px-5 py-3.5 bg-muted/30 transition-all duration-200 ${errors.ward_id ? 'border-destructive bg-destructive/5' : 'border-border focus-within:border-primary focus-within:bg-card focus-within:ring-4 focus-within:ring-primary/10'}`}>
+                  <label className="block text-xs font-bold text-muted-foreground tracking-wider mb-2">ASSEMBLY CONSTITUENCY</label>
+                  <div className={`border-2 rounded-2xl px-5 py-3.5 bg-muted/30 transition-all duration-200 ${errors.constituency_id ? 'border-destructive bg-destructive/5' : 'border-border focus-within:border-primary focus-within:bg-card focus-within:ring-4 focus-within:ring-primary/10'}`}>
                     <select
-                      value={formData.ward_id}
-                      onChange={(e) => updateField("ward_id", e.target.value)}
+                      value={formData.constituency_id}
+                      onChange={(e) => {
+                        updateField("constituency_id", e.target.value);
+                      }}
                       className="w-full bg-transparent border-none outline-none text-foreground text-sm font-medium appearance-none"
-                      disabled={!formData.district_id || loadingWards}
+                      disabled={!formData.district_id || loadingConstituencies}
                     >
-                      <option value="">{loadingWards ? "Loading..." : "Select Ward"}</option>
-                      {wards.map(w => (
-                        <option key={w._id || w.id} value={w._id || w.id}>
-                          {w.ward_number ? `${String(w.ward_number).padStart(2, "0")} - ` : ""}{w.ward_name}
-                        </option>
+                      <option value="">{loadingConstituencies ? "Loading..." : "Select Constituency"}</option>
+                      {constituencies.map(c => (
+                        <option key={c.id} value={c.id}>{c.name}</option>
                       ))}
                     </select>
                   </div>
-                  {errors.ward_id && <p className="text-destructive text-xs mt-1.5 ml-1 font-bold">{errors.ward_id}</p>}
+                  {errors.constituency_id && <p className="text-destructive text-xs mt-1.5 ml-1 font-bold">{errors.constituency_id}</p>}
                 </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-muted-foreground tracking-wider mb-2">WARD</label>
+                <div className={`border-2 rounded-2xl px-5 py-3.5 bg-muted/30 transition-all duration-200 ${errors.ward_id ? 'border-destructive bg-destructive/5' : 'border-border focus-within:border-primary focus-within:bg-card focus-within:ring-4 focus-within:ring-primary/10'}`}>
+                  <select
+                    value={formData.ward_id}
+                    onChange={(e) => updateField("ward_id", e.target.value)}
+                    className="w-full bg-transparent border-none outline-none text-foreground text-sm font-medium appearance-none"
+                    disabled={!formData.constituency_id || loadingWards}
+                  >
+                    <option value="">{loadingWards ? "Loading..." : "Select Ward"}</option>
+                    {wards.map(w => (
+                      <option key={w._id || w.id} value={w._id || w.id}>
+                        {w.ward_name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                {errors.ward_id && <p className="text-destructive text-xs mt-1.5 ml-1 font-bold">{errors.ward_id}</p>}
               </div>
 
               <div className="flex items-start gap-3 mt-4">

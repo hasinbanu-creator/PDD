@@ -13,3 +13,19 @@ export function useWards(districtId?: string | number, params: { page?: number; 
     enabled: !!districtId,
   });
 }
+
+export function useConstituencies(districtId?: string | number) {
+  return useQuery({
+    queryKey: ["constituencies", districtId],
+    queryFn: () => authService.getConstituenciesByDistrict(districtId!),
+    enabled: !!districtId,
+  });
+}
+
+export function useConstituencyWards(constituencyId?: string | number) {
+  return useQuery({
+    queryKey: ["constituency-wards", constituencyId],
+    queryFn: () => authService.getWardsByConstituency(constituencyId!),
+    enabled: !!constituencyId,
+  });
+}

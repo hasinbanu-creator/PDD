@@ -32,6 +32,8 @@ class RegisterSchema(BaseModel):
     mobile_number: str = Field(..., min_length=10, max_length=10)
     address: str = Field(..., min_length=5, max_length=200)
     district: str = Field(..., min_length=2, max_length=50)
+    constituency_id: Optional[str] = Field(None, max_length=50)
+    assembly_constituency_id: Optional[str] = Field(None, max_length=50)
 
     @validator('email', pre=True)
     def email_strict(cls, v):
@@ -130,6 +132,10 @@ class UpdateProfileSchema(BaseModel):
     address: Optional[str] = Field(None, min_length=5, max_length=200)
     district: Optional[str] = Field(None, max_length=100)
     ward: Optional[str] = Field(None, max_length=100)
+    constituency_id: Optional[str] = Field(None, max_length=100)
+    constituency_name: Optional[str] = Field(None, max_length=100)
+    assembly_constituency_id: Optional[str] = Field(None, max_length=100)
+    assembly_constituency_name: Optional[str] = Field(None, max_length=100)
 
     class Config:
         example = {

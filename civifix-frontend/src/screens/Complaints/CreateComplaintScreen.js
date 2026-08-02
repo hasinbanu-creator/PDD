@@ -346,8 +346,13 @@ export const CreateComplaintScreen = ({ route, navigation }) => {
   const fetchWards = async () => {
     setWardsLoading(true);
     try {
-      const districtId = user?.district_id ?? user?.district ?? DEFAULT_DISTRICT_ID;
-      const res = await authService.getWardsByDistrict(districtId, { page: 1, is_active: true });
+      const constituencyId = user?.constituency_id ?? user?.assembly_constituency_id;
+      if (!constituencyId) {
+        setWards([]);
+        setWardsLoading(false);
+        return;
+      }
+      const res = await authService.getWardsByConstituency(constituencyId);
       const list = Array.isArray(res?.data) ? res.data : Array.isArray(res) ? res : [];
       setWards(list);
     } catch { setWards([]); }
@@ -674,6 +679,22 @@ export const CreateComplaintScreen = ({ route, navigation }) => {
           {/* ── Section 2: Where is it ── */}
           <FormCard>
             <SectionHeader icon="map-marker-radius" title="Where is it?" subtitle="Ward, address & GPS location" />
+
+            <InputField
+              label="District"
+              icon="map-outline"
+              placeholder="District"
+              value={user?.district_name ?? user?.district ?? ""}
+              editable={false}
+            />
+
+            <InputField
+              label="Assembly Constituency"
+              icon="city"
+              placeholder="Assembly Constituency"
+              value={user?.constituency_name ?? user?.assembly_constituency_name ?? ""}
+              editable={false}
+            />
 
             <Dropdown
               label="Ward"

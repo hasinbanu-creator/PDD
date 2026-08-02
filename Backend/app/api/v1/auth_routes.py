@@ -68,7 +68,8 @@ async def register(payload: RegisterSchema, background_tasks: BackgroundTasks):
             email=payload.email,
             mobile_number=payload.mobile_number,
             address=payload.address,
-            district=payload.district
+            district=payload.district,
+            constituency_id=payload.constituency_id or payload.assembly_constituency_id
         )
         
         # Send OTP email in the background to prevent client timeout

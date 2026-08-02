@@ -58,15 +58,18 @@ function SignupPage() {
         email: "",
         address: "",
         district_id: "",
+        constituency_id: "",
         ward_id: "",
         password: "",
         confirmPassword: ""
     });
     const [errors, setErrors] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$civifix$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])({});
-    // District & Ward Data
+    // District, Constituency & Ward Data
     const [districts, setDistricts] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$civifix$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])([]);
+    const [constituencies, setConstituencies] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$civifix$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])([]);
     const [wards, setWards] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$civifix$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])([]);
     const [loadingDistricts, setLoadingDistricts] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$civifix$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])(true);
+    const [loadingConstituencies, setLoadingConstituencies] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$civifix$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])(false);
     const [loadingWards, setLoadingWards] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$civifix$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])(false);
     const [gpsLoading, setGpsLoading] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$civifix$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])(false);
     // OTP State
@@ -84,13 +87,40 @@ function SignupPage() {
         });
     }, []);
     (0, __TURBOPACK__imported__module__$5b$project$5d2f$civifix$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useEffect"])(()=>{
-        // Fetch wards when district changes
+        // Fetch constituencies when district changes
         if (!formData.district_id) {
+            setConstituencies([]);
+            setFormData((prev)=>({
+                    ...prev,
+                    constituency_id: "",
+                    ward_id: ""
+                }));
+            return;
+        }
+        setLoadingConstituencies(true);
+        __TURBOPACK__imported__module__$5b$project$5d2f$civifix$2d$web$2f$src$2f$services$2f$auth$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["default"].getConstituenciesByDistrict(formData.district_id).then((data)=>{
+            setConstituencies(data || []);
+            setLoadingConstituencies(false);
+        }).catch((err)=>{
+            console.error("Failed to fetch constituencies", err);
+            setConstituencies([]);
+            setLoadingConstituencies(false);
+        });
+    }, [
+        formData.district_id
+    ]);
+    (0, __TURBOPACK__imported__module__$5b$project$5d2f$civifix$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useEffect"])(()=>{
+        // Fetch wards when constituency changes
+        if (!formData.constituency_id) {
             setWards([]);
+            setFormData((prev)=>({
+                    ...prev,
+                    ward_id: ""
+                }));
             return;
         }
         setLoadingWards(true);
-        __TURBOPACK__imported__module__$5b$project$5d2f$civifix$2d$web$2f$src$2f$services$2f$auth$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["default"].getWardsByDistrict(formData.district_id).then((data)=>{
+        __TURBOPACK__imported__module__$5b$project$5d2f$civifix$2d$web$2f$src$2f$services$2f$auth$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["default"].getWardsByConstituency(formData.constituency_id).then((data)=>{
             const rawWards = Array.isArray(data) ? data : data?.data || [];
             const sortedWards = [
                 ...rawWards
@@ -115,7 +145,7 @@ function SignupPage() {
             setLoadingWards(false);
         });
     }, [
-        formData.district_id
+        formData.constituency_id
     ]);
     const updateField = (field, value)=>{
         setFormData((prev)=>({
@@ -178,6 +208,7 @@ function SignupPage() {
         const newErrors = {};
         if (formData.address.trim().length < 5) newErrors.address = "Address must be at least 5 characters";
         if (!formData.district_id) newErrors.district_id = "Please select a district";
+        if (!formData.constituency_id) newErrors.constituency_id = "Please select your Assembly Constituency";
         if (!formData.ward_id) newErrors.ward_id = "Please select a ward";
         if (!agreedToTerms) newErrors.terms = "You must agree to Terms & Conditions";
         setErrors(newErrors);
@@ -197,6 +228,8 @@ function SignupPage() {
                 mobile_number: formData.mobile_number.replace(/\D/g, ""),
                 address: formData.address.trim(),
                 district: formData.district_id,
+                constituency_id: formData.constituency_id,
+                assembly_constituency_id: formData.constituency_id,
                 ward: formData.ward_id
             });
             setStep("OTP");
@@ -254,14 +287,14 @@ function SignupPage() {
                         className: "absolute -top-32 -left-32 w-64 h-64 bg-white/10 rounded-full blur-3xl"
                     }, void 0, false, {
                         fileName: "[project]/civifix-web/src/app/signup/page.tsx",
-                        lineNumber: 237,
+                        lineNumber: 264,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$civifix$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                         className: "absolute -bottom-32 -right-32 w-80 h-80 bg-black/10 rounded-full blur-3xl"
                     }, void 0, false, {
                         fileName: "[project]/civifix-web/src/app/signup/page.tsx",
-                        lineNumber: 238,
+                        lineNumber: 265,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$civifix$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -275,12 +308,12 @@ function SignupPage() {
                                     className: "w-10 h-10 object-contain"
                                 }, void 0, false, {
                                     fileName: "[project]/civifix-web/src/app/signup/page.tsx",
-                                    lineNumber: 242,
+                                    lineNumber: 269,
                                     columnNumber: 13
                                 }, this)
                             }, void 0, false, {
                                 fileName: "[project]/civifix-web/src/app/signup/page.tsx",
-                                lineNumber: 241,
+                                lineNumber: 268,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$civifix$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("h1", {
@@ -289,7 +322,7 @@ function SignupPage() {
                                     "Create ",
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$civifix$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("br", {}, void 0, false, {
                                         fileName: "[project]/civifix-web/src/app/signup/page.tsx",
-                                        lineNumber: 246,
+                                        lineNumber: 273,
                                         columnNumber: 20
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$civifix$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -297,13 +330,13 @@ function SignupPage() {
                                         children: "Account"
                                     }, void 0, false, {
                                         fileName: "[project]/civifix-web/src/app/signup/page.tsx",
-                                        lineNumber: 247,
+                                        lineNumber: 274,
                                         columnNumber: 13
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/civifix-web/src/app/signup/page.tsx",
-                                lineNumber: 245,
+                                lineNumber: 272,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$civifix$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -311,19 +344,19 @@ function SignupPage() {
                                 children: "Join CiviFix today to report issues, track resolutions, and coordinate with municipal officers."
                             }, void 0, false, {
                                 fileName: "[project]/civifix-web/src/app/signup/page.tsx",
-                                lineNumber: 249,
+                                lineNumber: 276,
                                 columnNumber: 11
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/civifix-web/src/app/signup/page.tsx",
-                        lineNumber: 240,
+                        lineNumber: 267,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/civifix-web/src/app/signup/page.tsx",
-                lineNumber: 236,
+                lineNumber: 263,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$civifix$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -341,12 +374,12 @@ function SignupPage() {
                                         className: "w-5 h-5 text-muted-foreground"
                                     }, void 0, false, {
                                         fileName: "[project]/civifix-web/src/app/signup/page.tsx",
-                                        lineNumber: 265,
+                                        lineNumber: 292,
                                         columnNumber: 17
                                     }, this)
                                 }, void 0, false, {
                                     fileName: "[project]/civifix-web/src/app/signup/page.tsx",
-                                    lineNumber: 261,
+                                    lineNumber: 288,
                                     columnNumber: 15
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$civifix$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -357,7 +390,7 @@ function SignupPage() {
                                             children: step === 1 ? "Personal Info" : "Location Info"
                                         }, void 0, false, {
                                             fileName: "[project]/civifix-web/src/app/signup/page.tsx",
-                                            lineNumber: 268,
+                                            lineNumber: 295,
                                             columnNumber: 17
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$civifix$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -369,19 +402,19 @@ function SignupPage() {
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/civifix-web/src/app/signup/page.tsx",
-                                            lineNumber: 271,
+                                            lineNumber: 298,
                                             columnNumber: 17
                                         }, this)
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/civifix-web/src/app/signup/page.tsx",
-                                    lineNumber: 267,
+                                    lineNumber: 294,
                                     columnNumber: 15
                                 }, this)
                             ]
                         }, void 0, true, {
                             fileName: "[project]/civifix-web/src/app/signup/page.tsx",
-                            lineNumber: 260,
+                            lineNumber: 287,
                             columnNumber: 13
                         }, this),
                         step === 1 && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$civifix$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -398,7 +431,7 @@ function SignupPage() {
                                                     children: "FULL NAME"
                                                 }, void 0, false, {
                                                     fileName: "[project]/civifix-web/src/app/signup/page.tsx",
-                                                    lineNumber: 280,
+                                                    lineNumber: 307,
                                                     columnNumber: 19
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$civifix$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -408,7 +441,7 @@ function SignupPage() {
                                                             className: "w-5 h-5 text-muted-foreground"
                                                         }, void 0, false, {
                                                             fileName: "[project]/civifix-web/src/app/signup/page.tsx",
-                                                            lineNumber: 282,
+                                                            lineNumber: 309,
                                                             columnNumber: 21
                                                         }, this),
                                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$civifix$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("input", {
@@ -420,13 +453,13 @@ function SignupPage() {
                                                             className: "flex-1 bg-transparent border-none outline-none text-foreground text-sm font-medium"
                                                         }, void 0, false, {
                                                             fileName: "[project]/civifix-web/src/app/signup/page.tsx",
-                                                            lineNumber: 283,
+                                                            lineNumber: 310,
                                                             columnNumber: 21
                                                         }, this)
                                                     ]
                                                 }, void 0, true, {
                                                     fileName: "[project]/civifix-web/src/app/signup/page.tsx",
-                                                    lineNumber: 281,
+                                                    lineNumber: 308,
                                                     columnNumber: 19
                                                 }, this),
                                                 errors.name && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$civifix$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -434,13 +467,13 @@ function SignupPage() {
                                                     children: errors.name
                                                 }, void 0, false, {
                                                     fileName: "[project]/civifix-web/src/app/signup/page.tsx",
-                                                    lineNumber: 292,
+                                                    lineNumber: 319,
                                                     columnNumber: 35
                                                 }, this)
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/civifix-web/src/app/signup/page.tsx",
-                                            lineNumber: 279,
+                                            lineNumber: 306,
                                             columnNumber: 17
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$civifix$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -451,7 +484,7 @@ function SignupPage() {
                                                     children: "MOBILE NUMBER"
                                                 }, void 0, false, {
                                                     fileName: "[project]/civifix-web/src/app/signup/page.tsx",
-                                                    lineNumber: 295,
+                                                    lineNumber: 322,
                                                     columnNumber: 19
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$civifix$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -462,7 +495,7 @@ function SignupPage() {
                                                             children: "🇮🇳 +91"
                                                         }, void 0, false, {
                                                             fileName: "[project]/civifix-web/src/app/signup/page.tsx",
-                                                            lineNumber: 297,
+                                                            lineNumber: 324,
                                                             columnNumber: 21
                                                         }, this),
                                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$civifix$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("input", {
@@ -475,13 +508,13 @@ function SignupPage() {
                                                             className: "flex-1 bg-transparent border-none outline-none text-foreground text-sm font-medium"
                                                         }, void 0, false, {
                                                             fileName: "[project]/civifix-web/src/app/signup/page.tsx",
-                                                            lineNumber: 298,
+                                                            lineNumber: 325,
                                                             columnNumber: 21
                                                         }, this)
                                                     ]
                                                 }, void 0, true, {
                                                     fileName: "[project]/civifix-web/src/app/signup/page.tsx",
-                                                    lineNumber: 296,
+                                                    lineNumber: 323,
                                                     columnNumber: 19
                                                 }, this),
                                                 errors.mobile_number && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$civifix$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -489,19 +522,19 @@ function SignupPage() {
                                                     children: errors.mobile_number
                                                 }, void 0, false, {
                                                     fileName: "[project]/civifix-web/src/app/signup/page.tsx",
-                                                    lineNumber: 308,
+                                                    lineNumber: 335,
                                                     columnNumber: 44
                                                 }, this)
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/civifix-web/src/app/signup/page.tsx",
-                                            lineNumber: 294,
+                                            lineNumber: 321,
                                             columnNumber: 17
                                         }, this)
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/civifix-web/src/app/signup/page.tsx",
-                                    lineNumber: 278,
+                                    lineNumber: 305,
                                     columnNumber: 15
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$civifix$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -512,7 +545,7 @@ function SignupPage() {
                                             children: "EMAIL ADDRESS"
                                         }, void 0, false, {
                                             fileName: "[project]/civifix-web/src/app/signup/page.tsx",
-                                            lineNumber: 313,
+                                            lineNumber: 340,
                                             columnNumber: 17
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$civifix$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -522,7 +555,7 @@ function SignupPage() {
                                                     className: "w-5 h-5 text-muted-foreground"
                                                 }, void 0, false, {
                                                     fileName: "[project]/civifix-web/src/app/signup/page.tsx",
-                                                    lineNumber: 315,
+                                                    lineNumber: 342,
                                                     columnNumber: 19
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$civifix$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("input", {
@@ -535,13 +568,13 @@ function SignupPage() {
                                                     className: "flex-1 bg-transparent border-none outline-none text-foreground text-sm font-medium"
                                                 }, void 0, false, {
                                                     fileName: "[project]/civifix-web/src/app/signup/page.tsx",
-                                                    lineNumber: 316,
+                                                    lineNumber: 343,
                                                     columnNumber: 19
                                                 }, this)
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/civifix-web/src/app/signup/page.tsx",
-                                            lineNumber: 314,
+                                            lineNumber: 341,
                                             columnNumber: 17
                                         }, this),
                                         errors.email && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$civifix$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -549,13 +582,13 @@ function SignupPage() {
                                             children: errors.email
                                         }, void 0, false, {
                                             fileName: "[project]/civifix-web/src/app/signup/page.tsx",
-                                            lineNumber: 326,
+                                            lineNumber: 353,
                                             columnNumber: 34
                                         }, this)
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/civifix-web/src/app/signup/page.tsx",
-                                    lineNumber: 312,
+                                    lineNumber: 339,
                                     columnNumber: 15
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$civifix$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -569,31 +602,31 @@ function SignupPage() {
                                                 children: "NEXT"
                                             }, void 0, false, {
                                                 fileName: "[project]/civifix-web/src/app/signup/page.tsx",
-                                                lineNumber: 336,
+                                                lineNumber: 363,
                                                 columnNumber: 19
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$civifix$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$civifix$2d$web$2f$node_modules$2f$lucide$2d$react$2f$dist$2f$esm$2f$icons$2f$arrow$2d$right$2e$mjs__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__$3c$export__default__as__ArrowRight$3e$__["ArrowRight"], {
                                                 className: "w-5 h-5"
                                             }, void 0, false, {
                                                 fileName: "[project]/civifix-web/src/app/signup/page.tsx",
-                                                lineNumber: 337,
+                                                lineNumber: 364,
                                                 columnNumber: 19
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/civifix-web/src/app/signup/page.tsx",
-                                        lineNumber: 332,
+                                        lineNumber: 359,
                                         columnNumber: 17
                                     }, this)
                                 }, void 0, false, {
                                     fileName: "[project]/civifix-web/src/app/signup/page.tsx",
-                                    lineNumber: 331,
+                                    lineNumber: 358,
                                     columnNumber: 15
                                 }, this)
                             ]
                         }, void 0, true, {
                             fileName: "[project]/civifix-web/src/app/signup/page.tsx",
-                            lineNumber: 277,
+                            lineNumber: 304,
                             columnNumber: 13
                         }, this),
                         step === 2 && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$civifix$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -609,7 +642,7 @@ function SignupPage() {
                                                     children: "ADDRESS"
                                                 }, void 0, false, {
                                                     fileName: "[project]/civifix-web/src/app/signup/page.tsx",
-                                                    lineNumber: 347,
+                                                    lineNumber: 374,
                                                     columnNumber: 19
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$civifix$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -620,20 +653,20 @@ function SignupPage() {
                                                             className: "w-3 h-3"
                                                         }, void 0, false, {
                                                             fileName: "[project]/civifix-web/src/app/signup/page.tsx",
-                                                            lineNumber: 349,
+                                                            lineNumber: 376,
                                                             columnNumber: 21
                                                         }, this),
                                                         gpsLoading ? "Loading..." : "Use Current Location"
                                                     ]
                                                 }, void 0, true, {
                                                     fileName: "[project]/civifix-web/src/app/signup/page.tsx",
-                                                    lineNumber: 348,
+                                                    lineNumber: 375,
                                                     columnNumber: 19
                                                 }, this)
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/civifix-web/src/app/signup/page.tsx",
-                                            lineNumber: 346,
+                                            lineNumber: 373,
                                             columnNumber: 17
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$civifix$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -646,12 +679,12 @@ function SignupPage() {
                                                 className: "w-full bg-transparent border-none outline-none text-foreground text-sm font-medium resize-none"
                                             }, void 0, false, {
                                                 fileName: "[project]/civifix-web/src/app/signup/page.tsx",
-                                                lineNumber: 354,
+                                                lineNumber: 381,
                                                 columnNumber: 19
                                             }, this)
                                         }, void 0, false, {
                                             fileName: "[project]/civifix-web/src/app/signup/page.tsx",
-                                            lineNumber: 353,
+                                            lineNumber: 380,
                                             columnNumber: 17
                                         }, this),
                                         errors.address && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$civifix$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -659,13 +692,13 @@ function SignupPage() {
                                             children: errors.address
                                         }, void 0, false, {
                                             fileName: "[project]/civifix-web/src/app/signup/page.tsx",
-                                            lineNumber: 362,
+                                            lineNumber: 389,
                                             columnNumber: 36
                                         }, this)
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/civifix-web/src/app/signup/page.tsx",
-                                    lineNumber: 345,
+                                    lineNumber: 372,
                                     columnNumber: 15
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$civifix$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -678,14 +711,16 @@ function SignupPage() {
                                                     children: "DISTRICT"
                                                 }, void 0, false, {
                                                     fileName: "[project]/civifix-web/src/app/signup/page.tsx",
-                                                    lineNumber: 367,
+                                                    lineNumber: 394,
                                                     columnNumber: 19
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$civifix$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                                                     className: `border-2 rounded-2xl px-5 py-3.5 bg-muted/30 transition-all duration-200 ${errors.district_id ? 'border-destructive bg-destructive/5' : 'border-border focus-within:border-primary focus-within:bg-card focus-within:ring-4 focus-within:ring-primary/10'}`,
                                                     children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$civifix$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("select", {
                                                         value: formData.district_id,
-                                                        onChange: (e)=>updateField("district_id", e.target.value),
+                                                        onChange: (e)=>{
+                                                            updateField("district_id", e.target.value);
+                                                        },
                                                         className: "w-full bg-transparent border-none outline-none text-foreground text-sm font-medium appearance-none",
                                                         children: [
                                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$civifix$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("option", {
@@ -693,7 +728,7 @@ function SignupPage() {
                                                                 children: "Select District"
                                                             }, void 0, false, {
                                                                 fileName: "[project]/civifix-web/src/app/signup/page.tsx",
-                                                                lineNumber: 374,
+                                                                lineNumber: 403,
                                                                 columnNumber: 23
                                                             }, this),
                                                             districts.map((d)=>/*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$civifix$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("option", {
@@ -701,18 +736,18 @@ function SignupPage() {
                                                                     children: d.name
                                                                 }, d._id || d.id, false, {
                                                                     fileName: "[project]/civifix-web/src/app/signup/page.tsx",
-                                                                    lineNumber: 376,
+                                                                    lineNumber: 405,
                                                                     columnNumber: 25
                                                                 }, this))
                                                         ]
                                                     }, void 0, true, {
                                                         fileName: "[project]/civifix-web/src/app/signup/page.tsx",
-                                                        lineNumber: 369,
+                                                        lineNumber: 396,
                                                         columnNumber: 21
                                                     }, this)
                                                 }, void 0, false, {
                                                     fileName: "[project]/civifix-web/src/app/signup/page.tsx",
-                                                    lineNumber: 368,
+                                                    lineNumber: 395,
                                                     columnNumber: 19
                                                 }, this),
                                                 errors.district_id && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$civifix$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -720,81 +755,139 @@ function SignupPage() {
                                                     children: errors.district_id
                                                 }, void 0, false, {
                                                     fileName: "[project]/civifix-web/src/app/signup/page.tsx",
-                                                    lineNumber: 380,
+                                                    lineNumber: 409,
                                                     columnNumber: 42
                                                 }, this)
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/civifix-web/src/app/signup/page.tsx",
-                                            lineNumber: 366,
+                                            lineNumber: 393,
                                             columnNumber: 17
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$civifix$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                                             children: [
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$civifix$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("label", {
                                                     className: "block text-xs font-bold text-muted-foreground tracking-wider mb-2",
-                                                    children: "WARD"
+                                                    children: "ASSEMBLY CONSTITUENCY"
                                                 }, void 0, false, {
                                                     fileName: "[project]/civifix-web/src/app/signup/page.tsx",
-                                                    lineNumber: 383,
+                                                    lineNumber: 412,
                                                     columnNumber: 19
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$civifix$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                                                    className: `border-2 rounded-2xl px-5 py-3.5 bg-muted/30 transition-all duration-200 ${errors.ward_id ? 'border-destructive bg-destructive/5' : 'border-border focus-within:border-primary focus-within:bg-card focus-within:ring-4 focus-within:ring-primary/10'}`,
+                                                    className: `border-2 rounded-2xl px-5 py-3.5 bg-muted/30 transition-all duration-200 ${errors.constituency_id ? 'border-destructive bg-destructive/5' : 'border-border focus-within:border-primary focus-within:bg-card focus-within:ring-4 focus-within:ring-primary/10'}`,
                                                     children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$civifix$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("select", {
-                                                        value: formData.ward_id,
-                                                        onChange: (e)=>updateField("ward_id", e.target.value),
+                                                        value: formData.constituency_id,
+                                                        onChange: (e)=>{
+                                                            updateField("constituency_id", e.target.value);
+                                                        },
                                                         className: "w-full bg-transparent border-none outline-none text-foreground text-sm font-medium appearance-none",
-                                                        disabled: !formData.district_id || loadingWards,
+                                                        disabled: !formData.district_id || loadingConstituencies,
                                                         children: [
                                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$civifix$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("option", {
                                                                 value: "",
-                                                                children: loadingWards ? "Loading..." : "Select Ward"
+                                                                children: loadingConstituencies ? "Loading..." : "Select Constituency"
                                                             }, void 0, false, {
                                                                 fileName: "[project]/civifix-web/src/app/signup/page.tsx",
-                                                                lineNumber: 391,
+                                                                lineNumber: 422,
                                                                 columnNumber: 23
                                                             }, this),
-                                                            wards.map((w)=>/*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$civifix$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("option", {
-                                                                    value: w._id || w.id,
-                                                                    children: [
-                                                                        w.ward_number ? `${String(w.ward_number).padStart(2, "0")} - ` : "",
-                                                                        w.ward_name
-                                                                    ]
-                                                                }, w._id || w.id, true, {
+                                                            constituencies.map((c)=>/*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$civifix$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("option", {
+                                                                    value: c.id,
+                                                                    children: c.name
+                                                                }, c.id, false, {
                                                                     fileName: "[project]/civifix-web/src/app/signup/page.tsx",
-                                                                    lineNumber: 393,
+                                                                    lineNumber: 424,
                                                                     columnNumber: 25
                                                                 }, this))
                                                         ]
                                                     }, void 0, true, {
                                                         fileName: "[project]/civifix-web/src/app/signup/page.tsx",
-                                                        lineNumber: 385,
+                                                        lineNumber: 414,
                                                         columnNumber: 21
                                                     }, this)
                                                 }, void 0, false, {
                                                     fileName: "[project]/civifix-web/src/app/signup/page.tsx",
-                                                    lineNumber: 384,
+                                                    lineNumber: 413,
                                                     columnNumber: 19
                                                 }, this),
-                                                errors.ward_id && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$civifix$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
+                                                errors.constituency_id && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$civifix$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
                                                     className: "text-destructive text-xs mt-1.5 ml-1 font-bold",
-                                                    children: errors.ward_id
+                                                    children: errors.constituency_id
                                                 }, void 0, false, {
                                                     fileName: "[project]/civifix-web/src/app/signup/page.tsx",
-                                                    lineNumber: 399,
-                                                    columnNumber: 38
+                                                    lineNumber: 428,
+                                                    columnNumber: 46
                                                 }, this)
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/civifix-web/src/app/signup/page.tsx",
-                                            lineNumber: 382,
+                                            lineNumber: 411,
                                             columnNumber: 17
                                         }, this)
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/civifix-web/src/app/signup/page.tsx",
-                                    lineNumber: 365,
+                                    lineNumber: 392,
+                                    columnNumber: 15
+                                }, this),
+                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$civifix$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                    children: [
+                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$civifix$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("label", {
+                                            className: "block text-xs font-bold text-muted-foreground tracking-wider mb-2",
+                                            children: "WARD"
+                                        }, void 0, false, {
+                                            fileName: "[project]/civifix-web/src/app/signup/page.tsx",
+                                            lineNumber: 433,
+                                            columnNumber: 17
+                                        }, this),
+                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$civifix$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                            className: `border-2 rounded-2xl px-5 py-3.5 bg-muted/30 transition-all duration-200 ${errors.ward_id ? 'border-destructive bg-destructive/5' : 'border-border focus-within:border-primary focus-within:bg-card focus-within:ring-4 focus-within:ring-primary/10'}`,
+                                            children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$civifix$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("select", {
+                                                value: formData.ward_id,
+                                                onChange: (e)=>updateField("ward_id", e.target.value),
+                                                className: "w-full bg-transparent border-none outline-none text-foreground text-sm font-medium appearance-none",
+                                                disabled: !formData.constituency_id || loadingWards,
+                                                children: [
+                                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$civifix$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("option", {
+                                                        value: "",
+                                                        children: loadingWards ? "Loading..." : "Select Ward"
+                                                    }, void 0, false, {
+                                                        fileName: "[project]/civifix-web/src/app/signup/page.tsx",
+                                                        lineNumber: 441,
+                                                        columnNumber: 21
+                                                    }, this),
+                                                    wards.map((w)=>/*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$civifix$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("option", {
+                                                            value: w._id || w.id,
+                                                            children: w.ward_name
+                                                        }, w._id || w.id, false, {
+                                                            fileName: "[project]/civifix-web/src/app/signup/page.tsx",
+                                                            lineNumber: 443,
+                                                            columnNumber: 23
+                                                        }, this))
+                                                ]
+                                            }, void 0, true, {
+                                                fileName: "[project]/civifix-web/src/app/signup/page.tsx",
+                                                lineNumber: 435,
+                                                columnNumber: 19
+                                            }, this)
+                                        }, void 0, false, {
+                                            fileName: "[project]/civifix-web/src/app/signup/page.tsx",
+                                            lineNumber: 434,
+                                            columnNumber: 17
+                                        }, this),
+                                        errors.ward_id && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$civifix$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
+                                            className: "text-destructive text-xs mt-1.5 ml-1 font-bold",
+                                            children: errors.ward_id
+                                        }, void 0, false, {
+                                            fileName: "[project]/civifix-web/src/app/signup/page.tsx",
+                                            lineNumber: 449,
+                                            columnNumber: 36
+                                        }, this)
+                                    ]
+                                }, void 0, true, {
+                                    fileName: "[project]/civifix-web/src/app/signup/page.tsx",
+                                    lineNumber: 432,
                                     columnNumber: 15
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$civifix$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -811,12 +904,12 @@ function SignupPage() {
                                                 className: "w-4 h-4 text-primary-foreground"
                                             }, void 0, false, {
                                                 fileName: "[project]/civifix-web/src/app/signup/page.tsx",
-                                                lineNumber: 412,
+                                                lineNumber: 461,
                                                 columnNumber: 37
                                             }, this)
                                         }, void 0, false, {
                                             fileName: "[project]/civifix-web/src/app/signup/page.tsx",
-                                            lineNumber: 404,
+                                            lineNumber: 453,
                                             columnNumber: 17
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$civifix$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -828,7 +921,7 @@ function SignupPage() {
                                                     children: "Terms & Conditions"
                                                 }, void 0, false, {
                                                     fileName: "[project]/civifix-web/src/app/signup/page.tsx",
-                                                    lineNumber: 415,
+                                                    lineNumber: 464,
                                                     columnNumber: 34
                                                 }, this),
                                                 " and ",
@@ -837,19 +930,19 @@ function SignupPage() {
                                                     children: "Privacy Policy"
                                                 }, void 0, false, {
                                                     fileName: "[project]/civifix-web/src/app/signup/page.tsx",
-                                                    lineNumber: 415,
+                                                    lineNumber: 464,
                                                     columnNumber: 105
                                                 }, this)
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/civifix-web/src/app/signup/page.tsx",
-                                            lineNumber: 414,
+                                            lineNumber: 463,
                                             columnNumber: 17
                                         }, this)
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/civifix-web/src/app/signup/page.tsx",
-                                    lineNumber: 403,
+                                    lineNumber: 452,
                                     columnNumber: 15
                                 }, this),
                                 errors.terms && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$civifix$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -857,7 +950,7 @@ function SignupPage() {
                                     children: errors.terms
                                 }, void 0, false, {
                                     fileName: "[project]/civifix-web/src/app/signup/page.tsx",
-                                    lineNumber: 418,
+                                    lineNumber: 467,
                                     columnNumber: 32
                                 }, this),
                                 authError && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$civifix$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -867,7 +960,7 @@ function SignupPage() {
                                             className: "w-5 h-5 text-destructive"
                                         }, void 0, false, {
                                             fileName: "[project]/civifix-web/src/app/signup/page.tsx",
-                                            lineNumber: 422,
+                                            lineNumber: 471,
                                             columnNumber: 19
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$civifix$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -875,13 +968,13 @@ function SignupPage() {
                                             children: authError
                                         }, void 0, false, {
                                             fileName: "[project]/civifix-web/src/app/signup/page.tsx",
-                                            lineNumber: 423,
+                                            lineNumber: 472,
                                             columnNumber: 19
                                         }, this)
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/civifix-web/src/app/signup/page.tsx",
-                                    lineNumber: 421,
+                                    lineNumber: 470,
                                     columnNumber: 17
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$civifix$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -895,7 +988,7 @@ function SignupPage() {
                                             children: "CREATING ACCOUNT..."
                                         }, void 0, false, {
                                             fileName: "[project]/civifix-web/src/app/signup/page.tsx",
-                                            lineNumber: 434,
+                                            lineNumber: 483,
                                             columnNumber: 21
                                         }, this) : /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$civifix$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$civifix$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Fragment"], {
                                             children: [
@@ -904,32 +997,32 @@ function SignupPage() {
                                                     children: "CREATE ACCOUNT"
                                                 }, void 0, false, {
                                                     fileName: "[project]/civifix-web/src/app/signup/page.tsx",
-                                                    lineNumber: 437,
+                                                    lineNumber: 486,
                                                     columnNumber: 23
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$civifix$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$civifix$2d$web$2f$node_modules$2f$lucide$2d$react$2f$dist$2f$esm$2f$icons$2f$arrow$2d$right$2e$mjs__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__$3c$export__default__as__ArrowRight$3e$__["ArrowRight"], {
                                                     className: "w-5 h-5"
                                                 }, void 0, false, {
                                                     fileName: "[project]/civifix-web/src/app/signup/page.tsx",
-                                                    lineNumber: 438,
+                                                    lineNumber: 487,
                                                     columnNumber: 23
                                                 }, this)
                                             ]
                                         }, void 0, true)
                                     }, void 0, false, {
                                         fileName: "[project]/civifix-web/src/app/signup/page.tsx",
-                                        lineNumber: 428,
+                                        lineNumber: 477,
                                         columnNumber: 17
                                     }, this)
                                 }, void 0, false, {
                                     fileName: "[project]/civifix-web/src/app/signup/page.tsx",
-                                    lineNumber: 427,
+                                    lineNumber: 476,
                                     columnNumber: 15
                                 }, this)
                             ]
                         }, void 0, true, {
                             fileName: "[project]/civifix-web/src/app/signup/page.tsx",
-                            lineNumber: 344,
+                            lineNumber: 371,
                             columnNumber: 13
                         }, this),
                         step === "OTP" && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$civifix$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -941,12 +1034,12 @@ function SignupPage() {
                                         className: "w-8 h-8 text-primary"
                                     }, void 0, false, {
                                         fileName: "[project]/civifix-web/src/app/signup/page.tsx",
-                                        lineNumber: 449,
+                                        lineNumber: 498,
                                         columnNumber: 17
                                     }, this)
                                 }, void 0, false, {
                                     fileName: "[project]/civifix-web/src/app/signup/page.tsx",
-                                    lineNumber: 448,
+                                    lineNumber: 497,
                                     columnNumber: 15
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$civifix$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("h2", {
@@ -954,7 +1047,7 @@ function SignupPage() {
                                     children: "Check your email"
                                 }, void 0, false, {
                                     fileName: "[project]/civifix-web/src/app/signup/page.tsx",
-                                    lineNumber: 451,
+                                    lineNumber: 500,
                                     columnNumber: 15
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$civifix$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -966,13 +1059,13 @@ function SignupPage() {
                                             children: formData.email
                                         }, void 0, false, {
                                             fileName: "[project]/civifix-web/src/app/signup/page.tsx",
-                                            lineNumber: 453,
+                                            lineNumber: 502,
                                             columnNumber: 56
                                         }, this)
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/civifix-web/src/app/signup/page.tsx",
-                                    lineNumber: 452,
+                                    lineNumber: 501,
                                     columnNumber: 15
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$civifix$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -993,12 +1086,12 @@ function SignupPage() {
                     `
                                         }, index, false, {
                                             fileName: "[project]/civifix-web/src/app/signup/page.tsx",
-                                            lineNumber: 458,
+                                            lineNumber: 507,
                                             columnNumber: 19
                                         }, this))
                                 }, void 0, false, {
                                     fileName: "[project]/civifix-web/src/app/signup/page.tsx",
-                                    lineNumber: 456,
+                                    lineNumber: 505,
                                     columnNumber: 15
                                 }, this),
                                 otpError && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$civifix$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -1006,7 +1099,7 @@ function SignupPage() {
                                     children: otpError
                                 }, void 0, false, {
                                     fileName: "[project]/civifix-web/src/app/signup/page.tsx",
-                                    lineNumber: 475,
+                                    lineNumber: 524,
                                     columnNumber: 28
                                 }, this),
                                 authError && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$civifix$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -1014,7 +1107,7 @@ function SignupPage() {
                                     children: authError
                                 }, void 0, false, {
                                     fileName: "[project]/civifix-web/src/app/signup/page.tsx",
-                                    lineNumber: 476,
+                                    lineNumber: 525,
                                     columnNumber: 29
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$civifix$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -1024,7 +1117,7 @@ function SignupPage() {
                                     children: loading ? "VERIFYING..." : "VERIFY ACCOUNT"
                                 }, void 0, false, {
                                     fileName: "[project]/civifix-web/src/app/signup/page.tsx",
-                                    lineNumber: 478,
+                                    lineNumber: 527,
                                     columnNumber: 15
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$civifix$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -1033,13 +1126,13 @@ function SignupPage() {
                                     children: "Back to Registration"
                                 }, void 0, false, {
                                     fileName: "[project]/civifix-web/src/app/signup/page.tsx",
-                                    lineNumber: 486,
+                                    lineNumber: 535,
                                     columnNumber: 15
                                 }, this)
                             ]
                         }, void 0, true, {
                             fileName: "[project]/civifix-web/src/app/signup/page.tsx",
-                            lineNumber: 447,
+                            lineNumber: 496,
                             columnNumber: 13
                         }, this),
                         step !== "OTP" && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$civifix$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1050,7 +1143,7 @@ function SignupPage() {
                                     children: "Already have an account?"
                                 }, void 0, false, {
                                     fileName: "[project]/civifix-web/src/app/signup/page.tsx",
-                                    lineNumber: 497,
+                                    lineNumber: 546,
                                     columnNumber: 15
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$civifix$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -1059,30 +1152,30 @@ function SignupPage() {
                                     children: "Sign In"
                                 }, void 0, false, {
                                     fileName: "[project]/civifix-web/src/app/signup/page.tsx",
-                                    lineNumber: 498,
+                                    lineNumber: 547,
                                     columnNumber: 15
                                 }, this)
                             ]
                         }, void 0, true, {
                             fileName: "[project]/civifix-web/src/app/signup/page.tsx",
-                            lineNumber: 496,
+                            lineNumber: 545,
                             columnNumber: 13
                         }, this)
                     ]
                 }, void 0, true, {
                     fileName: "[project]/civifix-web/src/app/signup/page.tsx",
-                    lineNumber: 257,
+                    lineNumber: 284,
                     columnNumber: 9
                 }, this)
             }, void 0, false, {
                 fileName: "[project]/civifix-web/src/app/signup/page.tsx",
-                lineNumber: 256,
+                lineNumber: 283,
                 columnNumber: 7
             }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/civifix-web/src/app/signup/page.tsx",
-        lineNumber: 234,
+        lineNumber: 261,
         columnNumber: 5
     }, this);
 }

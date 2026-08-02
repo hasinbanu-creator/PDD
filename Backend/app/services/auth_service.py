@@ -1,6 +1,7 @@
 """Authentication business logic"""
 from datetime import datetime, timedelta
 from typing import Optional, Dict, Any
+from bson import ObjectId
 from app.db.mongodb import db
 from app.repositories.user_repository import UserRepository
 from app.repositories.otp_repository import OTPRepository
@@ -30,7 +31,8 @@ class AuthService:
         email: str,
         mobile_number: str,
         address: str,
-        district: str
+        district: str,
+        constituency_id: Optional[str] = None
     ) -> Dict[str, Any]:
         """Register a new user"""
         
@@ -40,6 +42,21 @@ class AuthService:
         
         if not validate_mobile(mobile_number):
             raise AuthenticationException("Invalid mobile number", "INVALID_MOBILE")
+            
+        if not constituency_id:
+            raise AuthenticationException("Please select your Assembly Constituency.", "MISSING_CONSTITUENCY")
+        
+        # Lookup constituency name
+        constituency_name = None
+        try:
+            const_doc = await db.constituencies.find_one({"_id": ObjectId(constituency_id) if len(str(constituency_id)) == 24 else constituency_id})
+            if not const_doc:
+                raise AuthenticationException("Assembly Constituency not found", "CONSTITUENCY_NOT_FOUND")
+            constituency_name = const_doc.get("name")
+        except Exception as e:
+            if isinstance(e, AuthenticationException):
+                raise
+            raise AuthenticationException(f"Invalid constituency ID: {str(e)}", "INVALID_CONSTITUENCY")
         
         # Check if user already exists
         existing = await db.users.find_one({
@@ -64,6 +81,10 @@ class AuthService:
             "mobile_number": mobile_number,
             "address": address,
             "district": district,
+            "constituency_id": constituency_id,
+            "constituency_name": constituency_name,
+            "assembly_constituency_id": constituency_id,
+            "assembly_constituency_name": constituency_name,
             "role": "CITIZEN",
             "permissions": [],
             "otp_code_hash": otp_hash,
@@ -131,11 +152,22 @@ class AuthService:
         await UserRepository.verify_user(user_id)
         
         # Generate tokens
-        tokens = AuthService._create_tokens(user_id, user.get("role"), email, user.get("district"))
+        tokens = AuthService._create_tokens(
+            user_id,
+            user.get("role"),
+            email,
+            user.get("district"),
+            user.get("constituency_id") or user.get("assembly_constituency_id"),
+            user.get("constituency_name") or user.get("assembly_constituency_name")
+        )
         
         return {
             "user_id": user_id,
             "tokens": tokens,
+            "constituency_id": user.get("constituency_id") or user.get("assembly_constituency_id"),
+            "constituency_name": user.get("constituency_name") or user.get("assembly_constituency_name"),
+            "assembly_constituency_id": user.get("constituency_id") or user.get("assembly_constituency_id"),
+            "assembly_constituency_name": user.get("constituency_name") or user.get("assembly_constituency_name"),
             "message": "User verified successfully"
         }
     
@@ -219,7 +251,9 @@ class AuthService:
             user_id,
             user.get("role"),
             email,
-            user.get("district")
+            user.get("district"),
+            user.get("constituency_id") or user.get("assembly_constituency_id"),
+            user.get("constituency_name") or user.get("assembly_constituency_name")
         )
         
         return {
@@ -227,6 +261,10 @@ class AuthService:
             "tokens": tokens,
             "role": user.get("role"),
             "district": user.get("district"),
+            "constituency_id": user.get("constituency_id") or user.get("assembly_constituency_id"),
+            "constituency_name": user.get("constituency_name") or user.get("assembly_constituency_name"),
+            "assembly_constituency_id": user.get("constituency_id") or user.get("assembly_constituency_id"),
+            "assembly_constituency_name": user.get("constituency_name") or user.get("assembly_constituency_name"),
             "message": "Login successful"
         }
     
@@ -257,7 +295,9 @@ class AuthService:
             user_id,
             user.get("role"),
             user.get("email"),
-            user.get("district")
+            user.get("district"),
+            user.get("constituency_id") or user.get("assembly_constituency_id"),
+            user.get("constituency_name") or user.get("assembly_constituency_name")
         )
         
         return tokens
@@ -267,7 +307,9 @@ class AuthService:
         user_id: str,
         role: str,
         email: str,
-        district: str
+        district: str,
+        constituency_id: Optional[str] = None,
+        constituency_name: Optional[str] = None
     ) -> Dict[str, Any]:
         """Create access and refresh tokens"""
         
@@ -276,6 +318,10 @@ class AuthService:
             "email": email,
             "role": role,
             "district": district,
+            "constituency_id": constituency_id,
+            "constituency_name": constituency_name,
+            "assembly_constituency_id": constituency_id,
+            "assembly_constituency_name": constituency_name,
             "type": "access"
         }
         

@@ -438,6 +438,25 @@ const authService = {
         });
         return (0, __TURBOPACK__imported__module__$5b$project$5d2f$civifix$2d$web$2f$src$2f$lib$2f$api$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["unwrapResponse"])(res);
     },
+    getConstituenciesByDistrict: async (districtId)=>{
+        if (e2eMocksEnabled) return [
+            {
+                id: "e2e-const-1",
+                name: "Velachery"
+            },
+            {
+                id: "e2e-const-2",
+                name: "Mylapore"
+            }
+        ];
+        const res = await __TURBOPACK__imported__module__$5b$project$5d2f$civifix$2d$web$2f$src$2f$lib$2f$api$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].get("/districts/".concat(districtId, "/constituencies"));
+        return (0, __TURBOPACK__imported__module__$5b$project$5d2f$civifix$2d$web$2f$src$2f$lib$2f$api$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["unwrapResponse"])(res);
+    },
+    getWardsByConstituency: async (constituencyId)=>{
+        if (e2eMocksEnabled) return e2eWards;
+        const res = await __TURBOPACK__imported__module__$5b$project$5d2f$civifix$2d$web$2f$src$2f$lib$2f$api$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].get("/constituencies/".concat(constituencyId, "/wards"));
+        return (0, __TURBOPACK__imported__module__$5b$project$5d2f$civifix$2d$web$2f$src$2f$lib$2f$api$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["unwrapResponse"])(res);
+    },
     /**
    * Get ALL wards for the authenticated inspector's district.
    * Calls GET /api/v1/wards — the backend uses the JWT token's district field.

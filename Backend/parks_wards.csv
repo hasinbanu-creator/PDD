@@ -1,0 +1,201 @@
+City Name,Zone Name,Ward Name,Ward No.,Area ( In sq km),Residential area (in sq Km),Non-residential area ( in sq Km) ,"Area covered under parks, playgrounds and open spaces (in sq m)"
+Chennai,Thiruvotriyur,NA,1,1.733613,NA,NA,1300
+Chennai,Thiruvotriyur,NA,2,2.915969,NA,NA,NA
+Chennai,Thiruvotriyur,NA,3,3.161299,NA,NA,5530.47
+Chennai,Thiruvotriyur,NA,4,1.844558,NA,NA,NA
+Chennai,Thiruvotriyur,NA,5,2.318969,NA,NA,10451.07
+Chennai,Thiruvotriyur,NA,6,1.611065,NA,NA,NA
+Chennai,Thiruvotriyur,NA,7,7.677656,NA,NA,1243.88
+Chennai,Thiruvotriyur,NA,8,0.724109,NA,NA,NA
+Chennai,Thiruvotriyur,NA,9,0.68088,NA,NA,NA
+Chennai,Thiruvotriyur,NA,10,0.526418,NA,NA,NA
+Chennai,Thiruvotriyur,NA,11,0.630138,NA,NA,2074
+Chennai,Thiruvotriyur,NA,12,0.42084,NA,NA,NA
+Chennai,Thiruvotriyur,NA,13,0.471381,NA,NA,NA
+Chennai,Thiruvotriyur,NA,14,0.666016,NA,NA,NA
+Chennai,Manali,NA,15,8.704598,NA,NA,10231.17
+Chennai,Manali,NA,16,10.025259,NA,NA,20323.21
+Chennai,Manali,NA,17,6.674754,NA,NA,9859
+Chennai,Manali,NA,18,8.072419,NA,NA,5184.3
+Chennai,Manali,NA,19,4.116911,NA,NA,14948.61
+Chennai,Manali,NA,20,0.636762,NA,NA,1925
+Chennai,Manali,NA,21,1.870478,NA,NA,835
+Chennai,Madhavaram,NA,22,4.15357,NA,NA,4416.66
+Chennai,Madhavaram,NA,23,2.711609,NA,NA,14837.54
+Chennai,Madhavaram,NA,24,4.97131,NA,NA,29479.2
+Chennai,Madhavaram,NA,25,2.70592,NA,NA,11024.2
+Chennai,Madhavaram,NA,26,5.404919,NA,NA,2243.29
+Chennai,Madhavaram,NA,27,2.152125,NA,NA,NA
+Chennai,Madhavaram,NA,28,3.64297,NA,NA,4840
+Chennai,Madhavaram,NA,29,2.153129,NA,NA,NA
+Chennai,Madhavaram,NA,30,1.469352,NA,NA,6985
+Chennai,Madhavaram,NA,31,1.122503,NA,NA,8700
+Chennai,Madhavaram,NA,32,0.686741,NA,NA,4182
+Chennai,Madhavaram,NA,33,2.461744,NA,NA,5283.59
+Chennai,Tondiarpet,NA,34,2.380013,NA,NA,5198
+Chennai,Tondiarpet,NA,35,1.757238,NA,NA,8503.64
+Chennai,Tondiarpet,NA,36,1.534958,NA,NA,27017
+Chennai,Tondiarpet,NA,37,4.351906,NA,NA,38299.6
+Chennai,Tondiarpet,NA,38,2.481981,NA,NA,12034
+Chennai,Tondiarpet,NA,39,1.041026,NA,NA,NA
+Chennai,Tondiarpet,NA,40,0.829662,NA,NA,11673
+Chennai,Tondiarpet,NA,41,0.8839,NA,NA,1095
+Chennai,Tondiarpet,NA,42,0.58499,NA,NA,9600
+Chennai,Tondiarpet,NA,43,0.936866,NA,NA,9040
+Chennai,Tondiarpet,NA,44,0.664634,NA,NA,720
+Chennai,Tondiarpet,NA,45,1.132053,NA,NA,17278.22
+Chennai,Tondiarpet,NA,46,1.054755,NA,NA,560
+Chennai,Tondiarpet,NA,47,0.740961,NA,NA,5191.37
+Chennai,Tondiarpet,NA,48,0.478828,NA,NA,425
+Chennai,Royapuram,NA,49,0.780018,NA,NA,164
+Chennai,Royapuram,NA,50,1.53605,NA,NA,9382
+Chennai,Royapuram,NA,51,0.288136,NA,NA,NA
+Chennai,Royapuram,NA,52,1.034141,NA,NA,34387
+Chennai,Royapuram,NA,53,0.971131,NA,NA,4435
+Chennai,Royapuram,NA,54,0.593599,NA,NA,3948
+Chennai,Royapuram,NA,55,0.573699,NA,NA,NA
+Chennai,Royapuram,NA,56,0.566588,NA,NA,11603
+Chennai,Royapuram,NA,57,0.907897,NA,NA,4200
+Chennai,Royapuram,NA,58,2.593984,NA,NA,35037
+Chennai,Royapuram,NA,59,2.816186,NA,NA,500
+Chennai,Royapuram,NA,60,5.13895,NA,NA,62329.32
+Chennai,Royapuram,NA,61,2.217544,NA,NA,14470
+Chennai,Royapuram,NA,62,0.833478,NA,NA,8739
+Chennai,Royapuram,NA,63,0.963923,NA,NA,10286
+Chennai,Thiru-vi-ka Nagar,NA,64,2.421622,NA,NA,5313
+Chennai,Thiru-vi-ka Nagar,NA,65,1.808892,NA,NA,7502.41
+Chennai,Thiru-vi-ka Nagar,NA,66,1.658097,NA,NA,15416
+Chennai,Thiru-vi-ka Nagar,NA,67,1.048508,NA,NA,7337
+Chennai,Thiru-vi-ka Nagar,NA,68,0.899489,NA,NA,16913
+Chennai,Thiru-vi-ka Nagar,NA,69,1.732992,NA,NA,863.79
+Chennai,Thiru-vi-ka Nagar,NA,70,1.498155,NA,NA,15528
+Chennai,Thiru-vi-ka Nagar,NA,71,0.924717,NA,NA,9000
+Chennai,Thiru-vi-ka Nagar,NA,72,1.362153,NA,NA,17000
+Chennai,Thiru-vi-ka Nagar,NA,73,0.804459,NA,NA,8241.83
+Chennai,Thiru-vi-ka Nagar,NA,74,0.928183,NA,NA,42252
+Chennai,Thiru-vi-ka Nagar,NA,75,0.329731,NA,NA,5776.27
+Chennai,Thiru-vi-ka Nagar,NA,76,0.44911,NA,NA,10965
+Chennai,Thiru-vi-ka Nagar,NA,77,0.574054,NA,NA,12250
+Chennai,Thiru-vi-ka Nagar,NA,78,0.672426,NA,NA,5551
+Chennai,Ambattur,NA,79,2.091707,NA,NA,3050
+Chennai,Ambattur,NA,80,1.485749,NA,NA,17650
+Chennai,Ambattur,NA,81,1.661863,NA,NA,8550
+Chennai,Ambattur,NA,82,4.561074,NA,NA,4258.51
+Chennai,Ambattur,NA,83,7.573013,NA,NA,28697.29
+Chennai,Ambattur,NA,84,2.963867,NA,NA,3674.75
+Chennai,Ambattur,NA,85,4.37582,NA,NA,1197.92
+Chennai,Ambattur,NA,86,6.151787,NA,NA,23744
+Chennai,Ambattur,NA,87,0.682946,NA,NA,950.62
+Chennai,Ambattur,NA,88,0.821893,NA,NA,17251
+Chennai,Ambattur,NA,89,0.975378,NA,NA,12462.93
+Chennai,Ambattur,NA,90,1.413107,NA,NA,11297.96
+Chennai,Ambattur,NA,91,1.194735,NA,NA,18489.674
+Chennai,Ambattur,NA,92,1.113648,NA,NA,25157.74
+Chennai,Ambattur,NA,93,1.410798,NA,NA,17710
+Chennai,Anna Nagar,NA,94,1.784203,NA,NA,380
+Chennai,Anna Nagar,NA,95,2.795592,NA,NA,32514.2655
+Chennai,Anna Nagar,NA,96,2.987171,NA,NA,5305.5
+Chennai,Anna Nagar,NA,97,0.743434,NA,NA,12984.5
+Chennai,Anna Nagar,NA,98,1.198428,NA,NA,2255.02
+Chennai,Anna Nagar,NA,99,1.544296,NA,NA,19956.796
+Chennai,Anna Nagar,NA,100,2.485982,NA,NA,72889.7
+Chennai,Anna Nagar,NA,101,1.749445,NA,NA,41794
+Chennai,Anna Nagar,NA,102,1.650047,NA,NA,26442.1703
+Chennai,Anna Nagar,NA,103,2.076033,NA,NA,2985
+Chennai,Anna Nagar,NA,104,1.298957,NA,NA,5281.86
+Chennai,Anna Nagar,NA,105,1.382206,NA,NA,87.4
+Chennai,Anna Nagar,NA,106,1.065619,NA,NA,5359.59
+Chennai,Anna Nagar,NA,107,1.530114,NA,NA,6563.4
+Chennai,Anna Nagar,NA,108,0.9973,NA,NA,1890
+Chennai,Teynampet,NA,109,0.942056,NA,NA,9866.76
+Chennai,Teynampet,NA,110,2.053754,NA,NA,10918.75
+Chennai,Teynampet,NA,111,2.717491,NA,NA,71765.46
+Chennai,Teynampet,NA,112,1.060381,NA,NA,14407.71
+Chennai,Teynampet,NA,113,1.426166,NA,NA,8200
+Chennai,Teynampet,NA,114,1.758993,NA,NA,12940.6
+Chennai,Teynampet,NA,115,0.851946,NA,NA,NA
+Chennai,Teynampet,NA,116,0.679889,NA,NA,51400
+Chennai,Teynampet,NA,117,1.627192,NA,NA,1040.735
+Chennai,Teynampet,NA,118,1.871298,NA,NA,6614.78
+Chennai,Teynampet,NA,119,1.364204,NA,NA,3050
+Chennai,Teynampet,NA,120,0.55619,NA,NA,NA
+Chennai,Teynampet,NA,121,0.899159,NA,NA,NA
+Chennai,Teynampet,NA,122,1.815498,NA,NA,11718.055
+Chennai,Teynampet,NA,123,2.240047,NA,NA,13540
+Chennai,Teynampet,NA,124,1.024984,NA,NA,2063
+Chennai,Teynampet,NA,125,1.264087,NA,NA,1500
+Chennai,Teynampet,NA,126,1.040025,NA,NA,21157.83
+Chennai,Kodambakkam,NA,127,3.67339,NA,NA,38977
+Chennai,Kodambakkam,NA,128,1.984462,NA,NA,9975.23
+Chennai,Kodambakkam,NA,129,1.907926,NA,NA,28678.99
+Chennai,Kodambakkam,NA,130,1.201632,NA,NA,13239.9
+Chennai,Kodambakkam,NA,131,1.120467,NA,NA,22036.086
+Chennai,Kodambakkam,NA,132,1.478328,NA,NA,18266.7
+Chennai,Kodambakkam,NA,133,1.045027,NA,NA,NA
+Chennai,Kodambakkam,NA,134,1.096028,NA,NA,4937
+Chennai,Kodambakkam,NA,135,0.945871,NA,NA,2376
+Chennai,Kodambakkam,NA,136,1.838461,NA,NA,62565.5
+Chennai,Kodambakkam,NA,137,1.49873,NA,NA,46131.51
+Chennai,Kodambakkam,NA,138,1.187827,NA,NA,3343
+Chennai,Kodambakkam,NA,139,0.724023,NA,NA,708.82
+Chennai,Kodambakkam,NA,140,0.760874,NA,NA,6850.7
+Chennai,Kodambakkam,NA,141,0.778289,NA,NA,6784
+Chennai,Kodambakkam,NA,142,1.065646,NA,NA,5715.94
+Chennai,Valasaravakkam,NA,143,2.603056,NA,NA,27764.65
+Chennai,Valasaravakkam,NA,144,1.301845,NA,NA,1000
+Chennai,Valasaravakkam,NA,145,1.786673,NA,NA,NA
+Chennai,Valasaravakkam,NA,146,1.242417,NA,NA,1680
+Chennai,Valasaravakkam,NA,147,2.273455,NA,NA,4945
+Chennai,Valasaravakkam,NA,148,0.955533,NA,NA,6060.66
+Chennai,Valasaravakkam,NA,149,1.606503,NA,NA,12194.25
+Chennai,Valasaravakkam,NA,150,3.232746,NA,NA,11684.37
+Chennai,Valasaravakkam,NA,151,1.434165,NA,NA,8473.57
+Chennai,Valasaravakkam,NA,152,1.357075,NA,NA,3291.5
+Chennai,Valasaravakkam,NA,153,2.266707,NA,NA,5086.71
+Chennai,Valasaravakkam,NA,154,1.062099,NA,NA,979.58
+Chennai,Valasaravakkam,NA,155,1.654479,NA,NA,3526.56
+Chennai,Alandur,NA,156,3.190979,NA,NA,37859.62
+Chennai,Alandur,NA,157,4.163766,NA,NA,12995
+Chennai,Alandur,NA,158,2.012471,NA,NA,485
+Chennai,Alandur,NA,159,3.367049,NA,NA,NA
+Chennai,Alandur,NA,160,0.652114,NA,NA,1467
+Chennai,Alandur,NA,161,0.783476,NA,NA,2837
+Chennai,Alandur,NA,162,1.118009,NA,NA,1039.63
+Chennai,Alandur,NA,163,0.564748,NA,NA,520
+Chennai,Alandur,NA,164,0.685551,NA,NA,2300
+Chennai,Alandur,NA,165,1.147774,NA,NA,5766.975
+Chennai,Alandur,NA,166,1.276871,NA,NA,835.93
+Chennai,Alandur,NA,167,1.28118,NA,NA,13904.2
+Chennai,Perungudi,NA,168,0.861667,NA,NA,225
+Chennai,Perungudi,NA,169,2.619124,NA,NA,14623
+Chennai,Adayar,NA,170,3.560857,NA,NA,14937.97
+Chennai,Adayar,NA,171,3.837278,NA,NA,4217.92
+Chennai,Adayar,NA,172,2.632173,NA,NA,40646.98
+Chennai,Adayar,NA,173,3.349904,NA,NA,44048.08
+Chennai,Adayar,NA,174,8.378751,NA,NA,13655.44
+Chennai,Adayar,NA,175,2.434209,NA,NA,22762.65
+Chennai,Adayar,NA,176,3.480204,NA,NA,11499
+Chennai,Adayar,NA,177,2.424453,NA,NA,15883.56
+Chennai,Adayar,NA,178,1.491754,NA,NA,7381.79
+Chennai,Adayar,NA,179,2.339029,NA,NA,40154.31
+Chennai,Adayar,NA,180,2.761956,NA,NA,17674.14
+Chennai,Adayar,NA,181,1.855846,NA,NA,13897
+Chennai,Adayar,NA,182,1.82013,NA,NA,33386
+Chennai,Perungudi,NA,183,2.458925,NA,NA,5609
+Chennai,Perungudi,NA,184,3.002407,NA,NA,15507
+Chennai,Perungudi,NA,185,2.087614,NA,NA,18791.655
+Chennai,Perungudi,NA,186,1.851079,NA,NA,13952.67
+Chennai,Perungudi,NA,187,0.830515,NA,NA,2077
+Chennai,Perungudi,NA,188,4.192644,NA,NA,5580
+Chennai,Perungudi,NA,189,10.862088,NA,NA,38422.08
+Chennai,Perungudi,NA,190,4.812667,NA,NA,6523
+Chennai,Perungudi,NA,191,2.258465,NA,NA,10054
+Chennai,Sozhanganallur,NA,192,2.553768,NA,NA,915
+Chennai,Sozhanganallur,NA,193,2.423328,NA,NA,16700
+Chennai,Sozhanganallur,NA,194,2.047518,NA,NA,25714.17
+Chennai,Sozhanganallur,NA,195,1.875008,NA,NA,14719.76
+Chennai,Sozhanganallur,NA,196,5.458073,NA,NA,4156
+Chennai,Sozhanganallur,NA,197,8.838748,NA,NA,64750.52
+Chennai,Sozhanganallur,NA,198,9.010542,NA,NA,25325.9
+Chennai,Sozhanganallur,NA,199,2.670566,NA,NA,6209.34
+Chennai,Sozhanganallur,NA,200,7.738816,NA,NA,7420

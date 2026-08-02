@@ -61,7 +61,7 @@ function SignupPage() {
     (0, __TURBOPACK__imported__module__$5b$project$5d2f$civifix$2d$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useEffect"])({
         "SignupPage.useEffect": ()=>{
             // Fetch districts on mount
-            fetch(("TURBOPACK compile-time value", "https://cv.onenism.org/api/v1") + "/admin/districts?active_only=false").then({
+            fetch(("TURBOPACK compile-time value", "http://localhost:8000/api/v1") + "/admin/districts?active_only=false").then({
                 "SignupPage.useEffect": (res)=>res.json()
             }["SignupPage.useEffect"]).then({
                 "SignupPage.useEffect": (json)=>{

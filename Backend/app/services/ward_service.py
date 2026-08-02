@@ -44,10 +44,10 @@ class WardService:
 
                 await self._validate_inspector_district(inspector, ward_data.district_id, district)
 
-            # Check for duplicate ward number in district
             existing_ward = await self.ward_repo.get_by_ward_number(
                 ward_data.ward_number,
-                ward_data.district_id
+                ward_data.district_id,
+                getattr(ward_data, "local_body", None)
             )
             if existing_ward:
                 raise ValidationError(f"Ward number {ward_data.ward_number} already exists in this district")
@@ -122,11 +122,11 @@ class WardService:
 
                 await self._validate_inspector_district(inspector, district_id, district)
 
-            # If changing ward name, validate for duplicates
             if update_data.ward_name:
                 existing = await self.ward_repo.get_by_ward_number(
                     ward.get("ward_number"),
-                    str(ward.get("district_id"))
+                    str(ward.get("district_id")),
+                    ward.get("local_body")
                 )
                 if existing and str(existing.get("_id")) != ward_id:
                     raise ValidationError("Another ward with this name already exists")
@@ -293,15 +293,16 @@ class WardService:
         """Format ward document for response"""
         if not ward:
             return None
-        label = None
-        wn = ward.get("ward_number")
-        wname = ward.get("ward_name")
-        if wn is not None and wname:
-            label = f"{wn} - {wname}"
-        elif wname:
-            label = wname
-        elif wn is not None:
-            label = str(wn)
+        label = ward.get("label")
+        if not label:
+            wn = ward.get("ward_number")
+            wname = ward.get("ward_name")
+            if wn is not None and wname:
+                label = f"{wn} - {wname}"
+            elif wname:
+                label = wname
+            elif wn is not None:
+                label = str(wn)
 
         return {
             "_id": str(ward.get("_id", "")),

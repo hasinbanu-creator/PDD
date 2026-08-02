@@ -77,9 +77,18 @@ async def list_all_wards(
             query["is_active"] = is_active
 
         from app.db.mongodb import db as motor_db
+        use_collation = False
+        if resolved_district_id:
+            district_doc = await motor_db.districts.find_one({"_id": resolved_district_id})
+            if district_doc and district_doc.get("name") in ("Thiruvallur", "Chengalpattu", "Ranipet", "Vellore", "Thiruvannamalai", "Villupuram", "Tirupattur", "Krishnagiri", "Dharmapuri", "Kallakurichi", "Cuddalore", "Salem", "Namakkal", "Karur", "Erode", "Dindigul", "Tiruppur", "Coimbatore", "Madurai", "Sivagangai", "Virudhunagar", "Tenkasi", "Thoothukudi", "Tirunelveli", "Ramanathapuram", "Perambalur", "Ariyalur", "Mayiladuthurai", "Tiruchirappalli", "Thanjavur", "Thiruvarur", "Nagapattinam", "Pudukkottai", "Theni", "Chennai", "The Nilgiris"):
+                use_collation = True
+
         skip = (page - 1) * limit
         total = await motor_db.wards.count_documents(query)
-        wards = await motor_db.wards.find(query).sort("ward_number", 1).skip(skip).limit(limit).to_list(length=limit)
+        cursor = motor_db.wards.find(query).sort("ward_number", 1).skip(skip).limit(limit)
+        if use_collation:
+            cursor = cursor.collation({"locale": "en", "numericOrdering": True})
+        wards = await cursor.to_list(length=limit)
 
         logger.info(f"[wards] Query: {query} -> returned {len(wards)} wards (total: {total})")
 

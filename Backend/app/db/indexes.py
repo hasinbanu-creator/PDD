@@ -22,8 +22,16 @@ async def create_indexes(db: AsyncIOMotorDatabase):
         # Ward indexes
         await db["wards"].create_index("district_id")
         await db["wards"].create_index("inspector_id")
-        await db["wards"].create_index([("district_id", 1), ("ward_number", 1)], unique=True)
+        try:
+            await db["wards"].drop_index("district_id_1_ward_number_1")
+        except Exception:
+            pass
+        await db["wards"].create_index([("district_id", 1), ("local_body", 1), ("ward_number", 1)], unique=True)
         await db["wards"].create_index("is_active")
+        await db["wards"].create_index("district")
+        await db["wards"].create_index("local_body")
+        await db["wards"].create_index("ward_number")
+        await db["wards"].create_index("zone", sparse=True)
         
         # Complaint indexes - CRITICAL for performance
         await db["complaints"].create_index("complaint_id", unique=True)

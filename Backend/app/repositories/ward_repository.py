@@ -38,13 +38,16 @@ class WardRepository:
             logger.error(f"Error fetching ward: {str(e)}")
             return None
 
-    async def get_by_ward_number(self, ward_number: str, district_id: str) -> Optional[dict]:
-        """Get ward by ward number in district"""
+    async def get_by_ward_number(self, ward_number: str, district_id: str, local_body: Optional[str] = None) -> Optional[dict]:
+        """Get ward by ward number in district and optional local body"""
         try:
-            ward = await self.collection.find_one({
+            query = {
                 "ward_number": ward_number,
                 "district_id": ObjectId(district_id) if district_id and len(str(district_id)) == 24 else district_id
-            })
+            }
+            if local_body:
+                query["local_body"] = local_body
+            ward = await self.collection.find_one(query)
             return ward
         except Exception as e:
             logger.error(f"Error fetching ward by number: {str(e)}")
@@ -93,11 +96,26 @@ class WardRepository:
             
             total = await self.collection.count_documents(query)
             
-            wards = await self.collection.find(query)\
+            # Sort by ward_number ascending if the district is Thiruvallur, Chengalpattu, Ranipet, Vellore, Thiruvannamalai, Villupuram, Tirupattur, Krishnagiri, Dharmapuri, Kallakurichi, Cuddalore, Salem, Namakkal, Karur, Erode, Dindigul, Tiruppur, Coimbatore, Madurai, Sivagangai, Virudhunagar, Tenkasi, Thoothukudi, Tirunelveli, Ramanathapuram, Perambalur, Ariyalur, Mayiladuthurai, Tiruchirappalli, Thanjavur, Thiruvarur, Nagapattinam, Pudukkottai, or Theni, otherwise by created_at descending
+            sort_field = "created_at"
+            sort_order = -1
+            use_collation = False
+            if resolved_id:
+                district_doc = await self.db["districts"].find_one({"_id": resolved_id})
+                if district_doc and district_doc.get("name") in ("Thiruvallur", "Chengalpattu", "Ranipet", "Vellore", "Thiruvannamalai", "Villupuram", "Tirupattur", "Krishnagiri", "Dharmapuri", "Kallakurichi", "Cuddalore", "Salem", "Namakkal", "Karur", "Erode", "Dindigul", "Tiruppur", "Coimbatore", "Madurai", "Sivagangai", "Virudhunagar", "Tenkasi", "Thoothukudi", "Tirunelveli", "Ramanathapuram", "Perambalur", "Ariyalur", "Mayiladuthurai", "Tiruchirappalli", "Thanjavur", "Thiruvarur", "Nagapattinam", "Pudukkottai", "Theni", "Chennai", "The Nilgiris"):
+                    sort_field = "ward_number"
+                    sort_order = 1
+                    use_collation = True
+
+            cursor = self.collection.find(query)\
                 .skip(skip)\
                 .limit(limit)\
-                .sort("created_at", -1)\
-                .to_list(length=limit)
+                .sort(sort_field, sort_order)
+
+            if use_collation:
+                cursor = cursor.collation({"locale": "en", "numericOrdering": True})
+
+            wards = await cursor.to_list(length=limit)
             
             return wards, total
         except Exception as e:
@@ -135,12 +153,25 @@ class WardRepository:
     ) -> tuple[List[dict], int]:
         """Search wards by name"""
         try:
+            or_clauses = [
+                {"ward_name": {"$regex": search_query, "$options": "i"}},
+                {"zone": {"$regex": search_query, "$options": "i"}}
+            ]
+            if search_query.isdigit():
+                stripped_query = str(int(search_query))
+                or_clauses.extend([
+                    {"ward_number": int(search_query)},
+                    {"ward_number": search_query},
+                    {"ward_number": stripped_query},
+                    {"ward_number": {"$regex": f"^{search_query}$", "$options": "i"}},
+                    {"ward_number": {"$regex": f"^{stripped_query}$", "$options": "i"}}
+                ])
+            else:
+                or_clauses.append({"ward_number": {"$regex": search_query, "$options": "i"}})
+
             query = {
                 "district_id": ObjectId(district_id) if district_id and len(str(district_id)) == 24 else district_id,
-                "$or": [
-                    {"ward_name": {"$regex": search_query, "$options": "i"}},
-                    {"ward_number": {"$regex": search_query, "$options": "i"}}
-                ]
+                "$or": or_clauses
             }
             
             total = await self.collection.count_documents(query)

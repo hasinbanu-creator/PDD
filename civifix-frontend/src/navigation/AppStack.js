@@ -151,24 +151,6 @@ export const AppStack = () => {
       )}
 
 
-      {user?.role !== "INSPECTOR" && (
-        <Tab.Screen
-          name="Status"
-          component={DashboardStack}
-          options={{
-            tabBarLabel: "Status",
-            tabBarIcon: ({ color, size }) => (
-              <Icon name="magnify" color={color} size={size} />
-            ),
-            listeners: ({ navigation }) => ({
-              tabPress: (e) => {
-                e.preventDefault();
-                navigation.navigate("Complaints", { screen: "ComplaintsHome" });
-              },
-            }),
-          }}
-        />
-      )}
       <Tab.Screen
         name="Profile"
         component={ProfileStack}

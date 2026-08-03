@@ -54,6 +54,10 @@ async def create_complaint(
     citizen_note: Optional[str] = Form(None),
     priority: Optional[str] = Form(Priority.MEDIUM),
     images: List[UploadFile] = File(default=[]),
+    districtId: Optional[str] = Form(None),
+    districtName: Optional[str] = Form(None),
+    wardId: Optional[str] = Form(None),
+    wardName: Optional[str] = Form(None),
     current_user: dict = Depends(get_current_user),
     service: ComplaintService = Depends(get_complaint_service)
 ):
@@ -82,7 +86,7 @@ async def create_complaint(
                 image_urls.append(f"{user_id}/images/{new_filename}")
 
         complaint_data = ComplaintCreateSchema(
-            ward_id=ward_id,
+            ward_id=wardId or ward_id,
             complaint_type=ComplaintType(complaint_type),
             description=description,
             latitude=latitude,
@@ -91,7 +95,11 @@ async def create_complaint(
             landmark=landmark,
             citizen_note=citizen_note,
             priority=Priority(priority) if priority else Priority.MEDIUM,
-            image_urls=image_urls
+            image_urls=image_urls,
+            districtId=districtId,
+            districtName=districtName,
+            wardId=wardId or ward_id,
+            wardName=wardName
         )
         logger.info(f"Complaint payload: {complaint_data.dict()}")
         
@@ -130,15 +138,21 @@ async def save_complaint_draft(
 ):
     """Save a draft complaint (CITIZEN only)"""
     try:
-        # Re-using create_complaint logic but we'll mark status as DRAFT
-        # For simplicity in this implementation, we just call create with a draft flag
-        # Assuming the service handles it, or we just insert it directly
+        # Save a draft complaint directly with DRAFT status
         result = await service.create_complaint(
             complaint_data,
             current_user["user_id"],
-            current_user.get("role", "CITIZEN"),
-            is_draft=True
+            current_user.get("role", "CITIZEN")
         )
+        # Override status to DRAFT after creation
+        if result and result.get("_id"):
+            from app.db.mongodb import db
+            from bson import ObjectId
+            await db.complaints.update_one(
+                {"complaint_id": result.get("complaint_id")},
+                {"$set": {"status": "DRAFT"}}
+            )
+            result["status"] = "DRAFT"
         return SuccessResponse.create(
             data=result,
             message="Draft saved successfully",

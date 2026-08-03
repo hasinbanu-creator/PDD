@@ -28,7 +28,7 @@ export function useCreateComplaint() {
   });
 }
 
-export function useWardComplaints(params: { page?: number; limit?: number; status?: string; district_id?: string; ward_id?: string } = {}, options?: Partial<UseQueryOptions>) {
+export function useWardComplaints(params: { page?: number; limit?: number; status?: string; district_id?: string; ward_id?: string; district?: string } = {}, options?: Partial<UseQueryOptions>) {
   return useQuery({
     queryKey: ["ward-complaints", params],
     queryFn: () => authService.getWardComplaints(params),

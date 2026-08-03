@@ -5,10 +5,10 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/auth-context";
 import authService from "@/services/auth";
-import { 
-  FlaskConical, 
-  Search, 
-  MapPin, 
+import {
+  FlaskConical,
+  Search,
+  MapPin,
   ChevronRight,
   ClipboardList,
   AlertCircle,
@@ -34,43 +34,43 @@ type ComplaintType = "ROAD_DAMAGE" | "POTHOLE" | "GARBAGE" | "STREETLIGHT" | "WA
 
 // Mock Data / Styles - Updated with premium tokens
 const STATUS_STYLES: Record<ComplaintStatus, { label: string; color: string; bg: string }> = {
-  OPEN:        { label: "Pending",     color: "text-accent", bg: "bg-accent/10" },
-  PENDING:     { label: "Pending",     color: "text-accent", bg: "bg-accent/10" },
-  WORKING:     { label: "In Progress", color: "text-primary",  bg: "bg-primary/10" },
-  IN_PROGRESS: { label: "In Progress", color: "text-primary",  bg: "bg-primary/10" },
-  APPROVAL:    { label: "Review",      color: "text-secondary",  bg: "bg-secondary/10" },
-  CLOSED:      { label: "Resolved",    color: "text-success", bg: "bg-success/10" },
-  RESOLVED:    { label: "Resolved",    color: "text-success", bg: "bg-success/10" },
-  REJECTED:    { label: "Rejected",    color: "text-destructive",   bg: "bg-destructive/10" },
+  OPEN: { label: "Pending", color: "text-accent", bg: "bg-accent/10" },
+  PENDING: { label: "Pending", color: "text-accent", bg: "bg-accent/10" },
+  WORKING: { label: "In Progress", color: "text-primary", bg: "bg-primary/10" },
+  IN_PROGRESS: { label: "In Progress", color: "text-primary", bg: "bg-primary/10" },
+  APPROVAL: { label: "Review", color: "text-secondary", bg: "bg-secondary/10" },
+  CLOSED: { label: "Resolved", color: "text-success", bg: "bg-success/10" },
+  RESOLVED: { label: "Resolved", color: "text-success", bg: "bg-success/10" },
+  REJECTED: { label: "Rejected", color: "text-destructive", bg: "bg-destructive/10" },
 };
 
 const TYPE_META: Record<ComplaintType, { icon: React.ElementType; color: string; bg: string; title: string }> = {
-  ROAD_DAMAGE:  { icon: Map, color: "text-destructive", bg: "bg-destructive/10", title: "Road Damage" },
-  POTHOLE:      { icon: Map, color: "text-destructive", bg: "bg-destructive/10", title: "Pothole" },
-  GARBAGE:      { icon: ClipboardList, color: "text-secondary", bg: "bg-secondary/10", title: "Waste Collection" },
-  STREETLIGHT:  { icon: AlertCircle, color: "text-primary", bg: "bg-primary/10", title: "Street Light" },
+  ROAD_DAMAGE: { icon: Map, color: "text-destructive", bg: "bg-destructive/10", title: "Road Damage" },
+  POTHOLE: { icon: Map, color: "text-destructive", bg: "bg-destructive/10", title: "Pothole" },
+  GARBAGE: { icon: ClipboardList, color: "text-secondary", bg: "bg-secondary/10", title: "Waste Collection" },
+  STREETLIGHT: { icon: AlertCircle, color: "text-primary", bg: "bg-primary/10", title: "Street Light" },
   WATER_SUPPLY: { icon: Activity, color: "text-primary", bg: "bg-primary/10", title: "Water Supply" },
-  DRAINAGE:     { icon: Wrench, color: "text-secondary", bg: "bg-secondary/10", title: "Drainage" },
-  SANITATION:   { icon: ClipboardList, color: "text-secondary", bg: "bg-secondary/10", title: "Sanitation" },
+  DRAINAGE: { icon: Wrench, color: "text-secondary", bg: "bg-secondary/10", title: "Drainage" },
+  SANITATION: { icon: ClipboardList, color: "text-secondary", bg: "bg-secondary/10", title: "Sanitation" },
   TREE_CUTTING: { icon: MapPin, color: "text-success", bg: "bg-success/10", title: "Tree Issue" },
   CONSTRUCTION: { icon: Wrench, color: "text-accent", bg: "bg-accent/10", title: "Construction" },
-  OTHER:        { icon: AlertCircle, color: "text-destructive", bg: "bg-destructive/10", title: "Civic Issue" },
+  OTHER: { icon: AlertCircle, color: "text-destructive", bg: "bg-destructive/10", title: "Civic Issue" },
 };
 
 const ROLE_META: Record<string, { label: string; color: string; bg: string; gradient: string }> = {
-  SUPER_ADMIN:    { label: "Super Admin",    color: "text-primary", bg: "bg-primary/20", gradient: "from-primary to-slate-900" },
+  SUPER_ADMIN: { label: "Super Admin", color: "text-primary", bg: "bg-primary/20", gradient: "from-primary to-slate-900" },
   DISTRICT_ADMIN: { label: "District Admin", color: "text-secondary", bg: "bg-secondary/20", gradient: "from-secondary to-indigo-900" },
-  INSPECTOR:      { label: "Inspector",      color: "text-[#0F8A83]", bg: "bg-[#DDF8F5]", gradient: "from-[#0F8A83] to-[#0B6E69]" },
-  WORKER:         { label: "Worker",         color: "text-success", bg: "bg-success/20", gradient: "from-success to-slate-900" },
-  CITIZEN:        { label: "Citizen",        color: "text-accent", bg: "bg-accent/20", gradient: "from-primary to-slate-900" },
+  INSPECTOR: { label: "Inspector", color: "text-[#0F8A83]", bg: "bg-[#DDF8F5]", gradient: "from-[#0F8A83] to-[#0B6E69]" },
+  WORKER: { label: "Worker", color: "text-success", bg: "bg-success/20", gradient: "from-success to-slate-900" },
+  CITIZEN: { label: "Citizen", color: "text-accent", bg: "bg-accent/20", gradient: "from-primary to-slate-900" },
 };
 
 const ROLE_GREETING: Record<string, { title: string; sub: string }> = {
-  SUPER_ADMIN:    { title: "Civifix", sub: "Super Admin Panel" },
+  SUPER_ADMIN: { title: "Civifix", sub: "Super Admin Panel" },
   DISTRICT_ADMIN: { title: "Civifix", sub: "District Admin Panel" },
-  INSPECTOR:      { title: "Civifix", sub: "Inspector Dashboard" },
-  WORKER:         { title: "Civifix", sub: "Worker Dashboard" },
-  CITIZEN:        { title: "Civifix", sub: "Citizen Platform" },
+  INSPECTOR: { title: "Civifix", sub: "Inspector Dashboard" },
+  WORKER: { title: "Civifix", sub: "Worker Dashboard" },
+  CITIZEN: { title: "Civifix", sub: "Citizen Platform" },
 };
 
 // --- Shared Components ---
@@ -102,7 +102,7 @@ function MetricCard({ icon: Icon, value, label, colorClass, bgClass }: any) {
 function ComplaintItem({ complaint, index, total }: any) {
   const { user } = useAuth();
   const isInspector = user?.role === "INSPECTOR" || user?.role === "WORKER";
-  
+
   const type = (complaint.complaint_type as ComplaintType) || "OTHER";
   const meta = TYPE_META[type] || TYPE_META.OTHER;
   const status = STATUS_STYLES[complaint.status as ComplaintStatus] || STATUS_STYLES.OPEN;
@@ -110,8 +110,12 @@ function ComplaintItem({ complaint, index, total }: any) {
   const desc = complaint.description || "No description provided";
   const Icon = meta.icon;
 
+  const districtName = complaint.districtName || complaint.district_name || complaint.district || "Not Available";
+  const wardName = complaint.wardName || complaint.ward_name || complaint.ward?.ward_name || complaint.ward || "Not Available";
+  const citizenName = complaint.citizenName || complaint.citizen_name || complaint.citizen?.name || "Not Available";
+
   return (
-    <Link 
+    <Link
       href={`/complaints/${complaint.id || complaint._id || complaint.complaint_id}`}
       className={`flex items-start p-5 hover:bg-muted/50 transition-colors duration-200 ${index !== total - 1 ? 'border-b border-border/50' : ''}`}
     >
@@ -119,59 +123,38 @@ function ComplaintItem({ complaint, index, total }: any) {
         <Icon className={`w-6 h-6 ${meta.color}`} />
       </div>
       <div className="flex-1 min-w-0 mr-4">
-        <h4 className="text-base font-bold text-foreground truncate">{title}</h4>
+        <h4 className="text-base font-bold text-foreground">{title}</h4>
+        <p className="text-sm font-medium text-muted-foreground mt-1 whitespace-pre-line">{desc}</p>
         
-        {isInspector ? (
-          <div className="mt-1.5 space-y-1.5">
-            <p className="text-sm font-medium text-muted-foreground truncate" title={complaint.address}>
-              Location: <span className="text-foreground">{complaint.address || desc}{complaint.landmark ? ` (Landmark: ${complaint.landmark})` : ""}</span>
-            </p>
-            {(complaint.district_name || complaint.ward_name || complaint.ward?.ward_name) && (
-              <p className="text-xs font-bold text-muted-foreground">
-                {complaint.district_name && <>District: <span className="text-foreground">{complaint.district_name}</span></>}
-                {complaint.district_name && (complaint.ward_name || complaint.ward?.ward_name) && <span className="mx-1.5 text-muted-foreground/30">|</span>}
-                {(complaint.ward_name || complaint.ward?.ward_name) && <>Ward: <span className="text-foreground">{complaint.ward_name || complaint.ward?.ward_name}</span></>}
-              </p>
-            )}
-            <div className="flex items-center gap-2 mt-1">
-              <span className="text-xs font-bold text-muted-foreground tracking-wider">
-                {complaint.complaint_id || complaint._id || "#CIV-NEW"}
-              </span>
-              <span className="w-1 h-1 rounded-full bg-border"></span>
-              <span className="text-xs font-bold text-foreground">
-                Citizen: {complaint.citizen?.name || "Citizen"}
-              </span>
-              <span className="w-1 h-1 rounded-full bg-border"></span>
-              <span className="text-xs font-bold text-foreground">
-                Category: {meta.title}
-              </span>
-            </div>
-            {complaint.created_at && (
-              <p className="text-xs font-semibold text-muted-foreground mt-1">
-                {new Date(complaint.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
-              </p>
-            )}
+        <div className="text-xs space-y-1.5 bg-muted/40 p-2.5 rounded-xl border border-border/50 mt-2">
+          <div>
+            <span className="font-bold text-muted-foreground">Raised By :</span>{" "}
+            <span className="font-semibold text-foreground">{citizenName}</span>
           </div>
-        ) : (
-          <>
-            <p className="text-sm font-medium text-muted-foreground truncate mt-1">{desc}</p>
-            {(complaint.district_name || complaint.ward_name || complaint.ward?.ward_name) && (
-              <p className="text-xs font-bold text-muted-foreground mt-1">
-                {complaint.district_name && <>District: <span className="text-foreground">{complaint.district_name}</span></>}
-                {complaint.district_name && (complaint.ward_name || complaint.ward?.ward_name) && <span className="mx-1.5 text-muted-foreground/30">|</span>}
-                {(complaint.ward_name || complaint.ward?.ward_name) && <>Ward: <span className="text-foreground">{complaint.ward_name || complaint.ward?.ward_name}</span></>}
-              </p>
-            )}
-            {complaint.address && (
-              <p className="text-xs font-semibold text-muted-foreground truncate mt-1">
-                Location: <span className="text-foreground">{complaint.address}{complaint.landmark ? ` (Landmark: ${complaint.landmark})` : ""}</span>
-              </p>
-            )}
-            <p className="text-xs font-bold text-muted-foreground mt-1.5 uppercase tracking-wider">
-              {complaint.complaint_id || complaint._id || "#CIV-NEW"}
-            </p>
-          </>
-        )}
+          <div>
+            <span className="font-bold text-muted-foreground">District :</span>{" "}
+            <span className="font-semibold text-foreground">{districtName}</span>
+          </div>
+          <div>
+            <span className="font-bold text-muted-foreground">Ward :</span>{" "}
+            <span className="font-semibold text-foreground">{wardName}</span>
+          </div>
+          <div className="whitespace-pre-line">
+            <span className="font-bold text-muted-foreground">Address :</span>{" "}
+            <span className="font-semibold text-foreground">{complaint.address || "Not Available"}</span>
+          </div>
+          <div className="whitespace-pre-line">
+            <span className="font-bold text-muted-foreground">Landmark :</span>{" "}
+            <span className="font-semibold text-foreground">{complaint.landmark || "Not Available"}</span>
+          </div>
+        </div>
+        
+        <div className="text-xs font-bold text-muted-foreground mt-2">
+          Complaint ID :
+        </div>
+        <div className="text-xs font-semibold text-foreground mt-0.5 break-all">
+          {complaint.complaint_id || complaint.complaintId || complaint._id || "Not Available"}
+        </div>
       </div>
       <div className="flex flex-col items-end gap-3 shrink-0">
         <span className={`px-3 py-1 rounded-full text-xs font-bold ${status.bg} ${status.color}`}>
@@ -190,7 +173,7 @@ function ComplaintItem({ complaint, index, total }: any) {
 
 function QuickActionBtn({ icon: Icon, title, colorClass, bgClass, href }: any) {
   return (
-    <Link 
+    <Link
       href={href}
       className="flex-1 min-h-[100px] rounded-2xl bg-card border border-border flex flex-col items-center justify-center p-3 shadow-sm hover:shadow-md hover:-translate-y-1 transition-all duration-300"
     >
@@ -236,7 +219,7 @@ function CitizenDashboard() {
 
   return (
     <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-      
+
       {/* Profile Stats Row */}
       <div className="bg-card/80 backdrop-blur-md rounded-3xl p-6 shadow-md border border-border mb-8 mt-[-3rem] relative z-10 mx-4 md:mx-0">
         <div className="grid grid-cols-4 gap-4">
@@ -257,12 +240,12 @@ function CitizenDashboard() {
             <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest mt-1">Rejected</p>
           </div>
         </div>
-        
+
         {/* Simple Progress Bar Chart */}
         <div className="mt-6 pt-6 border-t border-border">
           <div className="flex justify-between items-center mb-2">
-             <span className="text-sm font-bold text-foreground">Complaint Progress</span>
-             <span className="text-xs font-semibold text-muted-foreground">{total > 1 ? total : 0} Total</span>
+            <span className="text-sm font-bold text-foreground">Complaint Progress</span>
+            <span className="text-xs font-semibold text-muted-foreground">{total > 1 ? total : 0} Total</span>
           </div>
           <div className="w-full h-3 bg-muted rounded-full overflow-hidden flex shadow-inner">
             <div style={{ width: `${openPct}%` }} className="bg-accent transition-all duration-1000"></div>
@@ -290,7 +273,7 @@ function CitizenDashboard() {
           ) : complaints.length === 0 ? (
             <div className="p-10 text-center flex flex-col items-center">
               <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mb-4">
-                 <ClipboardList className="w-8 h-8 text-muted-foreground" />
+                <ClipboardList className="w-8 h-8 text-muted-foreground" />
               </div>
               <p className="text-base font-bold text-foreground">No complaints found</p>
               <p className="text-sm font-medium text-muted-foreground mt-1">You haven&apos;t raised any complaints yet.</p>
@@ -306,24 +289,62 @@ function CitizenDashboard() {
   );
 }
 
+const DISTRICTS = [
+  "Ariyalur",
+  "Chengalpattu",
+  "Chennai",
+  "Coimbatore",
+  "Cuddalore",
+  "Dharmapuri",
+  "Dindigul",
+  "Erode",
+  "Kallakurichi",
+  "Kanchipuram",
+  "Kanyakumari",
+  "Karur",
+  "Krishnagiri",
+  "Madurai",
+  "Mayiladuthurai",
+  "Nagapattinam",
+  "Namakkal",
+  "Nilgiris",
+  "Perambalur",
+  "Pudukkottai",
+  "Ramanathapuram",
+  "Ranipet",
+  "Salem",
+  "Sivagangai",
+  "Tenkasi",
+  "Thanjavur",
+  "Theni",
+  "Thoothukudi",
+  "Tiruchirappalli",
+  "Tirunelveli",
+  "Tirupathur",
+  "Tiruppur",
+  "Tiruvallur",
+  "Tiruvannamalai",
+  "Tiruvarur",
+  "Vellore",
+  "Viluppuram",
+  "Virudhunagar"
+];
+
 function InspectorDashboard() {
   const { user } = useAuth();
   const router = useRouter();
-  const [wards, setWards] = useState<any[]>([]);
-  const [selectedWardId, setSelectedWardId] = useState<string>("all");
+  const [selectedDistrict, setSelectedDistrict] = useState<string>("all");
   const { data: rawRes, isLoading: isLoadingComplaints, refetch } = useWardComplaints({
-    ward_id: selectedWardId === "all" ? "" : selectedWardId,
+    district: selectedDistrict === "all" ? "" : selectedDistrict,
     limit: 100,
   });
   const res: any = rawRes;
 
-  const [loadError, setLoadError] = useState<string | null>(null);
-  const [isLoadingWards, setIsLoadingWards] = useState<boolean>(true);
   const [statusFilter, setStatusFilter] = useState("All");
   const [searchQuery, setSearchQuery] = useState("");
 
   const complaints = res?.complaints || res?.data || (Array.isArray(res) ? res : []) || [];
-  
+
   const stats = useMemo(() => {
     if (res?.stats) return res.stats;
     const total = complaints.length;
@@ -338,25 +359,6 @@ function InspectorDashboard() {
     refetch();
   };
 
-  useEffect(() => {
-    async function loadWards() {
-      setIsLoadingWards(true);
-      try {
-        const res = await authService.getAllWards({ limit: 100 });
-        let wardsList: any[] = [];
-        if (Array.isArray(res)) wardsList = res;
-        else if (Array.isArray(res?.data)) wardsList = res.data;
-        else if (Array.isArray(res?.wards)) wardsList = res.wards;
-        setWards(wardsList);
-      } catch (error: any) {
-        setLoadError("Failed to load wards.");
-      } finally {
-        setIsLoadingWards(false);
-      }
-    }
-    loadWards();
-  }, []);
-
   const filteredComplaints = useMemo(() => {
     return complaints.filter((c: any) => {
       if (statusFilter !== "All") {
@@ -367,37 +369,20 @@ function InspectorDashboard() {
       }
       if (searchQuery) {
         const q = searchQuery.toLowerCase();
-        const idMatch = (c.complaint_id || "").toLowerCase().includes(q);
+        const idMatch = (c.complaint_id || c.complaintId || c._id || "").toLowerCase().includes(q);
         const typeMatch = (c.complaint_type || "").toLowerCase().includes(q);
-        const locMatch = (c.address || "").toLowerCase().includes(q);
         const nameMatch = (c.citizen?.name || "").toLowerCase().includes(q);
-        if (!idMatch && !typeMatch && !locMatch && !nameMatch) return false;
+        
+        const districtName = (c.districtName || c.district_name || c.district || "").toLowerCase();
+        const wardName = (c.wardName || c.ward_name || c.ward?.ward_name || c.ward || "").toLowerCase();
+        const addressText = (c.address || "").toLowerCase();
+        const landmarkText = (c.landmark || "").toLowerCase();
+
+        if (!idMatch && !typeMatch && !nameMatch && !districtName.includes(q) && !wardName.includes(q) && !addressText.includes(q) && !landmarkText.includes(q)) return false;
       }
       return true;
     });
   }, [complaints, statusFilter, searchQuery]);
-
-  if (isLoadingWards) {
-    return (
-      <div className="p-10 flex flex-col items-center gap-3">
-        <div className="w-10 h-10 border-4 border-[#0F8A83] border-t-transparent rounded-full animate-spin"></div>
-        <p className="text-sm font-medium text-slate-500">Loading wards…</p>
-      </div>
-    );
-  }
-
-  if (loadError) {
-    return (
-      <div className="p-10 text-center flex flex-col items-center">
-        <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mb-4">
-          <AlertCircle className="w-8 h-8 text-red-500" />
-        </div>
-        <p className="text-base font-bold text-slate-800">Ward Load Error</p>
-        <p className="text-sm font-medium text-slate-500 mt-1">{loadError}</p>
-        <button onClick={() => window.location.reload()} className="mt-4 px-4 py-2 rounded-xl bg-[#0F8A83] hover:bg-[#0D7D76] text-white text-sm font-bold transition-colors">Retry</button>
-      </div>
-    );
-  }
 
   return (
     <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -410,8 +395,8 @@ function InspectorDashboard() {
           { label: "Resolved", value: stats.resolved || 0, filter: "Resolved", color: "text-[#0F8A83]" },
           { label: "Rejected", value: stats.rejected || 0, filter: "Rejected", color: "text-red-500" },
         ].map((s, idx) => (
-          <button 
-            key={s.label} 
+          <button
+            key={s.label}
             onClick={() => setStatusFilter(s.filter)}
             className={`flex-1 text-center py-2 px-2 hover:bg-slate-50 rounded-xl transition-colors ${idx !== 4 ? 'border-r border-slate-100' : ''} ${statusFilter === s.filter ? 'ring-2 ring-[#8EE5DA] bg-[#DDF8F5]/50' : ''}`}
           >
@@ -422,29 +407,29 @@ function InspectorDashboard() {
       </div>
 
       <div className="px-4 md:px-0">
-        {/* Ward selection and Search */}
+        {/* District selection and Search */}
         <div className="mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="flex flex-col gap-1">
-            <h3 className="text-lg font-bold text-slate-800">Select Ward</h3>
+            <h3 className="text-lg font-bold text-slate-800">Select District</h3>
             <select
-              value={selectedWardId}
-              onChange={(e) => setSelectedWardId(e.target.value)}
+              value={selectedDistrict}
+              onChange={(e) => setSelectedDistrict(e.target.value)}
               className="bg-white text-slate-700 font-semibold text-sm px-4 py-3 rounded-2xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#0F8A83] min-w-[200px] shadow-sm cursor-pointer"
             >
-              <option value="all">All Wards</option>
-              {wards.map((ward) => (
-                <option key={ward._id || ward.id} value={ward._id || ward.id}>
-                  {ward.ward_name} (Ward #{ward.ward_number})
+              <option value="all">All Districts</option>
+              {DISTRICTS.map((district) => (
+                <option key={district} value={district}>
+                  {district}
                 </option>
               ))}
             </select>
           </div>
-          
+
           <div className="relative flex-1 max-w-md mt-6 md:mt-0">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-            <input 
-              type="text" 
-              placeholder="Search ID, type, location or name..." 
+            <input
+              type="text"
+              placeholder="Search ID, type, location or name..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full bg-white border border-slate-200 rounded-2xl pl-12 pr-4 py-3 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#0F8A83] shadow-sm"
@@ -458,13 +443,12 @@ function InspectorDashboard() {
             <button
               key={filter}
               onClick={() => setStatusFilter(filter)}
-              className={`px-4 py-2 rounded-full text-sm font-bold transition-all shadow-sm flex items-center ${
-                statusFilter === filter 
-                  ? "bg-[#0F8A83] text-white shadow-[#0F8A83]/30 ring-2 ring-[#8EE5DA] ring-offset-1" 
+              className={`px-4 py-2 rounded-full text-sm font-bold transition-all shadow-sm flex items-center ${statusFilter === filter
+                  ? "bg-[#0F8A83] text-white shadow-[#0F8A83]/30 ring-2 ring-[#8EE5DA] ring-offset-1"
                   : "bg-white text-slate-600 border border-slate-200 hover:bg-slate-50"
-              }`}
+                }`}
             >
-              {filter} 
+              {filter}
               <span className={`ml-2 px-2 py-0.5 rounded-full text-xs font-black ${statusFilter === filter ? 'bg-[#0B6E69] text-[#DDF8F5]' : 'bg-slate-100 text-slate-500'}`}>
                 {filter === "All" ? stats.total : filter === "Pending" ? stats.pending : filter === "In Progress" ? stats.in_progress : filter === "Resolved" ? stats.resolved : stats.rejected}
               </span>
@@ -475,24 +459,24 @@ function InspectorDashboard() {
         {/* Table */}
         <div className="bg-white border border-slate-200 rounded-3xl shadow-sm overflow-hidden mb-8">
           <div className="p-6 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
-             <h3 className="text-lg font-bold text-slate-800">
-               {selectedWardId === "all" ? "All Complaints" : `Complaints in ${wards.find(w => (w._id||w.id) === selectedWardId)?.ward_name || "Selected Ward"}`}
-             </h3>
-             <button onClick={() => refreshData()} className="text-[#0F8A83] hover:text-[#0D7D76] text-sm font-bold flex items-center gap-2 transition-colors">
-               Refresh <Activity className="w-4 h-4" />
-             </button>
+            <h3 className="text-lg font-bold text-slate-800">
+              {selectedDistrict === "all" ? "All Complaints" : `Complaints in ${selectedDistrict}`}
+            </h3>
+            <button onClick={() => refreshData()} className="text-[#0F8A83] hover:text-[#0D7D76] text-sm font-bold flex items-center gap-2 transition-colors">
+              Refresh <Activity className="w-4 h-4" />
+            </button>
           </div>
-          
+
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse whitespace-nowrap">
               <thead>
                 <tr className="border-b border-slate-100 text-xs font-black text-slate-500 uppercase tracking-widest bg-slate-50/50">
-                  <th className="p-5">Complaint ID</th>
-                  <th className="p-5">Type</th>
+                  <th className="p-5">ID</th>
+                  <th className="p-5">User</th>
+                  <th className="p-5">Type & Title</th>
                   <th className="p-5">Location</th>
                   <th className="p-5">Date</th>
                   <th className="p-5">Status</th>
-                  <th className="p-5">Priority</th>
                   <th className="p-5 text-right">Action</th>
                 </tr>
               </thead>
@@ -509,7 +493,9 @@ function InspectorDashboard() {
                       <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
                         <ClipboardList className="w-8 h-8 text-slate-400" />
                       </div>
-                      <p className="text-base font-bold text-slate-700">No complaints found</p>
+                      <p className="text-base font-bold text-slate-700">
+                        {selectedDistrict && selectedDistrict !== "all" ? "No complaints found for this district." : "No complaints found"}
+                      </p>
                       <p className="text-sm font-medium text-slate-500 mt-1">Try adjusting your filters or search query.</p>
                     </td>
                   </tr>
@@ -517,46 +503,68 @@ function InspectorDashboard() {
                   filteredComplaints.map((c: any) => {
                     const statusStyles = STATUS_STYLES[c.status as ComplaintStatus] || STATUS_STYLES.OPEN;
                     const typeMeta = TYPE_META[(c.complaint_type as ComplaintType)] || TYPE_META.OTHER;
-                    
+
                     return (
-                      <tr 
-                        key={c.id || c._id || c.complaint_id} 
+                      <tr
+                        key={c.id || c._id || c.complaint_id}
                         onClick={() => router.push(`/complaints/${c.id || c._id || c.complaint_id}`)}
-                        className="border-b border-slate-50 hover:bg-slate-50/50 transition-colors group cursor-pointer"
+                        className="border-b border-slate-100 hover:bg-slate-50/50 transition-colors group cursor-pointer bg-white"
                       >
-                        <td className="p-5">
-                          <p className="text-sm font-black text-slate-700 hover:text-[#0F8A83] transition-colors">{c.complaint_id || "#CIV-NEW"}</p>
-                          <p className="text-xs font-medium text-slate-500 mt-0.5">{c.citizen?.name || "Citizen"}</p>
+                        <td className="p-5 align-middle max-w-[200px]">
+                          <p className="text-[13px] font-bold text-slate-800 break-words leading-relaxed whitespace-normal">{c.complaint_id || "#CIV-NEW"}</p>
                         </td>
-                        <td className="p-5">
-                          <div className="flex items-center gap-3">
-                            <div className={`w-8 h-8 rounded-lg ${typeMeta.bg} flex items-center justify-center shrink-0`}>
-                              <typeMeta.icon className={`w-4 h-4 ${typeMeta.color}`} />
+                        <td className="p-5 align-middle">
+                          <p className="text-[13px] font-bold text-slate-700">{c.citizen?.name || c.citizenName || c.citizen_name || "Citizen"}</p>
+                        </td>
+                        <td className="p-5 align-middle">
+                          <div className="flex items-center gap-4">
+                            <div className={`w-10 h-10 rounded-full ${typeMeta.bg} flex items-center justify-center shrink-0`}>
+                              <typeMeta.icon className={`w-5 h-5 ${typeMeta.color}`} />
                             </div>
-                            <span className="text-sm font-bold text-slate-700">{typeMeta.title}</span>
+                            <div>
+                              <span className="block text-[13px] font-black text-slate-900 uppercase tracking-wide">{typeMeta.title}</span>
+                              <span className="block text-xs font-medium text-slate-500 mt-0.5">{typeMeta.title}</span>
+                            </div>
                           </div>
                         </td>
-                        <td className="p-5">
-                          <p className="text-sm font-medium text-slate-600 max-w-[200px] truncate" title={c.address}>{c.address || "No address provided"}</p>
+                        <td className="p-5 align-middle">
+                          <div className="text-[13px] space-y-0.5 min-w-[280px] max-w-[380px] text-slate-600">
+                            <p className="whitespace-normal break-words">
+                              <span className="font-bold text-slate-500">District:</span>
+                              <span className="font-semibold text-slate-700 ml-1">{c.districtName || c.district_name || c.district || "Not Available"}</span>
+                            </p>
+                            <p className="whitespace-normal break-words">
+                              <span className="font-bold text-slate-500">Ward:</span>
+                              <span className="font-semibold text-slate-700 ml-1">{c.wardName || c.ward_name || c.ward?.ward_name || c.ward || "Not Available"}</span>
+                            </p>
+                            <p className="truncate">
+                              <span className="font-bold text-slate-500">Address:</span>
+                              <span className="font-semibold text-slate-700 ml-1">{c.address || "Not Available"}</span>
+                            </p>
+                            <p className="truncate">
+                              <span className="font-bold text-slate-500">Landmark:</span>
+                              <span className="font-semibold text-slate-700 ml-1">{c.landmark || "Not Available"}</span>
+                            </p>
+                          </div>
                         </td>
-                        <td className="p-5">
-                          <p className="text-sm font-medium text-slate-600">
-                            {c.created_at ? new Date(c.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) : "N/A"}
+                        <td className="p-5 align-middle">
+                          <p className="text-[13px] font-bold text-slate-600">
+                            {c.created_at ? new Date(c.created_at).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' }) : "N/A"}
                           </p>
                         </td>
-                        <td className="p-5">
-                          <span className={`px-3 py-1 rounded-full text-xs font-bold ${statusStyles.bg} ${statusStyles.color}`}>
-                            {statusStyles.label}
-                          </span>
+                        <td className="p-5 align-middle">
+                          <div className="flex items-center gap-2">
+                            <span className={`px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-wider ${statusStyles.bg} ${statusStyles.color}`}>
+                              {statusStyles.label}
+                            </span>
+                            <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-slate-100 text-slate-500 border border-slate-200/60`}>
+                              {c.priority || "MEDIUM"}
+                            </span>
+                          </div>
                         </td>
-                        <td className="p-5">
-                          <span className={`px-3 py-1 rounded-full text-xs font-bold ${c.priority === 'HIGH' ? 'bg-red-100 text-red-600' : 'bg-slate-100 text-slate-600'}`}>
-                            {c.priority || "MEDIUM"}
-                          </span>
-                        </td>
-                        <td className="p-5 text-right">
-                          <Link href={`/complaints/${c.id || c._id || c.complaint_id}`} className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-slate-100 text-slate-600 hover:bg-teal-100 hover:text-teal-700 transition-colors">
-                            <ChevronRight className="w-5 h-5" />
+                        <td className="p-5 text-right align-middle">
+                          <Link href={`/complaints/${c.id || c._id || c.complaint_id}`} className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-slate-50 text-slate-400 group-hover:bg-teal-50 group-hover:text-teal-600 transition-colors">
+                            <ChevronRight className="w-4 h-4" />
                           </Link>
                         </td>
                       </tr>
@@ -586,10 +594,10 @@ function AdminDashboard() {
   if (!data) {
     return (
       <div className="p-10 text-center flex flex-col items-center">
-         <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mb-4">
-            <ClipboardList className="w-8 h-8 text-muted-foreground" />
-         </div>
-         <p className="text-base font-bold text-foreground">No data available</p>
+        <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mb-4">
+          <ClipboardList className="w-8 h-8 text-muted-foreground" />
+        </div>
+        <p className="text-base font-bold text-foreground">No data available</p>
       </div>
     );
   }
@@ -618,7 +626,7 @@ function AdminDashboard() {
 function WorkerDashboard() {
   const { data, isLoading: loading } = useWorkerDashboard();
   const dashboard = data?.data || data || null;
-  
+
   const tasks = dashboard?.assigned_tasks || {};
   const assignments = dashboard?.recent_assignments || [];
   const completionRate = dashboard?.completion_rate || 0;
@@ -672,16 +680,16 @@ function WorkerDashboard() {
         <SectionTitle left="Recent Assignments" right="View All" rightHref="/complaints" />
         <div className="bg-card border border-border rounded-3xl shadow-sm overflow-hidden mb-8">
           {loading ? (
-             <div className="p-10 flex justify-center">
-               <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
-             </div>
+            <div className="p-10 flex justify-center">
+              <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+            </div>
           ) : assignments.length === 0 ? (
-             <div className="p-10 text-center flex flex-col items-center">
-               <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mb-4">
-                  <ClipboardList className="w-8 h-8 text-muted-foreground" />
-               </div>
-               <p className="text-base font-bold text-foreground">No tasks assigned</p>
-             </div>
+            <div className="p-10 text-center flex flex-col items-center">
+              <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mb-4">
+                <ClipboardList className="w-8 h-8 text-muted-foreground" />
+              </div>
+              <p className="text-base font-bold text-foreground">No tasks assigned</p>
+            </div>
           ) : (
             assignments.map((c: any, i: number) => (
               <ComplaintItem key={c._id || c.id || c.complaint_id} complaint={c} index={i} total={assignments.length} />
@@ -705,34 +713,34 @@ export default function DashboardPage() {
       <div className={`bg-gradient-to-br ${roleMeta.gradient} pt-12 pb-24 px-6 md:px-12 md:rounded-b-[60px] rounded-b-[40px] shadow-lg`}>
         <div className="max-w-7xl mx-auto w-full">
           <div className="flex items-center justify-between mb-2">
-          <div className="flex items-center gap-4">
-            <div className="w-14 h-14 rounded-2xl bg-white/10 backdrop-blur-md flex items-center justify-center border border-white/20">
-              <Building2 className="w-7 h-7 text-white" />
-            </div>
-            <div>
-              <h1 className="text-2xl font-black text-white tracking-wide">{greeting.title}</h1>
-              <p className="text-sm font-semibold text-white/80 mt-1">{greeting.sub}</p>
+            <div className="flex items-center gap-4">
+              <div className="w-14 h-14 rounded-2xl bg-white/10 backdrop-blur-md flex items-center justify-center border border-white/20">
+                <Building2 className="w-7 h-7 text-white" />
+              </div>
+              <div>
+                <h1 className="text-2xl font-black text-white tracking-wide">{greeting.title}</h1>
+                <p className="text-sm font-semibold text-white/80 mt-1">{greeting.sub}</p>
+              </div>
             </div>
           </div>
-        </div>
 
-        {/* User Greeting */}
-        <div className="mt-8 flex items-center gap-5">
-          <div className="w-20 h-20 rounded-full bg-white/10 backdrop-blur-md flex items-center justify-center border-4 border-white/30 shadow-xl">
-            <span className="text-3xl font-black text-white">
-              {user?.name ? user.name.substring(0, 2).toUpperCase() : "US"}
-            </span>
-          </div>
-          <div>
-            <h2 className="text-2xl font-black text-white mb-1">{user?.name || "Welcome Back"}</h2>
-            <div className="flex items-center gap-2 mt-2">
-              <span className={`px-4 py-1.5 rounded-full text-xs font-black ${roleMeta.bg} ${roleMeta.color} border border-white/10`}>
-                {roleMeta.label}
+          {/* User Greeting */}
+          <div className="mt-8 flex items-center gap-5">
+            <div className="w-20 h-20 rounded-full bg-white/10 backdrop-blur-md flex items-center justify-center border-4 border-white/30 shadow-xl">
+              <span className="text-3xl font-black text-white">
+                {user?.name ? user.name.substring(0, 2).toUpperCase() : "US"}
               </span>
             </div>
+            <div>
+              <h2 className="text-2xl font-black text-white mb-1">{user?.name || "Welcome Back"}</h2>
+              <div className="flex items-center gap-2 mt-2">
+                <span className={`px-4 py-1.5 rounded-full text-xs font-black ${roleMeta.bg} ${roleMeta.color} border border-white/10`}>
+                  {roleMeta.label}
+                </span>
+              </div>
+            </div>
           </div>
         </div>
-      </div>
       </div>
       {/* Role-based Dashboard Content */}
       <div className="max-w-7xl mx-auto w-full md:px-12">

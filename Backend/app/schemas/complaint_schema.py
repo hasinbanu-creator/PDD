@@ -76,6 +76,10 @@ class ComplaintCreateSchema(BaseModel):
     citizen_note: Optional[str] = Field(None, max_length=500)
     image_urls: Optional[List[str]] = Field(default_factory=list, description="List of complaint images")
     priority: Optional[Priority] = Field(default=Priority.MEDIUM)
+    districtId: Optional[str] = Field(None, description="District ID")
+    districtName: Optional[str] = Field(None, description="District Name")
+    wardId: Optional[str] = Field(None, description="Ward ID")
+    wardName: Optional[str] = Field(None, description="Ward Name")
 
     @validator("description")
     def validate_description(cls, v):
@@ -169,9 +173,7 @@ class ComplaintResponseSchema(BaseModel):
     complaint_id: str
     user_id: str
     district_id: str
-    district_name: Optional[str] = None
     ward_id: str
-    ward_name: Optional[str] = None
     inspector_id: Optional[str]
     worker_id: Optional[str]
     complaint_type: str
@@ -194,6 +196,26 @@ class ComplaintResponseSchema(BaseModel):
     created_at: datetime
     updated_at: datetime
     closed_at: Optional[datetime]
+    districtId: Optional[str] = None
+    districtName: Optional[str] = None
+    wardId: Optional[str] = None
+    wardName: Optional[str] = None
+    district_name: Optional[str] = None
+    ward_name: Optional[str] = None
+    createdBy: Optional[str] = None
+    createdAt: Optional[datetime] = None
+    complaintId: Optional[str] = None
+    issueType: Optional[str] = None
+    citizenId: Optional[str] = None
+    citizenName: Optional[str] = None
+    citizenEmail: Optional[str] = None
+    citizenPhone: Optional[str] = None
+    complaintType: Optional[str] = None
+    complaintDescription: Optional[str] = None
+    district: Optional[str] = None
+    ward: Optional[str] = None
+    images: Optional[List[str]] = None
+    updatedAt: Optional[datetime] = None
 
     class Config:
         populate_by_name = True

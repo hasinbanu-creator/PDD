@@ -76,6 +76,28 @@ class ComplaintService:
             if not ward.get("is_active"):
                 raise ValidationError("Ward is inactive")
 
+            # Verify district-ward match using raw user document (district may be ObjectId or name)
+            raw_user = await self.complaint_repo.db.users.find_one({"_id": self._normalize_id(user_id)})
+            if not raw_user:
+                raise ValidationError("User not found")
+            
+            raw_district_val = raw_user.get("district")
+            ward_district_oid = ward.get("district_id")  # ObjectId in DB
+            
+            # Only enforce if the user has a district field set
+            if raw_district_val and ward_district_oid:
+                try:
+                    # raw_district_val could be ObjectId or string ObjectId hex
+                    from bson import ObjectId as BsonOID
+                    user_dist_oid = BsonOID(str(raw_district_val))
+                    if user_dist_oid != ward_district_oid:
+                        raise ValidationError("Selected Ward does not belong to your District")
+                except ValidationError:
+                    raise
+                except Exception:
+                    # If we can't convert (e.g. district stored as name), skip strict check
+                    pass
+
             district_id = str(ward.get("district_id"))
             inspector_id = ward.get("inspector_id")
 
@@ -128,11 +150,15 @@ class ComplaintService:
             complaint_doc = complaint_document(complaint_data)
             complaint_doc["_id"] = ObjectId()
             complaint_doc["user_id"] = self._normalize_id(user_id)
+            complaint_doc["createdBy"] = str(user_id)
             complaint_doc["district_id"] = self._normalize_id(district_id)
+            complaint_doc["districtId"] = str(district_id)
             complaint_doc["district_name"] = district_name
+            complaint_doc["districtName"] = district_name
             complaint_doc["constituency_id"] = self._normalize_id(constituency_id) if constituency_id else None
             complaint_doc["constituency_name"] = constituency_name
             complaint_doc["ward_id"] = self._normalize_id(complaint_data.ward_id)
+            complaint_doc["wardId"] = str(complaint_data.ward_id)
             wn = ward.get("ward_number")
             try:
                 digits = re.findall(r'\d+', str(wn))
@@ -141,8 +167,24 @@ class ComplaintService:
                 ward_num = 0
             complaint_doc["ward_number"] = ward_num
             complaint_doc["ward_name"] = ward.get("ward_name")
+            complaint_doc["wardName"] = ward.get("ward_name")
             complaint_doc["inspector_id"] = self._normalize_id(inspector_id) if inspector_id else None
             complaint_doc["complaint_id"] = self._generate_complaint_id()
+            complaint_doc["complaintId"] = complaint_doc["complaint_id"]
+            complaint_doc["issueType"] = complaint_data.complaint_type
+            complaint_doc["complaintType"] = complaint_data.complaint_type
+            complaint_doc["complaintDescription"] = complaint_data.description
+            complaint_doc["citizenId"] = str(user_id)
+            complaint_doc["citizenName"] = raw_user.get("name") or "Not Available"
+            complaint_doc["citizenEmail"] = raw_user.get("email") or "Not Available"
+            complaint_doc["citizenPhone"] = raw_user.get("mobile_number") or "Not Available"
+            complaint_doc["district"] = district_name or "Not Available"
+            complaint_doc["ward"] = ward.get("ward_name") or "Not Available"
+            complaint_doc["address"] = complaint_data.address or "Not Available"
+            complaint_doc["landmark"] = complaint_data.landmark or "Not Available"
+            complaint_doc["images"] = complaint_doc["image_urls"]
+            complaint_doc["createdAt"] = complaint_doc["created_at"]
+            complaint_doc["updatedAt"] = complaint_doc["created_at"]
             complaint_doc["status"] = ComplaintStatus.OPEN
 
             complaint_id = await self.complaint_repo.create(complaint_doc)
@@ -549,23 +591,54 @@ class ComplaintService:
         if not complaint:
             return None
         
+        district_id = str(complaint.get("district_id", ""))
+        ward_id = str(complaint.get("ward_id", ""))
+        
+        # Fallback to "Not Available" for older complaints
+        d_name = complaint.get("district") or complaint.get("district_name") or complaint.get("districtName") or "Not Available"
+        w_name = complaint.get("ward") or complaint.get("ward_name") or complaint.get("wardName") or "Not Available"
+        
+        citizen_name = complaint.get("citizenName") or complaint.get("citizen_name") or "Not Available"
+        citizen_email = complaint.get("citizenEmail") or complaint.get("citizen_email") or "Not Available"
+        citizen_phone = complaint.get("citizenPhone") or complaint.get("citizen_phone") or "Not Available"
+        
+        c_id = str(complaint.get("user_id") or complaint.get("citizenId") or complaint.get("createdBy") or "")
+        
         return {
             "_id": str(complaint.get("_id", "")),
             "complaint_id": complaint.get("complaint_id"),
-            "user_id": str(complaint.get("user_id", "")),
-            "district_id": str(complaint.get("district_id", "")),
-            "ward_id": str(complaint.get("ward_id", "")),
+            "complaintId": complaint.get("complaint_id") or "Not Available",
+            "user_id": c_id or "Not Available",
+            "citizenId": c_id or "Not Available",
+            "createdBy": c_id or "Not Available",
+            "citizenName": citizen_name,
+            "citizenEmail": citizen_email,
+            "citizenPhone": citizen_phone,
+            "district_id": district_id or "Not Available",
+            "districtId": district_id or "Not Available",
+            "district_name": d_name,
+            "districtName": d_name,
+            "district": d_name,
+            "ward_id": ward_id or "Not Available",
+            "wardId": ward_id or "Not Available",
+            "ward_name": w_name,
+            "wardName": w_name,
+            "ward": w_name,
             "inspector_id": str(complaint.get("inspector_id", "")) if complaint.get("inspector_id") else None,
             "worker_id": str(complaint.get("worker_id", "")) if complaint.get("worker_id") else None,
-            "complaint_type": complaint.get("complaint_type"),
-            "description": complaint.get("description"),
-            "status": complaint.get("status"),
-            "priority": complaint.get("priority"),
+            "complaint_type": complaint.get("complaint_type") or "Not Available",
+            "complaintType": complaint.get("complaint_type") or "Not Available",
+            "issueType": complaint.get("complaint_type") or "Not Available",
+            "description": complaint.get("description") or "Not Available",
+            "complaintDescription": complaint.get("description") or "Not Available",
+            "status": complaint.get("status") or "Not Available",
+            "priority": complaint.get("priority") or "Not Available",
             "latitude": complaint.get("latitude"),
             "longitude": complaint.get("longitude"),
-            "address": complaint.get("address"),
-            "landmark": complaint.get("landmark"),
-            "image_urls": complaint.get("image_urls", []),
+            "address": complaint.get("address") or "Not Available",
+            "landmark": complaint.get("landmark") or "Not Available",
+            "image_urls": complaint.get("image_urls") or complaint.get("images") or [],
+            "images": complaint.get("images") or complaint.get("image_urls") or [],
             "proof_images": complaint.get("proof_images", []),
             "citizen_note": complaint.get("citizen_note"),
             "inspector_note": complaint.get("inspector_note"),
@@ -573,7 +646,9 @@ class ComplaintService:
             "rejection_reason": complaint.get("rejection_reason"),
             "deadline": complaint.get("deadline"),
             "created_at": complaint.get("created_at"),
+            "createdAt": complaint.get("created_at"),
             "updated_at": complaint.get("updated_at"),
+            "updatedAt": complaint.get("updated_at"),
             "closed_at": complaint.get("closed_at")
         }
 

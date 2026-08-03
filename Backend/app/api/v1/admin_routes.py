@@ -1,7 +1,8 @@
 """Admin API routes for user and role management"""
 from fastapi import APIRouter, HTTPException, status, Depends, Query
 from pydantic import BaseModel
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
+from bson import ObjectId
 from app.schemas.user_schema import (
     CreateAdminSchema,
     UserResponseSchema,
@@ -783,30 +784,87 @@ import csv
     dependencies=[Depends(require_role("DISTRICT_ADMIN", "SUPER_ADMIN"))]
 )
 async def export_complaints(
+    district_id: Optional[str] = Query(None),
+    ward_id: Optional[str] = Query(None),
     current_user: Dict[str, Any] = Depends(get_current_admin)
 ):
     """Export complaints to CSV format"""
     try:
         query = {}
-        if current_user.get("role") == "DISTRICT_ADMIN":
-            query["district_id"] = current_user.get("district")
+        user_role = current_user.get("role")
+        
+        if user_role == "DISTRICT_ADMIN":
+            admin_dist_val = current_user.get("district")
+            admin_dist_id = None
+            if admin_dist_val:
+                try:
+                    admin_dist_id = ObjectId(str(admin_dist_val))
+                except Exception:
+                    district_doc = await db.districts.find_one({"name": admin_dist_val})
+                    if district_doc:
+                        admin_dist_id = district_doc["_id"]
+            if admin_dist_id:
+                query["district_id"] = admin_dist_id
+        else:
+            if district_id:
+                try:
+                    query["district_id"] = ObjectId(district_id)
+                except Exception:
+                    district_doc = await db.districts.find_one({"name": district_id})
+                    if district_doc:
+                        query["district_id"] = district_doc["_id"]
+                        
+        if ward_id:
+            try:
+                query["ward_id"] = ObjectId(ward_id)
+            except Exception:
+                pass
             
         complaints = await db.complaints.find(query).sort("created_at", -1).to_list(length=10000)
+        
+        # Batch load all districts and wards for dynamic name resolving
+        districts_cursor = db.districts.find({})
+        districts_list = await districts_cursor.to_list(length=1000)
+        districts_map = {str(d["_id"]): d.get("name") for d in districts_list}
+
+        wards_cursor = db.wards.find({})
+        wards_list = await wards_cursor.to_list(length=10000)
+        wards_map = {str(w["_id"]): (w.get("ward_name"), str(w.get("district_id"))) for w in wards_list}
         
         output = io.StringIO()
         writer = csv.writer(output)
         
         # Header
-        writer.writerow(["Complaint ID", "Title", "Type", "Status", "Priority", "District", "Created At", "Closed At"])
+        writer.writerow(["Complaint ID", "Title", "Type", "Status", "Priority", "District", "Ward", "Address", "Landmark", "Created At", "Closed At"])
         
         for c in complaints:
+            d_name = c.get("district_name") or c.get("districtName")
+            w_name = c.get("ward_name") or c.get("wardName")
+            
+            ward_id_str = str(c.get("ward_id")) if c.get("ward_id") else None
+            district_id_str = str(c.get("district_id")) if c.get("district_id") else None
+            
+            if not w_name and ward_id_str and ward_id_str in wards_map:
+                w_name = wards_map[ward_id_str][0]
+                if not district_id_str:
+                    district_id_str = wards_map[ward_id_str][1]
+                    
+            if not d_name and district_id_str and district_id_str in districts_map:
+                d_name = districts_map[district_id_str]
+                
+            d_name = d_name or "Not Available"
+            w_name = w_name or "Not Available"
+            
             writer.writerow([
                 c.get("complaint_id", ""),
                 c.get("title", ""),
                 c.get("complaint_type", ""),
                 c.get("status", ""),
                 c.get("priority", ""),
-                c.get("district_id", ""),
+                d_name,
+                w_name,
+                c.get("address", "") or "Not Available",
+                c.get("landmark", "") or "Not Available",
                 c.get("created_at", "").isoformat() if hasattr(c.get("created_at"), "isoformat") else "",
                 c.get("closed_at", "").isoformat() if hasattr(c.get("closed_at"), "isoformat") else ""
             ])

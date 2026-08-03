@@ -3,7 +3,7 @@ import { API_URL, ENDPOINTS } from "@/constants/endpoints";
 
 const api = axios.create({
   baseURL: API_URL,
-  timeout: 10000,
+  timeout: 30000,
 });
 
 export const unwrapResponse = <T>(response: any): T => {

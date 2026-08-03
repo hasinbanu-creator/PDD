@@ -42,34 +42,34 @@ import { complaintsApi } from "@/services/api";
 import ImageLightbox from "@/components/ImageLightbox";
 
 const STATUS_CONFIG: Record<string, { color: string, bg: string, border: string, icon: any, label: string }> = {
-  PENDING:     { color: "text-accent", bg: "bg-accent/10", border: "border-accent/20", icon: Clock, label: "Pending" },
-  OPEN:        { color: "text-accent", bg: "bg-accent/10", border: "border-accent/20", icon: FolderOpen, label: "Open" },
-  ASSIGNED:    { color: "text-primary", bg: "bg-primary/10", border: "border-primary/20", icon: HardHat, label: "Assigned" },
-  WORKING:     { color: "text-secondary", bg: "bg-secondary/10", border: "border-secondary/20", icon: Wrench, label: "In Progress" },
+  PENDING: { color: "text-accent", bg: "bg-accent/10", border: "border-accent/20", icon: Clock, label: "Pending" },
+  OPEN: { color: "text-accent", bg: "bg-accent/10", border: "border-accent/20", icon: FolderOpen, label: "Open" },
+  ASSIGNED: { color: "text-primary", bg: "bg-primary/10", border: "border-primary/20", icon: HardHat, label: "Assigned" },
+  WORKING: { color: "text-secondary", bg: "bg-secondary/10", border: "border-secondary/20", icon: Wrench, label: "In Progress" },
   IN_PROGRESS: { color: "text-secondary", bg: "bg-secondary/10", border: "border-secondary/20", icon: Wrench, label: "In Progress" },
-  CLOSED:      { color: "text-success", bg: "bg-success/10", border: "border-success/20", icon: CheckCircle2, label: "Resolved" },
-  RESOLVED:    { color: "text-success", bg: "bg-success/10", border: "border-success/20", icon: CheckCircle2, label: "Resolved" },
-  REJECTED:    { color: "text-destructive", bg: "bg-destructive/10", border: "border-destructive/20", icon: XCircle, label: "Rejected" },
+  CLOSED: { color: "text-success", bg: "bg-success/10", border: "border-success/20", icon: CheckCircle2, label: "Resolved" },
+  RESOLVED: { color: "text-success", bg: "bg-success/10", border: "border-success/20", icon: CheckCircle2, label: "Resolved" },
+  REJECTED: { color: "text-destructive", bg: "bg-destructive/10", border: "border-destructive/20", icon: XCircle, label: "Rejected" },
 };
 
 const PRIORITY_CONFIG: Record<string, { color: string, bg: string, label: string }> = {
-  LOW:      { color: "text-success", bg: "bg-success/10", label: "Low" },
-  MEDIUM:   { color: "text-accent", bg: "bg-accent/10", label: "Medium" },
-  HIGH:     { color: "text-destructive", bg: "bg-destructive/10", label: "High" },
+  LOW: { color: "text-success", bg: "bg-success/10", label: "Low" },
+  MEDIUM: { color: "text-accent", bg: "bg-accent/10", label: "Medium" },
+  HIGH: { color: "text-destructive", bg: "bg-destructive/10", label: "High" },
   CRITICAL: { color: "text-destructive", bg: "bg-destructive/20", label: "Critical" },
 };
 
 const TYPE_META: Record<string, { icon: any, color: string, bg: string, title: string }> = {
-  ROAD_DAMAGE:  { icon: Map, color: "text-destructive", bg: "bg-destructive/10", title: "Road Damage" },
-  GARBAGE:      { icon: ClipboardList, color: "text-secondary", bg: "bg-secondary/10", title: "Waste Collection" },
-  POTHOLE:      { icon: Map, color: "text-destructive", bg: "bg-destructive/10", title: "Pothole" },
-  STREETLIGHT:  { icon: Lightbulb, color: "text-primary", bg: "bg-primary/10", title: "Street Light" },
+  ROAD_DAMAGE: { icon: Map, color: "text-destructive", bg: "bg-destructive/10", title: "Road Damage" },
+  GARBAGE: { icon: ClipboardList, color: "text-secondary", bg: "bg-secondary/10", title: "Waste Collection" },
+  POTHOLE: { icon: Map, color: "text-destructive", bg: "bg-destructive/10", title: "Pothole" },
+  STREETLIGHT: { icon: Lightbulb, color: "text-primary", bg: "bg-primary/10", title: "Street Light" },
   WATER_SUPPLY: { icon: Activity, color: "text-primary", bg: "bg-primary/10", title: "Water Supply" },
-  DRAINAGE:     { icon: Wrench, color: "text-secondary", bg: "bg-secondary/10", title: "Drainage Issue" },
-  SANITATION:   { icon: ClipboardList, color: "text-secondary", bg: "bg-secondary/10", title: "Sanitation" },
+  DRAINAGE: { icon: Wrench, color: "text-secondary", bg: "bg-secondary/10", title: "Drainage Issue" },
+  SANITATION: { icon: ClipboardList, color: "text-secondary", bg: "bg-secondary/10", title: "Sanitation" },
   TREE_CUTTING: { icon: TreePine, color: "text-success", bg: "bg-success/10", title: "Tree Issue" },
   CONSTRUCTION: { icon: Wrench, color: "text-accent", bg: "bg-accent/10", title: "Construction Block" },
-  OTHER:        { icon: AlertCircle, color: "text-destructive", bg: "bg-destructive/10", title: "Civic Issue" },
+  OTHER: { icon: AlertCircle, color: "text-destructive", bg: "bg-destructive/10", title: "Civic Issue" },
 };
 
 function InfoRow({ icon: Icon, label, value }: { icon: any, label: string, value?: string | null }) {
@@ -119,7 +119,7 @@ export default function ComplaintDetailsPage() {
   const { user } = useAuth();
   const isPrivileged = user?.role === "INSPECTOR" || user?.role === "WORKER" || user?.role === "SUPER_ADMIN" || user?.role === "DISTRICT_ADMIN";
   const isInspectorOrWorker = user?.role === "INSPECTOR" || user?.role === "WORKER";
-  
+
   const params = useParams();
   const router = useRouter();
   const id = params.id as string;
@@ -199,13 +199,13 @@ export default function ComplaintDetailsPage() {
       alert("Please provide a rejection reason.");
       return;
     }
-    
+
     try {
       setUpdating(true);
-      
+
       // Call existing Reject API
       await authService.inspectorRejectComplaint(id);
-      
+
       // Save the rejection reason via Notes API
       try {
         const { default: api } = await import("@/lib/api");
@@ -213,7 +213,7 @@ export default function ComplaintDetailsPage() {
       } catch (noteErr) {
         console.error("Failed to save rejection reason", noteErr);
       }
-      
+
       setShowRejectModal(false);
       refetch();
       queryClient.invalidateQueries({ queryKey: ["ward-complaints"] });
@@ -230,7 +230,7 @@ export default function ComplaintDetailsPage() {
   const handleResolveConfirm = async () => {
     try {
       setUpdating(true);
-      
+
       if (selectedProofImages.length > 0) {
         const formData = new FormData();
         selectedProofImages.forEach(file => {
@@ -240,7 +240,7 @@ export default function ComplaintDetailsPage() {
       } else {
         await authService.inspectorResolveComplaint(id);
       }
-      
+
       setShowResolveModal(false);
       refetch();
       queryClient.invalidateQueries({ queryKey: ["ward-complaints"] });
@@ -303,12 +303,12 @@ export default function ComplaintDetailsPage() {
 
   return (
     <div className="flex-1 bg-background min-h-screen pb-20 md:pb-8">
-      
+
       {/* Header */}
       <div className={`${isInspectorOrWorker ? "bg-gradient-to-br from-[#0F8A83] to-[#0B6E69]" : "bg-primary"} pt-10 pb-16 px-6 md:px-12 md:rounded-b-[60px] rounded-b-[40px] shadow-lg flex items-start justify-between`}>
         <div className="max-w-3xl mx-auto w-full flex items-start justify-between">
           <div className="flex items-start gap-4">
-            <button 
+            <button
               onClick={() => router.back()}
               className="w-12 h-12 bg-white/20 backdrop-blur-md rounded-2xl flex items-center justify-center hover:bg-white/30 transition-colors shadow-sm mt-1"
             >
@@ -324,7 +324,7 @@ export default function ComplaintDetailsPage() {
       </div>
 
       <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 -mt-8 relative z-10">
-        
+
         {/* Hero Card */}
         <div className={`bg-card rounded-[2rem] p-6 shadow-md mb-6 border-t-[6px] ${statusCfg.border.replace('border-', 'border-t-')}`}>
           <div className="flex items-start gap-5 mb-6">
@@ -338,7 +338,7 @@ export default function ComplaintDetailsPage() {
               <p className="text-xs font-bold text-muted-foreground tracking-widest">{complaint.complaint_id}</p>
             </div>
           </div>
-          
+
           <div className="flex flex-wrap items-center gap-3 border-t border-border/50 pt-5 mt-2">
             <div className={`flex items-center gap-2 px-4 py-2 rounded-xl border ${statusCfg.border} ${statusCfg.bg}`}>
               <StatusIcon className={`w-5 h-5 ${statusCfg.color}`} />
@@ -365,16 +365,47 @@ export default function ComplaintDetailsPage() {
           </div>
 
           <InfoRow icon={FileText} label="Description" value={complaint.description} />
-          <InfoRow icon={MapPin} label="Address" value={complaint.address} />
-          <InfoRow icon={MapPin} label="District" value={complaint.district_name} />
-          <InfoRow icon={MapPin} label="Ward" value={complaint.ward_name || complaint.ward?.ward_name} />
-          {complaint.landmark && (
-            <InfoRow icon={MapPin} label="Landmark / Door No." value={complaint.landmark} />
-          )}
-          <InfoRow 
-            icon={Navigation} 
-            label="Coordinates" 
-            value={complaint.latitude && complaint.longitude ? `${complaint.latitude}, ${complaint.longitude}` : null} 
+
+          {/* Structured Location Section */}
+          <div className="flex gap-4 py-4 border-b border-border/50 last:border-none">
+            <div className="w-10 h-10 rounded-xl bg-muted/60 flex items-center justify-center shrink-0 mt-0.5">
+              <MapPin className="w-5 h-5 text-muted-foreground" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-black text-muted-foreground uppercase tracking-widest mb-2">Location & Details</p>
+              <div className="space-y-1.5 text-sm">
+                <div className="flex gap-2">
+                  <span className="font-bold text-muted-foreground w-28 shrink-0">Raised By :</span>
+                  <span className="font-semibold text-foreground">{complaint.citizenName || complaint.citizen_name || complaint.citizen?.name || "Not Available"}</span>
+                </div>
+                <div className="flex gap-2">
+                  <span className="font-bold text-muted-foreground w-28 shrink-0">District :</span>
+                  <span className="font-semibold text-foreground">{complaint.districtName || complaint.district_name || complaint.district || "Not Available"}</span>
+                </div>
+                <div className="flex gap-2">
+                  <span className="font-bold text-muted-foreground w-28 shrink-0">Ward :</span>
+                  <span className="font-semibold text-foreground">{complaint.wardName || complaint.ward_name || complaint.ward || "Not Available"}</span>
+                </div>
+                <div className="flex gap-2">
+                  <span className="font-bold text-muted-foreground w-28 shrink-0">Address :</span>
+                  <span className="font-semibold text-foreground">{complaint.address || "Not Available"}</span>
+                </div>
+                <div className="flex gap-2">
+                  <span className="font-bold text-muted-foreground w-28 shrink-0">Landmark :</span>
+                  <span className="font-semibold text-foreground">{complaint.landmark || "Not Available"}</span>
+                </div>
+                <div className="flex gap-2">
+                  <span className="font-bold text-muted-foreground w-28 shrink-0">Complaint ID :</span>
+                  <span className="font-semibold text-foreground">{complaint.complaintId || complaint.complaint_id || "Not Available"}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <InfoRow
+            icon={Navigation}
+            label="Coordinates"
+            value={complaint.latitude && complaint.longitude ? `${complaint.latitude}, ${complaint.longitude}` : null}
           />
 
           {(() => {
@@ -400,12 +431,12 @@ export default function ComplaintDetailsPage() {
                         const finalUrl = getFinalImageUri(url);
                         console.log(`[Web] Rendering Image: ${url} -> ${finalUrl}`);
                         return (
-                          <div 
-                            key={index} 
+                          <div
+                            key={index}
                             className="relative aspect-square rounded-2xl overflow-hidden border border-border shadow-sm cursor-pointer group"
                             onClick={() => setSelectedImagePreview(finalUrl)}
                           >
-                            <img src={finalUrl} alt={`Complaint ${index+1}`} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                            <img src={finalUrl} alt={`Complaint ${index + 1}`} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
                           </div>
                         );
                       })}
@@ -421,12 +452,12 @@ export default function ComplaintDetailsPage() {
                         const finalUrl = getFinalImageUri(url);
                         console.log(`[Web] Rendering Proof Image: ${url} -> ${finalUrl}`);
                         return (
-                          <div 
-                            key={index} 
+                          <div
+                            key={index}
                             className="relative aspect-square rounded-2xl overflow-hidden border border-border shadow-sm cursor-pointer group"
                             onClick={() => setSelectedImagePreview(finalUrl)}
                           >
-                            <img src={finalUrl} alt={`Resolution Proof ${index+1}`} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                            <img src={finalUrl} alt={`Resolution Proof ${index + 1}`} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
                           </div>
                         );
                       })}
@@ -446,34 +477,34 @@ export default function ComplaintDetailsPage() {
                 </div>
                 <h3 className="text-lg font-black text-foreground">Notes</h3>
               </div>
-              
-              <NoteCard 
-                icon={User} 
-                label="Citizen Note" 
-                value={complaint.citizen_note} 
-                colorClass="text-primary" 
-                borderClass="border-primary" 
+
+              <NoteCard
+                icon={User}
+                label="Citizen Note"
+                value={complaint.citizen_note}
+                colorClass="text-primary"
+                borderClass="border-primary"
               />
-              <NoteCard 
-                icon={HardHat} 
-                label="Worker Note" 
-                value={complaint.worker_note} 
-                colorClass="text-secondary" 
-                borderClass="border-secondary" 
+              <NoteCard
+                icon={HardHat}
+                label="Worker Note"
+                value={complaint.worker_note}
+                colorClass="text-secondary"
+                borderClass="border-secondary"
               />
-              <NoteCard 
-                icon={ShieldCheck} 
-                label="Inspector Note" 
-                value={complaint.inspector_note} 
-                colorClass="text-accent" 
-                borderClass="border-accent" 
+              <NoteCard
+                icon={ShieldCheck}
+                label="Inspector Note"
+                value={complaint.inspector_note}
+                colorClass="text-accent"
+                borderClass="border-accent"
               />
-              <NoteCard 
-                icon={XCircle} 
-                label="Rejection Reason" 
-                value={complaint.rejection_reason} 
-                colorClass="text-destructive" 
-                borderClass="border-destructive" 
+              <NoteCard
+                icon={XCircle}
+                label="Rejection Reason"
+                value={complaint.rejection_reason}
+                colorClass="text-destructive"
+                borderClass="border-destructive"
               />
             </>
           )}
@@ -508,7 +539,7 @@ export default function ComplaintDetailsPage() {
                 const action = (h.action || "").toUpperCase();
                 const newStatus = (h.new_status || "").toUpperCase();
                 const isCitizen = user?.role === "CITIZEN";
-                
+
                 let statusKey = "SUBMITTED";
                 if (action === "CREATED" || newStatus === "PENDING" || newStatus === "OPEN") {
                   statusKey = "SUBMITTED";
@@ -634,7 +665,7 @@ export default function ComplaintDetailsPage() {
         {user?.role === "CITIZEN" && ["CLOSED", "RESOLVED"].includes(complaint.status) && (
           <div className="bg-white rounded-[2rem] p-6 shadow-sm border border-slate-200 mb-6">
             <h3 className="text-lg font-black text-slate-800 mb-4">Provide Feedback</h3>
-            
+
             {!complaint.feedback?.rating ? (
               <div className="mb-6">
                 <div className="flex gap-2 mb-4">
@@ -646,8 +677,8 @@ export default function ComplaintDetailsPage() {
                     </button>
                   ))}
                 </div>
-                <textarea 
-                  value={feedback} 
+                <textarea
+                  value={feedback}
                   onChange={(e) => setFeedback(e.target.value)}
                   placeholder="Write your feedback..."
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl p-4 mb-4 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
@@ -703,11 +734,11 @@ export default function ComplaintDetailsPage() {
               <p className="text-sm font-medium text-muted-foreground leading-relaxed mb-4">
                 Please provide a detailed reason for rejecting this complaint. This will be visible to the citizen.
               </p>
-              
+
               <div className="mb-8">
                 <label className="block text-xs font-bold text-muted-foreground tracking-wider mb-2 uppercase">Reason (Required)</label>
-                <textarea 
-                  value={rejectReason} 
+                <textarea
+                  value={rejectReason}
                   onChange={(e) => setRejectReason(e.target.value)}
                   placeholder="E.g., Issue not found at location, duplicate complaint..."
                   className="w-full bg-muted/20 border border-border rounded-xl p-4 text-sm focus:outline-none focus:ring-2 focus:ring-red-500 min-h-[100px]"
@@ -747,14 +778,14 @@ export default function ComplaintDetailsPage() {
               <p className="text-sm font-medium text-muted-foreground leading-relaxed mb-6">
                 Have you verified that the issue has been successfully resolved?
               </p>
-              
+
               <div className="mb-8">
                 <label className="block text-xs font-bold text-muted-foreground tracking-wider mb-2 uppercase">Proof Images (Required)</label>
                 <div className="border-2 border-dashed border-border rounded-2xl p-6 flex flex-col items-center justify-center bg-muted/20 hover:bg-muted/40 transition-colors relative cursor-pointer group">
-                  <input 
-                    type="file" 
-                    multiple 
-                    accept="image/*" 
+                  <input
+                    type="file"
+                    multiple
+                    accept="image/*"
                     className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
                     onChange={(e) => {
                       if (e.target.files) {
@@ -763,17 +794,17 @@ export default function ComplaintDetailsPage() {
                     }}
                   />
                   <div className="w-10 h-10 bg-success/10 rounded-full flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
-                     <FileText className="w-5 h-5 text-success" />
+                    <FileText className="w-5 h-5 text-success" />
                   </div>
                   <p className="text-sm font-bold text-foreground">Tap or drag images here</p>
                 </div>
-                
+
                 {selectedProofImages.length > 0 && (
                   <div className="flex flex-wrap gap-2 mt-4">
                     {selectedProofImages.map((file, i) => (
                       <div key={i} className="relative w-16 h-16 rounded-xl overflow-hidden border border-border group shadow-sm">
                         <img src={URL.createObjectURL(file)} alt="Preview" className="w-full h-full object-cover" />
-                        <button 
+                        <button
                           type="button"
                           onClick={(e) => {
                             e.preventDefault();

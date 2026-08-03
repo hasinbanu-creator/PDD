@@ -532,11 +532,13 @@ export const ComplaintDetailScreen = ({ route, navigation }) => {
           <View style={styles.card}>
             <SectionTitle title="Complaint Info" icon="information-outline" />
 
-            <InfoRow icon="text-box-outline"      label="Description" value={complaint?.description} />
-            <InfoRow icon="map-marker-outline"    label="Address"     value={complaint?.address} />
-            <InfoRow icon="map-outline"           label="District"    value={complaint?.district_name} />
-            <InfoRow icon="map-marker-outline"    label="Ward"        value={complaint?.ward_name} />
-            {complaint?.landmark ? <InfoRow icon="home-map-marker" label="Landmark / Door No." value={complaint.landmark} /> : null}
+            <InfoRow icon="account-outline"       label="Raised By"   value={complaint?.citizenName || complaint?.citizen_name || complaint?.citizen?.name || "Not Available"} />
+            <InfoRow icon="text-box-outline"      label="Description" value={complaint?.description || "Not Available"} />
+            <InfoRow icon="map-outline"           label="District"    value={complaint?.districtName || complaint?.district_name || complaint?.district || "Not Available"} />
+            <InfoRow icon="map-marker-outline"    label="Ward"        value={complaint?.wardName || complaint?.ward_name || complaint?.ward || "Not Available"} />
+            <InfoRow icon="home-outline"          label="Address"     value={complaint?.address || "Not Available"} />
+            <InfoRow icon="home-map-marker"       label="Landmark"    value={complaint?.landmark || "Not Available"} />
+            <InfoRow icon="identifier"            label="Complaint ID" value={complaint?.complaint_id || complaint?.complaintId || complaint?._id || "Not Available"} />
             <InfoRow icon="crosshairs-gps"        label="Coordinates"
               value={complaint?.latitude && complaint?.longitude
                 ? `${complaint.latitude}, ${complaint.longitude}` : null} />

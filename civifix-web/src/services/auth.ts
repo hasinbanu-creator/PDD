@@ -242,13 +242,15 @@ export const authService = {
   },
 
   // ─── INSPECTOR ───────────────────────────────────────────────────────────────
-  getWardComplaints: async ({ page = 1, limit = 20, status, district_id, ward_id }: { page?: number; limit?: number; status?: string; district_id?: string; ward_id?: string } = {}): Promise<any> => {
+  getWardComplaints: async ({ page = 1, limit = 20, status, district_id, ward_id, district }: { page?: number; limit?: number; status?: string; district_id?: string; ward_id?: string; district?: string } = {}): Promise<any> => {
     const params: any = { page, limit };
     if (status) params.status = status;
     if (district_id) params.district_id = district_id;
     if (ward_id) params.ward_id = ward_id;
-    const res = await api.get("/inspector/complaints", { params });
-    return unwrapResponse(res);
+    if (district) params.district = district;
+    
+    const response = await api.get("/inspector/complaints", { params });
+    return unwrapResponse(response);
   },
 
   getWardWorkers: async (): Promise<any[]> => {

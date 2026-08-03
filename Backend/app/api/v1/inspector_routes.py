@@ -124,7 +124,7 @@ async def get_inspector_dashboard(current_user: Dict[str, Any] = Depends(get_cur
 @router.get(
     "/complaints",
     summary="Get ward complaints",
-    dependencies=[Depends(require_role("INSPECTOR"))]
+    dependencies=[Depends(require_role("INSPECTOR", "SUPER_ADMIN", "DISTRICT_ADMIN"))]
 )
 async def get_ward_complaints(
     page: int = Query(1, ge=1),
@@ -134,47 +134,32 @@ async def get_ward_complaints(
     search_query: str = Query(None),
     district_id: str = Query(None),
     ward_id: str = Query(None),
+    district: str = Query(None),
     current_user: Dict[str, Any] = Depends(get_current_user)
 ):
-    """Get complaints for a ward — filters by district_id and/or ward_id only (no inspector_id filter)"""
+    """Get complaints with optional district filter"""
     try:
         query = {}
-
-        # Resolve district_id (accepts both ObjectId string and district name)
-        if district_id:
+        
+        # Apply district filter
+        if district and district.strip() and district != "all" and district != "All Districts":
+            if "$and" not in query:
+                query["$and"] = []
+            query["$and"].append({
+                "$or": [
+                    {"district": district},
+                    {"district_name": district},
+                    {"districtName": district}
+                ]
+            })
+        elif district_id:
+            # For backward compatibility / other callers
             try:
                 query["district_id"] = ObjectId(district_id)
-                logger.info(f"[complaints] district_id resolved to ObjectId: {district_id}")
             except Exception:
                 district_doc = await db.districts.find_one({"name": district_id})
                 if district_doc:
                     query["district_id"] = district_doc["_id"]
-                    logger.info(f"[complaints] district name '{district_id}' resolved to ObjectId: {district_doc['_id']}")
-                else:
-                    logger.warning(f"[complaints] district '{district_id}' not found — ignoring filter")
-
-        # Resolve ward_id
-        if ward_id:
-            try:
-                query["ward_id"] = ObjectId(ward_id)
-                logger.info(f"[complaints] ward_id set to: {ward_id}")
-            except Exception:
-                logger.warning(f"[complaints] Invalid ward_id '{ward_id}' — cannot convert to ObjectId")
-
-        # Only fallback to the inspector's assigned wards if NOTHING was specified
-        if not district_id and not ward_id:
-            logger.info("[complaints] No district_id or ward_id provided; falling back to inspector's assigned wards")
-            ward_ids = await _get_inspector_ward_ids(current_user)
-            if ward_ids:
-                query["ward_id"] = {"$in": ward_ids}
-                logger.info(f"[complaints] Fallback ward_ids: {ward_ids}")
-            else:
-                logger.warning("[complaints] Inspector not assigned to any ward and no ward_id provided")
-                return ResponseHandler.success(
-                    message="No ward assigned to inspector",
-                    data={"complaints": [], "page": page, "limit": limit, "total": 0, "pages": 0,
-                          "stats": {"total": 0, "pending": 0, "in_progress": 0, "resolved": 0, "rejected": 0}}
-                )
 
         if status_filter:
             statuses = [s.strip() for s in status_filter.split(',')]
@@ -184,12 +169,24 @@ async def get_ward_complaints(
             query["priority"] = priority
             
         if search_query:
-            # Case-insensitive search on title or complaint_id
-            query["$or"] = [
-                {"complaint_id": {"$regex": search_query, "$options": "i"}},
-                {"title": {"$regex": search_query, "$options": "i"}},
-                {"complaint_type": {"$regex": search_query, "$options": "i"}}
-            ]
+            if "$and" not in query:
+                query["$and"] = []
+            query["$and"].append({
+                "$or": [
+                    {"complaint_id": {"$regex": search_query, "$options": "i"}},
+                    {"complaintId": {"$regex": search_query, "$options": "i"}},
+                    {"title": {"$regex": search_query, "$options": "i"}},
+                    {"complaint_type": {"$regex": search_query, "$options": "i"}},
+                    {"complaintType": {"$regex": search_query, "$options": "i"}},
+                    {"citizenName": {"$regex": search_query, "$options": "i"}},
+                    {"citizen_name": {"$regex": search_query, "$options": "i"}},
+                    {"district": {"$regex": search_query, "$options": "i"}},
+                    {"district_name": {"$regex": search_query, "$options": "i"}},
+                    {"ward": {"$regex": search_query, "$options": "i"}},
+                    {"ward_name": {"$regex": search_query, "$options": "i"}},
+                    {"address": {"$regex": search_query, "$options": "i"}},
+                ]
+            })
 
         skip = (page - 1) * limit
         logger.info(f"[complaints] MongoDB query: {query}, skip={skip}, limit={limit}")
@@ -220,39 +217,98 @@ async def get_ward_complaints(
         for complaint in complaints:
             citizen_id_str = str(complaint.get("user_id")) if complaint.get("user_id") else None
             ward_id_str = str(complaint.get("ward_id")) if complaint.get("ward_id") else None
+            district_id_str = str(complaint.get("district_id")) if complaint.get("district_id") else None
             
             citizen_data = users_map.get(citizen_id_str) if citizen_id_str else None
             ward_data = wards_map.get(ward_id_str) if ward_id_str else None
             
+            # Resolve district and ward names if not stored
+            d_name = complaint.get("district") or complaint.get("district_name") or complaint.get("districtName")
+            w_name = complaint.get("ward") or complaint.get("ward_name") or complaint.get("wardName")
+            
+            if not w_name and ward_id_str and ward_id_str in wards_map:
+                w_name = wards_map[ward_id_str].get("ward_name")
+                if not district_id_str:
+                    district_id_str = str(wards_map[ward_id_str].get("district_id"))
+                    
+            if not d_name and district_id_str:
+                dist_doc = await db.districts.find_one({"_id": ObjectId(district_id_str) if len(district_id_str) == 24 else district_id_str})
+                if dist_doc:
+                    d_name = dist_doc.get("name")
+                    
+            d_name = d_name or "Not Available"
+            w_name = w_name or "Not Available"
+            
+            # Resolve citizen fields
+            citizen_name = complaint.get("citizenName") or complaint.get("citizen_name")
+            if not citizen_name and citizen_data:
+                citizen_name = citizen_data.get("name")
+            citizen_name = citizen_name or "Not Available"
+            
+            citizen_email = complaint.get("citizenEmail") or complaint.get("citizen_email")
+            if not citizen_email and citizen_data:
+                citizen_email = citizen_data.get("email")
+            citizen_email = citizen_email or "Not Available"
+            
+            citizen_phone = complaint.get("citizenPhone") or complaint.get("citizen_phone")
+            if not citizen_phone and citizen_data:
+                citizen_phone = citizen_data.get("mobile_number")
+            citizen_phone = citizen_phone or "Not Available"
+            
             result.append({
                 "_id": str(complaint["_id"]),
                 "complaint_id": complaint.get("complaint_id"),
+                "complaintId": complaint.get("complaint_id") or "Not Available",
                 "title": complaint.get("title", complaint.get("complaint_type", "")),
-                "complaint_type": complaint.get("complaint_type"),
-                "description": complaint.get("description"),
-                "status": complaint.get("status"),
-                "priority": complaint.get("priority", "MEDIUM"),
-                "address": complaint.get("address"),
-                "landmark": complaint.get("landmark"),
+                "complaint_type": complaint.get("complaint_type") or "Not Available",
+                "complaintType": complaint.get("complaint_type") or "Not Available",
+                "issueType": complaint.get("complaint_type") or "Not Available",
+                "description": complaint.get("description") or "Not Available",
+                "complaintDescription": complaint.get("description") or "Not Available",
+                "status": complaint.get("status") or "Not Available",
+                "priority": complaint.get("priority", "MEDIUM") or "Not Available",
+                "address": complaint.get("address") or "Not Available",
+                "landmark": complaint.get("landmark") or "Not Available",
                 "latitude": complaint.get("latitude"),
                 "longitude": complaint.get("longitude"),
                 "created_at": complaint.get("created_at").isoformat() if complaint.get("created_at") else None,
+                "createdAt": complaint.get("created_at").isoformat() if complaint.get("created_at") else None,
                 "updated_at": complaint.get("updated_at").isoformat() if complaint.get("updated_at") else None,
+                "updatedAt": complaint.get("updated_at").isoformat() if complaint.get("updated_at") else None,
+                "districtId": district_id_str or "Not Available",
+                "district_id": district_id_str or "Not Available",
+                "districtName": d_name,
+                "district_name": d_name,
+                "district": d_name,
+                "wardId": ward_id_str or "Not Available",
+                "ward_id": ward_id_str or "Not Available",
+                "wardName": w_name,
+                "ward_name": w_name,
+                "ward": w_name,
+                "citizenId": citizen_id_str or "Not Available",
+                "citizenName": citizen_name,
+                "citizenEmail": citizen_email,
+                "citizenPhone": citizen_phone,
+                "images": complaint.get("images") or complaint.get("image_urls") or [],
                 "citizen": {
-                    "name": citizen_data.get("name") if citizen_data else "Citizen"
-                } if citizen_data else None,
-                "ward": {
-                    "ward_name": ward_data.get("ward_name") if ward_data else None,
+                    "name": citizen_name
+                },
+                "ward_info": {
+                    "ward_name": w_name,
                     "ward_number": ward_data.get("ward_number") if ward_data else None
                 } if ward_data else None
             })
 
         # Calculate statistics based on filtered ward/district
         stats_query = {}
-        if "district_id" in query:
-            stats_query["district_id"] = query["district_id"]
-        if "ward_id" in query:
-            stats_query["ward_id"] = query["ward_id"]
+        if district and district.strip() and district != "all" and district != "All Districts":
+            stats_query["$or"] = [
+                {"district": district},
+                {"district_name": district},
+                {"districtName": district}
+            ]
+        elif district_id:
+            stats_query["district_id"] = query.get("district_id")
 
         total_count = await db.complaints.count_documents(stats_query)
         pending_count = await db.complaints.count_documents({**stats_query, "status": {"$in": ["PENDING", "OPEN"]}})

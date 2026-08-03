@@ -464,13 +464,15 @@ const InspectorComplaintItem = ({ complaint, index, total, onPress }) => {
   const title  = meta.title;
   const desc   = complaint.description || "No description provided";
   
-  const compId = complaint.complaint_id || complaint._id || "#CIV-NEW";
+  const compId = complaint.complaint_id || complaint.complaintId || complaint._id || "#CIV-NEW";
   const priority = complaint.priority || "MEDIUM";
-  const citizenName = complaint.user_id?.name || complaint.citizen_name || "Citizen";
+  const citizenName = complaint.citizenName || complaint.citizen_name || complaint.citizen?.name || (complaint.user_id?.name || "Not Available");
   const createdDate = complaint.created_at ? new Date(complaint.created_at).toLocaleDateString() : "—";
-  const wardName = getWardDisplayLabel(complaint);
+  const wardName = complaint.wardName || complaint.ward_name || complaint.ward || getWardDisplayLabel(complaint) || "Not Available";
+  const districtName = complaint.districtName || complaint.district_name || complaint.district || "Not Available";
   const address = complaint.address || "No address provided";
-  const hasImages = complaint.images && complaint.images.length > 0;
+  const landmarkVal = complaint.landmark || "Not Available";
+  const hasImages = (complaint.images && complaint.images.length > 0) || (complaint.image_urls && complaint.image_urls.length > 0);
 
   return (
     <TouchableOpacity
@@ -498,39 +500,31 @@ const InspectorComplaintItem = ({ complaint, index, total, onPress }) => {
         {desc}
       </Text>
       
-      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: SPACING.md }}>
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-          <Icon name="identifier" size={14} color={COLORS.textLight} />
-          <Text style={{ color: COLORS.textLight, fontSize: FONT_SIZES.xs }}>{compId}</Text>
+      <View style={{ backgroundColor: "#F9FAFB", padding: 12, borderRadius: 12, borderWidth: 1, borderColor: "#E5E7EB", marginTop: 4, width: "100%", gap: 4 }}>
+        <Text style={{ fontSize: 12, color: "#4B5563" }}><Text style={{ fontWeight: "bold" }}>Raised By :</Text> {citizenName}</Text>
+        <Text style={{ fontSize: 12, color: "#4B5563" }}><Text style={{ fontWeight: "bold" }}>District :</Text> {districtName}</Text>
+        <Text style={{ fontSize: 12, color: "#4B5563" }}><Text style={{ fontWeight: "bold" }}>Ward :</Text> {wardName}</Text>
+        <Text style={{ fontSize: 12, color: "#4B5563" }}><Text style={{ fontWeight: "bold" }}>Address :</Text> {address}</Text>
+        <Text style={{ fontSize: 12, color: "#4B5563" }}><Text style={{ fontWeight: "bold" }}>Landmark :</Text> {landmarkVal}</Text>
+      </View>
+      
+      <View style={{ marginTop: 8, flexDirection: "row", alignItems: "center", justifyContent: "space-between", width: "100%" }}>
+        <View style={{ flexDirection: "column" }}>
+          <Text style={{ fontSize: 10, fontWeight: "bold", color: COLORS.textLight }}>Complaint ID :</Text>
+          <Text style={{ fontSize: 11, fontWeight: "bold", color: COLORS.textDark }}>{compId}</Text>
         </View>
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-          <Icon name="flag-outline" size={14} color={priority === "HIGH" ? "#DC2626" : priority === "MEDIUM" ? "#D97706" : "#059669"} />
-          <Text style={{ color: COLORS.textLight, fontSize: FONT_SIZES.xs }}>{priority}</Text>
-        </View>
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-          <Icon name="account-outline" size={14} color={COLORS.textLight} />
-          <Text style={{ color: COLORS.textLight, fontSize: FONT_SIZES.xs }}>{citizenName}</Text>
-        </View>
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-          <Icon name="calendar-outline" size={14} color={COLORS.textLight} />
-          <Text style={{ color: COLORS.textLight, fontSize: FONT_SIZES.xs }}>{createdDate}</Text>
-        </View>
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-          <Icon name="map-marker-outline" size={14} color={COLORS.textLight} />
-          <Text style={{ color: COLORS.textLight, fontSize: FONT_SIZES.xs }}>{wardName}</Text>
-        </View>
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 4, width: "100%", marginTop: 4 }}>
-          <Icon name="map-marker-radius-outline" size={14} color={COLORS.textLight} />
-          <Text numberOfLines={1} style={{ color: COLORS.textLight, fontSize: FONT_SIZES.xs, flex: 1 }}>
-            {address}{complaint.landmark ? ` (Landmark: ${complaint.landmark})` : ""}
-          </Text>
-        </View>
-        {hasImages && (
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 4, marginTop: 4 }}>
-            <Icon name="image-outline" size={14} color="#0F8A83" />
-            <Text style={{ color: "#0F8A83", fontSize: FONT_SIZES.xs }}>View Images</Text>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+            <Icon name="flag-outline" size={14} color={priority === "HIGH" ? "#DC2626" : priority === "MEDIUM" ? "#D97706" : "#059669"} />
+            <Text style={{ color: COLORS.textLight, fontSize: FONT_SIZES.xs }}>{priority}</Text>
           </View>
-        )}
+          {hasImages && (
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+              <Icon name="image-outline" size={14} color="#0F8A83" />
+              <Text style={{ color: "#0F8A83", fontSize: FONT_SIZES.xs }}>Images</Text>
+            </View>
+          )}
+        </View>
       </View>
     </TouchableOpacity>
   );

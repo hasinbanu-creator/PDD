@@ -273,6 +273,9 @@ export const ProfileScreen = ({ navigation }) => {
   const [loading, setLoading] = useState(false);
   const [meLoading, setMeLoading] = useState(true);
   const [wardLoading, setWardLoading] = useState(false);
+  const [complaintsCount, setComplaintsCount] = useState({ submitted: 0, active: 0, resolved: 0 });
+
+  const role = meData?.role ?? user?.role ?? "CITIZEN";
 
   useEffect(() => { loadMe(); }, []);
 
@@ -280,6 +283,70 @@ export const ProfileScreen = ({ navigation }) => {
     const unsubscribe = navigation.addListener("focus", loadWardData);
     return unsubscribe;
   }, [navigation, user?.role]);
+
+
+
+  const [inspectorStats, setInspectorStats] = useState({ resolved: 0, pending: 0, rejected: 0 });
+
+  useEffect(() => {
+    const loadCitizenStats = async () => {
+      if (role !== "CITIZEN") return;
+      try {
+        const res = await authService.getComplaints?.({ limit: 100 });
+        if (res) {
+          const statusCounts = res?.meta?.status_counts || {};
+          const active = (statusCounts.WORKING || 0) + (statusCounts.ASSIGNED || 0) + (statusCounts.IN_PROGRESS || 0) + (statusCounts.APPROVAL || 0);
+          const closed = (statusCounts.CLOSED || 0) + (statusCounts.RESOLVED || 0);
+          setComplaintsCount({
+            submitted: res?.meta?.total_records || 0,
+            active: active,
+            resolved: closed
+          });
+        }
+      } catch (err) {
+        console.warn("Failed to load citizen stats in ProfileScreen:", err);
+      }
+    };
+    const unsubscribe = navigation.addListener("focus", loadCitizenStats);
+    loadCitizenStats();
+    return unsubscribe;
+  }, [navigation, role]);
+
+  useEffect(() => {
+    const loadInspectorStats = async () => {
+      if (role !== "INSPECTOR") return;
+      try {
+        const res = await authService.getWardComplaints?.({ limit: 100 });
+        const complaintsList = res?.complaints || res?.data || (Array.isArray(res) ? res : []);
+        
+        let wardId = null;
+        try {
+          const wardRes = await authService.getInspectorWard?.();
+          const wObj = wardRes?.ward_info ?? wardRes?.data ?? null;
+          wardId = wObj?._id || wObj?.ward_id;
+        } catch (e) {
+          console.warn("getInspectorWard failed:", e);
+        }
+
+        const assignedTickets = complaintsList.filter((c) => {
+          const cWardId = c.ward_id || c.wardId || (c.ward?._id ?? c.ward?.id);
+          return cWardId === wardId;
+        });
+
+        const pending = assignedTickets.filter((c) => ["OPEN", "PENDING"].includes(c.status)).length;
+        const resolved = assignedTickets.filter((c) => ["RESOLVED", "CLOSED"].includes(c.status)).length;
+        const rejected = assignedTickets.filter((c) => c.status === "REJECTED").length;
+
+        setInspectorStats({ resolved, pending, rejected });
+      } catch (err) {
+        console.warn("Failed to load inspector stats in ProfileScreen:", err);
+      }
+    };
+
+    const unsubscribe = navigation.addListener("focus", loadInspectorStats);
+    loadInspectorStats();
+    return unsubscribe;
+  }, [navigation, role]);
 
   const loadMe = async () => {
     try {
@@ -329,7 +396,6 @@ export const ProfileScreen = ({ navigation }) => {
   const displayName  = user?.name  || meData?.email?.split("@")[0] || "Welcome Back!";
   const displayEmail = meData?.email ?? user?.email ?? "";
   const displayPhone = user?.mobile_number ?? user?.mobile ?? "";
-  const role         = meData?.role ?? user?.role ?? "CITIZEN"
   const district     = meData?.district ?? user?.district ?? "";
   const roleMeta     = ROLE_META[role] ?? ROLE_META.CITIZEN;
 
@@ -337,9 +403,9 @@ export const ProfileScreen = ({ navigation }) => {
   const headerStats =
     role === "SUPER_ADMIN"    ? [{ value: "—", label: "Districts" }, { value: "—", label: "Complaints" }, { value: "—", label: "Workers" }] :
     role === "DISTRICT_ADMIN" ? [{ value: "—", label: "Inspectors" }, { value: "—", label: "Workers" }, { value: "—", label: "Complaints" }] :
-    role === "INSPECTOR"      ? [{ value: "—", label: "Open" }, { value: "—", label: "In Progress" }, { value: "—", label: "Resolved" }] :
+    role === "INSPECTOR"      ? [{ value: String(inspectorStats.resolved), label: "Resolved" }, { value: String(inspectorStats.pending), label: "Pending" }, { value: String(inspectorStats.rejected), label: "Rejected" }] :
     role === "WORKER"         ? [{ value: "—", label: "Assigned" }, { value: "—", label: "Active" }, { value: "—", label: "Done" }] :
-    /* CITIZEN */               [{ value: "—", label: "Submitted" }, { value: "—", label: "Active" }, { value: "—", label: "Resolved" }];
+    /* CITIZEN */               [{ value: String(complaintsCount.submitted), label: "Submitted" }, { value: String(complaintsCount.active), label: "Active" }, { value: String(complaintsCount.resolved), label: "Resolved" }];
 
   const { roleSection, account, support } = buildMenuSections({ role, navigation, meData });
 
@@ -352,7 +418,7 @@ export const ProfileScreen = ({ navigation }) => {
   }[role] ?? "My Activity";
 
   return (
-    <View style={{ flex: 1, backgroundColor: "#F0F4F8" }}>
+    <View style={{ flex: 1, backgroundColor: role === "INSPECTOR" ? "#F2FAF9" : "#F0F4F8" }}>
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 40 }}
@@ -416,7 +482,11 @@ export const ProfileScreen = ({ navigation }) => {
               </Text>
               <InfoRow icon="email-outline"     value={displayEmail} />
               <InfoRow icon="phone-outline"     value={displayPhone || undefined} />
+
               <InfoRow icon="map-marker-outline" value={district || undefined} />
+              {role === "INSPECTOR" && wardData && (
+                <InfoRow icon="map-marker-radius-outline" value={`Ward: #${wardData.ward_number} - ${wardData.ward_name}`} />
+              )}
               <View style={{ marginTop: 8 }}>
                 <Pill label={roleMeta.label} color={roleMeta.color} bg="rgba(255,255,255,0.22)" />
               </View>

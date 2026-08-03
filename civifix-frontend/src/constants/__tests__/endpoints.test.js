@@ -3,13 +3,7 @@ jest.mock('react-native', () => ({
 }));
 
 jest.mock('react-native-config', () => ({
-  expoConfig: {
-    extra: {
-      apiUrl: 'https://cv.onenism.org/api/v1',
-    },
-  },
-  manifest: {},
-  manifest2: {},
+  API_URL: 'https://cv.onenism.org/api/v1',
 }));
 
 jest.mock('react-native-device-info', () => ({

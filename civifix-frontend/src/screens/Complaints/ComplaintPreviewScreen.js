@@ -1,6 +1,6 @@
-import { Platform } from 'react-native';
-import React, { useState } from "react";
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, ActivityIndicator, Dimensions } from "react-native";
+import { Platform, View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, ActivityIndicator, Dimensions } from 'react-native';
+import React, { useState, useContext } from "react";
+import { AuthContext } from "../../context/AuthContext";
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { COLORS, FONT_SIZES, SPACING, BORDER_RADIUS, SHADOWS } from "../../constants/theme";
 import MapView, { Marker } from "react-native-maps";
@@ -14,6 +14,7 @@ const { height: SCREEN_HEIGHT, width: SCREEN_WIDTH } = Dimensions.get("window");
 
 const ComplaintPreviewScreen = ({ route, navigation }) => {
   const { form, ward, selectedType, selectedPri } = route.params;
+  const { user } = useContext(AuthContext);
   const [submitting, setSubmitting] = useState(false);
   const [viewerVisible, setViewerVisible] = useState(false);
   const [viewerImageUrl, setViewerImageUrl] = useState("");
@@ -24,6 +25,17 @@ const ComplaintPreviewScreen = ({ route, navigation }) => {
 
       const formData = new FormData();
       formData.append("ward_id", String(form.ward_id));
+      formData.append("wardId", String(form.ward_id));
+      
+      const wardName = ward?.ward_name ?? ward?.label ?? "";
+      formData.append("ward_name", wardName);
+      formData.append("wardName", wardName);
+
+      formData.append("district_id", user?.district_id || user?.district || "");
+      formData.append("districtId", user?.district_id || user?.district || "");
+      formData.append("district_name", user?.district_name ?? user?.district ?? "");
+      formData.append("districtName", user?.district_name ?? user?.district ?? "");
+
       formData.append("complaint_type", String(form.complaint_type));
       formData.append("description", String(form.description));
       formData.append("priority", String(form.priority));
@@ -43,7 +55,7 @@ const ComplaintPreviewScreen = ({ route, navigation }) => {
           if (mimeType === 'image') mimeType = 'image/jpeg';
           formData.append("images", {
             uri: fileUri,
-            name: img.fileName || `image_${index}.jpg`,
+            name: img.name || img.fileName || `image_${index}.jpg`,
             type: mimeType
           });
         });

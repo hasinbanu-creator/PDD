@@ -2,7 +2,7 @@ import { Platform } from "react-native";
 import Config from "react-native-config";
 import DeviceInfo from "react-native-device-info";
 
-const DEFAULT_API_URL = "http://localhost:8000/api/v1";
+const DEFAULT_API_URL = "http://10.168.142.206:8000/api/v1";
 
 const isLocalhostLike = (url) => {
   if (!url) return true;
@@ -15,9 +15,24 @@ const isLocalhostLike = (url) => {
   }
 };
 
-const getMetroHost = () => null;
+const getMetroHost = () => {
+  try {
+    const { NativeModules } = require("react-native");
+    const scriptURL = NativeModules?.SourceCode?.scriptURL;
+    if (scriptURL) {
+      const address = scriptURL.split("/")[2];
+      const host = address.split(":")[0];
+      if (host && host !== "localhost" && host !== "127.0.0.1") {
+        return host;
+      }
+    }
+  } catch (e) {
+    console.warn("Failed to get Metro host IP:", e);
+  }
+  return null;
+};
 
-const getLanIp = () => null;
+const getLanIp = () => getMetroHost();
 
 const getConfiguredApiUrl = () => process.env.EXPO_PUBLIC_API_URL || Config.EXPO_PUBLIC_API_URL || Config.API_URL || DEFAULT_API_URL;
 

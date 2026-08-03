@@ -29,31 +29,140 @@ export const getErrorMessage = (error, fallback = "Something went wrong") => {
 
 api.interceptors.request.use(
   async (config) => {
-    if (process.env.EXPO_PUBLIC_ENABLE_DEBUG === "true") {
-      console.log("API request:", api.getUri(config));
+    // Sanitize config.url to avoid double slashes when appended to baseURL
+    if (config.url && config.url.startsWith("/")) {
+      if (config.baseURL && config.baseURL.endsWith("/")) {
+        config.url = config.url.substring(1);
+      }
     }
 
     const token = await AsyncStorage.getItem("authToken");
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+
+    // Extensive request debugging
+    const fullUrl = `${config.baseURL || ""}${config.baseURL?.endsWith("/") ? "" : "/"}${config.url || ""}`.replace(/([^:]\/)\/+/g, "$1");
+    console.log(`[API REQUEST] => Method: ${config.method?.toUpperCase()} | URL: ${fullUrl}`);
+    
+    let bodyLog = "";
+    if (config.data instanceof FormData) {
+      bodyLog = `[FormData] fields: ${JSON.stringify(config.data._parts?.map(p => p[0]))}`;
+    } else {
+      try {
+        bodyLog = JSON.stringify(config.data);
+      } catch {
+        bodyLog = "[Unserializable Body]";
+      }
+    }
+    console.log(`[API REQUEST DETAILS] Headers: ${JSON.stringify(config.headers)} | Body: ${bodyLog}`);
+
     return config;
   },
-  (error) => Promise.reject(error)
+  (error) => {
+    console.error("[API REQUEST ERROR]", error);
+    return Promise.reject(error);
+  }
 );
 
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    const fullUrl = `${response.config.baseURL || ""}${response.config.url || ""}`;
+    console.log(`[API RESPONSE] <= Success | Status: ${response.status} | URL: ${fullUrl}`);
+    let dataLog = "";
+    try {
+      dataLog = JSON.stringify(response.data);
+    } catch {
+      dataLog = "[Unserializable Data]";
+    }
+    console.log(`[API RESPONSE DETAILS] Data: ${dataLog}`);
+    return response;
+  },
   async (error) => {
     const originalRequest = error.config;
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    
+    // Extensive diagnostic logs for any failure
+    const { config, response, code, message } = error;
+    console.error("=============== AXIOS ERROR DIAGNOSTICS ===============");
+    console.error(`Error Message: ${message}`);
+    console.error(`Error Code: ${code}`);
+    
+    if (config) {
+      const fullUrl = `${config.baseURL || ""}${config.baseURL?.endsWith("/") ? "" : "/"}${config.url || ""}`.replace(/([^:]\/)\/+/g, "$1");
+      console.error(`Request URL: ${fullUrl}`);
+      console.error(`HTTP Method: ${config.method?.toUpperCase()}`);
+      console.error(`Request Headers: ${JSON.stringify(config.headers)}`);
+      console.error(`Request Body: ${JSON.stringify(config.data)}`);
+      console.error(`Timeout Configured: ${config.timeout}ms`);
+    }
+    
+    if (response) {
+      console.error(`Response Status: ${response.status}`);
+      console.error(`Response Body: ${JSON.stringify(response.data)}`);
+      console.error(`Response Headers: ${JSON.stringify(response.headers)}`);
+    } else {
+      console.error("No Response received (possible Network Error, DNS resolution failure, SSL error, or request Timeout)");
+      if (error.isAxiosError && !response) {
+        console.error("Axios confirmed request was sent but no response was received.");
+      }
+    }
+    console.error("======================================================");
+
+    // Dynamic verification on 401 or 403
+    if (response?.status === 401 || response?.status === 403) {
+      try {
+        const token = await AsyncStorage.getItem("authToken");
+        const refreshToken = await AsyncStorage.getItem("refreshToken");
+        const hasAuthHeader = !!config?.headers?.Authorization;
+        
+        console.warn("--- AUTHENTICATION DIAGNOSTICS ---");
+        console.warn(`HTTP Status: ${response.status}`);
+        console.warn(`Access Token exists locally: ${!!token}`);
+        console.warn(`Refresh Token exists locally: ${!!refreshToken}`);
+        console.warn(`Authorization Header attached to request: ${hasAuthHeader}`);
+        
+        if (token) {
+          try {
+            const parts = token.split('.');
+            if (parts.length === 3) {
+              const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=';
+              let output = '';
+              let str = String(parts[1].replace(/-/g, '+').replace(/_/g, '/')).replace(/=+$/, '');
+              for (
+                let bc = 0, bs, rcx, idx = 0;
+                rcx = str.charAt(idx++);
+                ~rcx && (bs = bc % 4 ? bs * 64 + rcx : rcx, bc++ % 4) ? output += String.fromCharCode(255 & bs >> (-2 * bc & 6)) : 0
+              ) {
+                rcx = chars.indexOf(rcx);
+              }
+              const payload = JSON.parse(output);
+              const now = Math.floor(Date.now() / 1000);
+              const isExpired = payload.exp && payload.exp < now;
+              console.warn(`Token Expiry Time (UTC): ${payload.exp ? new Date(payload.exp * 1000).toISOString() : "N/A"}`);
+              console.warn(`Token expired: ${isExpired}`);
+            }
+          } catch (jwtErr) {
+            console.warn("Could not parse JWT token in diagnostics:", jwtErr.message);
+          }
+        }
+        console.warn("----------------------------------");
+      } catch (diagnosticsErr) {
+        console.warn("Diagnostics failed:", diagnosticsErr);
+      }
+    }
+
+    if (error.response?.status === 401 && originalRequest && !originalRequest._retry) {
       originalRequest._retry = true;
       try {
         const refreshToken = await AsyncStorage.getItem("refreshToken");
-        const response = await axios.post(`${API_URL}${ENDPOINTS.REFRESH_TOKEN}`, {
+        if (!refreshToken) {
+          throw new Error("No refresh token available");
+        }
+        const cleanedRefreshUrl = `${API_URL}${ENDPOINTS.REFRESH_TOKEN}`.replace(/([^:]\/)\/+/g, "$1");
+        const refreshResponse = await axios.post(cleanedRefreshUrl, {
           refresh_token: refreshToken,
         });
-        const tokens = unwrapResponse(response);
+        const tokens = unwrapResponse(refreshResponse);
         const { access_token } = tokens || {};
         if (!access_token) {
           throw new Error("Refresh token response did not include an access token");
@@ -68,7 +177,11 @@ api.interceptors.response.use(
         import('react-native').then(({ DeviceEventEmitter }) => {
           DeviceEventEmitter.emit('SESSION_EXPIRED');
         });
-        return Promise.reject(refreshError);
+        // Return original auth error/expired session error rather than mask as network error
+        const authError = new Error("Authentication failed (session expired)");
+        authError.response = error.response;
+        authError.status = 401;
+        return Promise.reject(authError);
       }
     }
     
@@ -79,12 +192,6 @@ api.interceptors.response.use(
       });
     }
 
-    if (error.code === 'ECONNREFUSED' || error.message === 'Network Error') {
-        console.error(`[Network Error] Could not connect to API at ${error.config?.baseURL}. This is often because the backend is not running, or running on 127.0.0.1 instead of 0.0.0.0.`);
-    } else {
-        console.error(`[API Error] ${error.response?.status}: ${error.message}`, error.response?.data);
-    }
-    
     return Promise.reject(error);
   }
 );

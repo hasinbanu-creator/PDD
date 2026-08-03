@@ -532,33 +532,64 @@ const InspectorComplaintItem = ({ complaint, index, total, onPress }) => {
 
 const InspectorDashboard = ({ navigation, meData, user }) => {
   // ── State ────────────────────────────────────────────────────────────────
+  const [districts, setDistricts]       = useState([]);
+  const [selectedDistrict, setSelectedDistrict] = useState("all");
+  const [showDistrictPicker, setShowDistrictPicker] = useState(false);
+
   const [wards, setWards]               = useState([]);
-  const [selectedWardId, setSelectedWardId] = useState("");
+  const [selectedWardId, setSelectedWardId] = useState("all");
+  const [showWardPicker, setShowWardPicker] = useState(false);
+
   const [complaints, setComplaints]     = useState([]);
   const [statusFilter, setStatusFilter] = useState("All");
-  const [stats, setStats]               = useState({ total: 0, pending: 0, in_progress: 0, resolved: 0, rejected: 0 });
-  const [loadingWards, setLoadingWards] = useState(true);
+  
+  const [loadingDistricts, setLoadingDistricts] = useState(true);
+  const [loadingWards, setLoadingWards] = useState(false);
   const [loadingComplaints, setLoadingComplaints] = useState(false);
+  const [districtError, setDistrictError] = useState(null);
   const [wardError, setWardError]       = useState(null);
-  const [showPicker, setShowPicker]     = useState(false);
 
-  // ── Load all wards on mount ──────────────────────────────────────────────
+  // ── Load all districts on mount ──────────────────────────────────────────
   useEffect(() => {
-    loadWards();
+    loadDistricts();
   }, []);
 
-  const loadWards = async () => {
+  const loadDistricts = async () => {
+    setLoadingDistricts(true);
+    setDistrictError(null);
+    try {
+      console.log("[InspectorDashboard] Loading districts...");
+      const res = await authService.getDistricts();
+      const districtsList = res?.data ?? res ?? [];
+      setDistricts(districtsList);
+      // Load complaints initially
+      loadComplaints("all", "all");
+    } catch (err) {
+      console.error("[InspectorDashboard] loadDistricts error:", err);
+      setDistrictError("Failed to load districts. Pull down to retry.");
+    } finally {
+      setLoadingDistricts(false);
+    }
+  };
+
+  // ── Fetch wards dynamically when selectedDistrict changes ────────────────
+  useEffect(() => {
+    if (selectedDistrict === "all") {
+      setWards([]);
+      setSelectedWardId("all");
+      return;
+    }
+    const distObj = districts.find(d => d.name === selectedDistrict);
+    const distId = distObj ? distObj._id : selectedDistrict;
+    loadWardsForDistrict(distId);
+  }, [selectedDistrict, districts]);
+
+  const loadWardsForDistrict = async (districtId) => {
     setLoadingWards(true);
     setWardError(null);
     try {
-      console.log("[InspectorDashboard] Loading wards via GET /api/v1/wards...");
-
-      const res = await authService.getAllWards({ limit: 100 });
-
-      console.log("[InspectorDashboard] getAllWards raw result type:", typeof res, Array.isArray(res));
-      console.log("[InspectorDashboard] getAllWards result keys:", res ? Object.keys(res) : "null");
-
-      // Response after unwrapResponse: { data: [...wards], total, page, ... }
+      console.log(`[InspectorDashboard] Loading wards for district ${districtId}...`);
+      const res = await authService.getAllWards({ district_id: districtId, limit: 200 });
       let wardsList = [];
       if (Array.isArray(res)) {
         wardsList = res;
@@ -567,87 +598,67 @@ const InspectorDashboard = ({ navigation, meData, user }) => {
       } else if (Array.isArray(res?.wards)) {
         wardsList = res.wards;
       }
-
-      console.log(`[InspectorDashboard] Parsed ${wardsList.length} wards`);
-
-      if (wardsList.length > 0) {
-        console.log("[InspectorDashboard] First ward:", wardsList[0]._id, wardsList[0].ward_name);
-        console.log("[InspectorDashboard] Last  ward:", wardsList[wardsList.length - 1]._id, wardsList[wardsList.length - 1].ward_name);
-      } else {
-        console.warn("[InspectorDashboard] No wards returned — dropdown will be empty");
-      }
-
       setWards(wardsList);
-
-      if (wardsList.length > 0) {
-        const firstId = wardsList[0]._id || wardsList[0].id || "";
-        console.log("[InspectorDashboard] Auto-selecting first ward:", firstId);
-        setSelectedWardId(firstId);
-      }
+      setSelectedWardId("all");
     } catch (err) {
-      console.error("[InspectorDashboard] loadWards error:", err?.message || err);
-      setWardError("Failed to load wards. Pull down to retry.");
+      console.error("[InspectorDashboard] loadWardsForDistrict error:", err);
+      setWardError("Failed to load wards.");
     } finally {
       setLoadingWards(false);
     }
   };
 
-  // ── Load complaints whenever selectedWardId changes ───────────────────────
+  // ── Load complaints whenever selectedDistrict changes ───────────────────
   useEffect(() => {
-    if (!selectedWardId) {
-      console.log("[InspectorDashboard] No ward selected yet — skipping complaints load");
-      return;
-    }
-    loadComplaints(selectedWardId);
-    AsyncStorage.setItem("inspectorSelectedWardId", selectedWardId).catch(console.error);
-  }, [selectedWardId]);
+    loadComplaints(selectedDistrict, selectedWardId);
+  }, [selectedDistrict, selectedWardId]);
 
-  const loadComplaints = async (wardId) => {
+  const loadComplaints = async (districtName, wardId) => {
     setLoadingComplaints(true);
     try {
-      console.log(`[InspectorDashboard] Loading complaints for ward_id=${wardId}`);
-      console.log(`[InspectorDashboard] API call: GET /inspector/complaints?ward_id=${wardId}&limit=100`);
-
-      const res = await authService.getWardComplaints({ ward_id: wardId, limit: 100 });
-
-      console.log("[InspectorDashboard] getWardComplaints raw result:", typeof res, res ? Object.keys(res) : "null");
-
-      // Backend returns: { complaints: [...], stats: {...}, page, total, ... }
-      const complaintsList = res?.complaints || res?.data || (Array.isArray(res) ? res : []);
-
-      console.log(`[InspectorDashboard] Parsed ${complaintsList.length} complaints`);
-
-      complaintsList.forEach((c, i) => {
-        if (i < 3) console.log(`  [complaint ${i}] id=${c.complaint_id} type=${c.complaint_type} status=${c.status}`);
-      });
-
-      console.log("[InspectorDashboard] API response for complaints before rendering:", complaintsList.map(c => ({ id: c.complaint_id || c._id, status: c.status })));
-      setComplaints(complaintsList);
-
-      // Parse stats from response
-      if (res?.stats) {
-        console.log("[InspectorDashboard] Stats from backend:", res.stats);
-        setStats(res.stats);
-      } else {
-        // Compute locally
-        const total      = complaintsList.length;
-        const pending    = complaintsList.filter(c => ["OPEN", "PENDING"].includes(c.status)).length;
-        const in_progress = complaintsList.filter(c => ["IN_PROGRESS", "WORKING", "ACCEPTED", "FIELD_VISIT", "APPROVAL"].includes(c.status)).length;
-        const resolved   = complaintsList.filter(c => ["RESOLVED", "CLOSED"].includes(c.status)).length;
-        const rejected   = complaintsList.filter(c => c.status === "REJECTED").length;
-        setStats({ total, pending, in_progress, resolved, rejected });
+      console.log(`[InspectorDashboard] Loading complaints for district=${districtName}`);
+      const params = { limit: 100 };
+      if (districtName && districtName !== "all") {
+        params.district = districtName;
       }
+      const res = await authService.getWardComplaints(params);
+      const complaintsList = res?.complaints || res?.data || (Array.isArray(res) ? res : []);
+      setComplaints(complaintsList);
     } catch (err) {
-      console.error("[InspectorDashboard] loadComplaints error:", err?.message || err);
+      console.error("[InspectorDashboard] loadComplaints error:", err);
       setComplaints([]);
     } finally {
       setLoadingComplaints(false);
     }
   };
 
-  // ── Derive selected ward label ───────────────────────────────────────────
+  // ── Client-side ward filtering ───────────────────────────────────────────
+  const filteredByWard = useMemo(() => {
+    if (selectedWardId === "all") return complaints;
+    return complaints.filter((c) => {
+      const wardId = c.ward_id || c.wardId || (c.ward?._id ?? c.ward?.id);
+      const wardName = c.wardName || c.ward_name || c.ward?.ward_name || c.ward;
+      return wardId === selectedWardId || wardName === selectedWardId;
+    });
+  }, [complaints, selectedWardId]);
+
+  // ── Stats calculation ────────────────────────────────────────────────────
+  const stats = useMemo(() => {
+    const total      = filteredByWard.length;
+    const pending    = filteredByWard.filter(c => ["OPEN", "PENDING"].includes(c.status)).length;
+    const in_progress = filteredByWard.filter(c => ["IN_PROGRESS", "WORKING", "ACCEPTED", "FIELD_VISIT", "APPROVAL"].includes(c.status)).length;
+    const resolved   = filteredByWard.filter(c => ["RESOLVED", "CLOSED"].includes(c.status)).length;
+    const rejected   = filteredByWard.filter(c => c.status === "REJECTED").length;
+    return { total, pending, in_progress, resolved, rejected };
+  }, [filteredByWard]);
+
+  // ── Derive labels ────────────────────────────────────────────────────────
+  const selectedDistrictLabel = selectedDistrict === "all" ? "All Districts" : selectedDistrict;
+  
   const selectedWard = wards.find(w => (w._id || w.id) === selectedWardId);
-  const selectedWardLabel = selectedWard
+  const selectedWardLabel = selectedWardId === "all"
+    ? "All Wards"
+    : selectedWard
     ? `Ward #${selectedWard.ward_number} – ${selectedWard.ward_name}`
     : "Select a Ward";
 
@@ -655,36 +666,35 @@ const InspectorDashboard = ({ navigation, meData, user }) => {
   const metrics = [
     { icon: "clipboard-list",        value: stats.total ?? 0,       label: "Total",       color: "#374151", bg: "#F3F4F6" },
     { icon: "alert-circle-outline",  value: stats.pending ?? 0,     label: "Pending",     color: "#D97706", bg: "#FEF3C7" },
-    { icon: "progress-wrench",       value: stats.in_progress ?? 0, label: "In Progress", color: COLORS.primary, bg: "#DBEAFE" },
+    { icon: "progress-wrench",       value: stats.in_progress ?? 0, label: "In Progress", color: "#0F8A83",      bg: "#DDF8F5" },
     { icon: "check-circle-outline",  value: stats.resolved ?? 0,    label: "Resolved",    color: "#059669", bg: "#D1FAE5" },
     { icon: "close-circle-outline",  value: stats.rejected ?? 0,    label: "Rejected",    color: "#DC2626", bg: "#FFE4E6" },
   ];
 
-  // ── Loading state (wards) ─────────────────────────────────────────────────
-  if (loadingWards) {
+  if (loadingDistricts) {
     return (
       <View style={{ alignItems: "center", paddingVertical: SPACING.xxl }}>
         <ActivityIndicator size="large" color="#0F8A83" />
         <Text style={{ color: COLORS.textLight, fontSize: FONT_SIZES.sm, marginTop: SPACING.md }}>
-          Loading wards…
+          Loading dashboard…
         </Text>
       </View>
     );
   }
 
   // ── Error state ───────────────────────────────────────────────────────────
-  if (wardError) {
+  if (districtError) {
     return (
       <View style={{ alignItems: "center", paddingVertical: SPACING.xxl }}>
         <Icon name="alert-circle-outline" size={48} color="#DC2626" />
         <Text style={{ color: COLORS.textDark, fontSize: FONT_SIZES.md, fontWeight: "700", marginTop: SPACING.md }}>
-          Ward Load Error
+          Load Error
         </Text>
         <Text style={{ color: COLORS.textLight, fontSize: FONT_SIZES.sm, textAlign: "center", marginTop: 4 }}>
-          {wardError}
+          {districtError}
         </Text>
         <TouchableOpacity
-          onPress={loadWards}
+          onPress={loadDistricts}
           style={{ marginTop: SPACING.lg, backgroundColor: "#0F8A83", borderRadius: 10, paddingHorizontal: 24, paddingVertical: 10 }}
         >
           <Text style={{ color: "#FFFFFF", fontWeight: "800", fontSize: FONT_SIZES.sm }}>Retry</Text>
@@ -693,22 +703,7 @@ const InspectorDashboard = ({ navigation, meData, user }) => {
     );
   }
 
-  // ── Empty wards state ─────────────────────────────────────────────────────
-  if (wards.length === 0) {
-    return (
-      <View style={{ alignItems: "center", paddingVertical: SPACING.xxl }}>
-        <Icon name="map-marker-off-outline" size={48} color={COLORS.border} />
-        <Text style={{ color: COLORS.textDark, fontSize: FONT_SIZES.md, fontWeight: "700", marginTop: SPACING.md }}>
-          No Wards Available
-        </Text>
-        <Text style={{ color: COLORS.textLight, fontSize: FONT_SIZES.sm, textAlign: "center", marginTop: 4 }}>
-          No wards found for your district.
-        </Text>
-      </View>
-    );
-  }
-
-  console.log(`[InspectorDashboard] Rendering ${complaints.length} complaints for selectedWardId: ${selectedWardId}`);
+  console.log(`[InspectorDashboard] Rendering ${filteredByWard.length} complaints for selectedWardId: ${selectedWardId}`);
 
   return (
     <>
@@ -719,71 +714,194 @@ const InspectorDashboard = ({ navigation, meData, user }) => {
         { value: stats.resolved,    label: "Resolved" },
       ]} />
 
-      {/* ── Ward Selector ─────────────────────────────────────────────── */}
-      <View style={{ marginTop: SPACING.lg, marginBottom: SPACING.md }}>
-        <Text style={{ color: COLORS.textLight, fontSize: FONT_SIZES.xs, fontWeight: "700", textTransform: "uppercase", marginBottom: 6 }}>
-          Select Ward ({wards.length} available)
-        </Text>
+      {/* ── Selectors (District & Ward) ───────────────────────────────── */}
+      <View style={{ marginTop: SPACING.lg, marginBottom: SPACING.md, gap: SPACING.md }}>
+        {/* District Selector */}
+        <View>
+          <Text style={{ color: COLORS.textLight, fontSize: FONT_SIZES.xs, fontWeight: "700", textTransform: "uppercase", marginBottom: 6 }}>
+            Select District ({districts.length} available)
+          </Text>
 
-        <TouchableOpacity
-          activeOpacity={0.7}
-          onPress={() => setShowPicker(!showPicker)}
-          style={{
-            flexDirection: "row",
-            alignItems: "center",
-            justifyContent: "space-between",
-            backgroundColor: COLORS.card,
-            borderRadius: 12,
-            paddingHorizontal: SPACING.md,
-            paddingVertical: SPACING.md,
-            borderWidth: 1,
-            borderColor: COLORS.border,
-            ...SHADOWS.sm
-          }}
-        >
-          <View style={{ flexDirection: "row", alignItems: "center" }}>
-            <Icon name="map-marker-radius" size={20} color="#0F8A83" />
-            <Text style={{ marginLeft: SPACING.sm, color: COLORS.textDark, fontSize: FONT_SIZES.md, fontWeight: "600" }}>
-              {selectedWardLabel}
-            </Text>
-          </View>
-          <Icon name={showPicker ? "chevron-up" : "chevron-down"} size={20} color={COLORS.textLight} />
-        </TouchableOpacity>
+          <TouchableOpacity
+            activeOpacity={0.7}
+            onPress={() => {
+              setShowDistrictPicker(!showDistrictPicker);
+              setShowWardPicker(false);
+            }}
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              justifyContent: "space-between",
+              backgroundColor: COLORS.card,
+              borderRadius: 12,
+              paddingHorizontal: SPACING.md,
+              paddingVertical: SPACING.md,
+              borderWidth: 1,
+              borderColor: COLORS.border,
+              ...SHADOWS.sm
+            }}
+          >
+            <View style={{ flexDirection: "row", alignItems: "center" }}>
+              <Icon name="city" size={20} color="#0F8A83" />
+              <Text style={{ marginLeft: SPACING.sm, color: COLORS.textDark, fontSize: FONT_SIZES.md, fontWeight: "600" }}>
+                {selectedDistrictLabel}
+              </Text>
+            </View>
+            <Icon name={showDistrictPicker ? "chevron-up" : "chevron-down"} size={20} color={COLORS.textLight} />
+          </TouchableOpacity>
 
-        {showPicker && (
-          <View style={{ marginTop: 8, maxHeight: 220, borderWidth: 1, borderColor: COLORS.border, borderRadius: 12, overflow: "hidden", backgroundColor: COLORS.card, ...SHADOWS.md }}>
-            <ScrollView nestedScrollEnabled showsVerticalScrollIndicator>
-              {wards.map((ward) => {
-                const wardId = ward._id || ward.id;
-                const isSelected = wardId === selectedWardId;
-                return (
-                  <TouchableOpacity
-                    key={wardId}
-                    onPress={() => {
-                      setSelectedWardId(wardId);
-                      setShowPicker(false);
-                    }}
-                    style={{
-                      paddingVertical: 12,
-                      paddingHorizontal: SPACING.md,
-                      borderBottomWidth: 1,
-                      borderBottomColor: COLORS.border,
-                      backgroundColor: isSelected ? "#DDF8F5" : COLORS.card,
-                    }}
-                  >
-                    <Text style={{
-                      color: isSelected ? "#0F8A83" : COLORS.textDark,
-                      fontSize: FONT_SIZES.sm,
-                      fontWeight: isSelected ? "800" : "500",
-                    }}>
-                      Ward #{ward.ward_number} – {ward.ward_name}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </ScrollView>
-          </View>
-        )}
+          {showDistrictPicker && (
+            <View style={{ marginTop: 8, maxHeight: 220, borderWidth: 1, borderColor: COLORS.border, borderRadius: 12, overflow: "hidden", backgroundColor: COLORS.card, ...SHADOWS.md }}>
+              <ScrollView nestedScrollEnabled showsVerticalScrollIndicator>
+                <TouchableOpacity
+                  onPress={() => {
+                    setSelectedDistrict("all");
+                    setShowDistrictPicker(false);
+                  }}
+                  style={{
+                    paddingVertical: 12,
+                    paddingHorizontal: SPACING.md,
+                    borderBottomWidth: 1,
+                    borderBottomColor: COLORS.border,
+                    backgroundColor: selectedDistrict === "all" ? "#DDF8F5" : COLORS.card,
+                  }}
+                >
+                  <Text style={{
+                    color: selectedDistrict === "all" ? "#0F8A83" : COLORS.textDark,
+                    fontSize: FONT_SIZES.sm,
+                    fontWeight: selectedDistrict === "all" ? "800" : "500",
+                  }}>
+                    All Districts
+                  </Text>
+                </TouchableOpacity>
+                {districts.map((dist) => {
+                  const name = dist.name;
+                  const isSelected = name === selectedDistrict;
+                  return (
+                    <TouchableOpacity
+                      key={dist._id || dist.id}
+                      onPress={() => {
+                        setSelectedDistrict(name);
+                        setShowDistrictPicker(false);
+                      }}
+                      style={{
+                        paddingVertical: 12,
+                        paddingHorizontal: SPACING.md,
+                        borderBottomWidth: 1,
+                        borderBottomColor: COLORS.border,
+                        backgroundColor: isSelected ? "#DDF8F5" : COLORS.card,
+                      }}
+                    >
+                      <Text style={{
+                        color: isSelected ? "#0F8A83" : COLORS.textDark,
+                        fontSize: FONT_SIZES.sm,
+                        fontWeight: isSelected ? "800" : "500",
+                      }}>
+                        {name}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+            </View>
+          )}
+        </View>
+
+        {/* Ward Selector */}
+        <View>
+          <Text style={{ color: COLORS.textLight, fontSize: FONT_SIZES.xs, fontWeight: "700", textTransform: "uppercase", marginBottom: 6 }}>
+            Select Ward ({wards.length} available)
+          </Text>
+
+          <TouchableOpacity
+            activeOpacity={0.7}
+            onPress={() => {
+              if (selectedDistrict === "all") {
+                alert("Please select a specific District first.");
+                return;
+              }
+              setShowWardPicker(!showWardPicker);
+              setShowDistrictPicker(false);
+            }}
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              justifyContent: "space-between",
+              backgroundColor: COLORS.card,
+              borderRadius: 12,
+              paddingHorizontal: SPACING.md,
+              paddingVertical: SPACING.md,
+              borderWidth: 1,
+              borderColor: COLORS.border,
+              opacity: selectedDistrict === "all" ? 0.6 : 1,
+              ...SHADOWS.sm
+            }}
+          >
+            <View style={{ flexDirection: "row", alignItems: "center" }}>
+              <Icon name="map-marker-radius" size={20} color="#0F8A83" />
+              <Text style={{ marginLeft: SPACING.sm, color: COLORS.textDark, fontSize: FONT_SIZES.md, fontWeight: "600" }}>
+                {selectedWardLabel}
+              </Text>
+            </View>
+            <Icon name={showWardPicker ? "chevron-up" : "chevron-down"} size={20} color={COLORS.textLight} />
+          </TouchableOpacity>
+
+          {showWardPicker && (
+            <View style={{ marginTop: 8, maxHeight: 220, borderWidth: 1, borderColor: COLORS.border, borderRadius: 12, overflow: "hidden", backgroundColor: COLORS.card, ...SHADOWS.md }}>
+              <ScrollView nestedScrollEnabled showsVerticalScrollIndicator>
+                <TouchableOpacity
+                  onPress={() => {
+                    setSelectedWardId("all");
+                    setShowWardPicker(false);
+                  }}
+                  style={{
+                    paddingVertical: 12,
+                    paddingHorizontal: SPACING.md,
+                    borderBottomWidth: 1,
+                    borderBottomColor: COLORS.border,
+                    backgroundColor: selectedWardId === "all" ? "#DDF8F5" : COLORS.card,
+                  }}
+                >
+                  <Text style={{
+                    color: selectedWardId === "all" ? "#0F8A83" : COLORS.textDark,
+                    fontSize: FONT_SIZES.sm,
+                    fontWeight: selectedWardId === "all" ? "800" : "500",
+                  }}>
+                    All Wards
+                  </Text>
+                </TouchableOpacity>
+                {wards.map((ward) => {
+                  const wardId = ward._id || ward.id;
+                  const isSelected = wardId === selectedWardId;
+                  return (
+                    <TouchableOpacity
+                      key={wardId}
+                      onPress={() => {
+                        setSelectedWardId(wardId);
+                        setShowWardPicker(false);
+                      }}
+                      style={{
+                        paddingVertical: 12,
+                        paddingHorizontal: SPACING.md,
+                        borderBottomWidth: 1,
+                        borderBottomColor: COLORS.border,
+                        backgroundColor: isSelected ? "#DDF8F5" : COLORS.card,
+                      }}
+                    >
+                      <Text style={{
+                        color: isSelected ? "#0F8A83" : COLORS.textDark,
+                        fontSize: FONT_SIZES.sm,
+                        fontWeight: isSelected ? "800" : "500",
+                      }}>
+                        Ward #{ward.ward_number} – {ward.ward_name}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+            </View>
+          )}
+        </View>
       </View>
 
       {/* ── Stats Row ─────────────────────────────────────────────────── */}
@@ -829,10 +947,15 @@ const InspectorDashboard = ({ navigation, meData, user }) => {
 
       {/* ── Complaints List ───────────────────────────────────────────── */}
       <SectionTitle
-        left={`Complaints in Ward${selectedWard ? ` #${selectedWard.ward_number}` : ""}`}
+        left={selectedDistrict === "all"
+          ? "All Complaints"
+          : selectedWardId === "all"
+          ? `Complaints in ${selectedDistrict}`
+          : `Complaints in ${selectedDistrict} – Ward #${selectedWard?.ward_number}`
+        }
         rightComponent={
           <View style={{ flexDirection: "row", gap: 12 }}>
-            <TouchableOpacity onPress={() => selectedWardId && loadComplaints(selectedWardId)}>
+            <TouchableOpacity onPress={() => loadComplaints(selectedDistrict, selectedWardId)}>
               <Icon name="refresh" size={20} color="#0F8A83" />
             </TouchableOpacity>
           </View>
@@ -840,7 +963,7 @@ const InspectorDashboard = ({ navigation, meData, user }) => {
       />
 
       <ListCard
-        empty={!loadingComplaints && complaints.filter(c => {
+        empty={!loadingComplaints && filteredByWard.filter(c => {
           if (statusFilter === "All") return true;
           if (statusFilter === "Pending") return ["OPEN", "PENDING"].includes(c.status);
           if (statusFilter === "In Progress") return ["IN_PROGRESS", "WORKING", "ACCEPTED", "FIELD_VISIT", "APPROVAL"].includes(c.status);
@@ -848,14 +971,14 @@ const InspectorDashboard = ({ navigation, meData, user }) => {
           if (statusFilter === "Rejected") return c.status === "REJECTED";
           return true;
         }).length === 0}
-        emptyLabel={selectedWardId
-          ? `No ${statusFilter === "All" ? "" : statusFilter.toLowerCase()} complaints available for this ward.`
-          : "Select a ward to view complaints."
+        emptyLabel={selectedWardId === "all"
+          ? `No ${statusFilter === "All" ? "" : statusFilter.toLowerCase()} complaints available.`
+          : `No ${statusFilter === "All" ? "" : statusFilter.toLowerCase()} complaints available for this ward.`
         }
       >
         {loadingComplaints
           ? <View style={{ padding: SPACING.xl }}><ActivityIndicator color="#0F8A83" /></View>
-          : complaints.filter(c => {
+          : filteredByWard.filter(c => {
               if (statusFilter === "All") return true;
               if (statusFilter === "Pending") return ["OPEN", "PENDING"].includes(c.status);
               if (statusFilter === "In Progress") return ["IN_PROGRESS", "WORKING", "ACCEPTED", "FIELD_VISIT", "APPROVAL"].includes(c.status);
@@ -959,14 +1082,16 @@ const WorkerDashboard = ({ navigation, meData, user }) => {
 const CitizenDashboard = ({ navigation, meData, user }) => {
   const [complaints, setComplaints] = useState([]);
   const [loading, setLoading]       = useState(true);
+  const [meta, setMeta]             = useState(null);
 
   const load = async () => {
     setLoading(true);
     try {
-      const res = await authService.getComplaints?.() ?? Promise.resolve([]);
+      const res = await authService.getComplaints?.({ limit: 100 }) ?? Promise.resolve({});
       const items = getItems(res);
       console.log("[CitizenDashboard] API response for complaints before rendering:", items.slice(0, 5).map(c => ({ id: c.complaint_id || c._id, status: c.status })));
       setComplaints(items.slice(0, 5));
+      setMeta(res?.meta ?? null);
     } catch (e) { console.warn(e); }
     finally { setLoading(false); }
   };
@@ -977,11 +1102,21 @@ const CitizenDashboard = ({ navigation, meData, user }) => {
     return unsubscribe;
   }, [navigation]);
 
-  const counts = useMemo(() => ({
-    open:   complaints.filter((c) => { const s = normalizeComplaintStatus(c.status); return ["PENDING", "OPEN"].includes(s); }).length,
-    active: complaints.filter((c) => { const s = normalizeComplaintStatus(c.status); return ["ASSIGNED", "IN_PROGRESS", "APPROVAL"].includes(s); }).length,
-    closed: complaints.filter((c) => { const s = normalizeComplaintStatus(c.status); return ["RESOLVED", "CLOSED"].includes(s); }).length,
-  }), [complaints]);
+  const counts = useMemo(() => {
+    if (meta?.status_counts) {
+      const c = meta.status_counts;
+      return {
+        open: (c.OPEN || 0) + (c.PENDING || 0),
+        active: (c.WORKING || 0) + (c.ASSIGNED || 0) + (c.IN_PROGRESS || 0) + (c.APPROVAL || 0),
+        closed: (c.CLOSED || 0) + (c.RESOLVED || 0),
+      };
+    }
+    return {
+      open:   complaints.filter((c) => { const s = normalizeComplaintStatus(c.status); return ["PENDING", "OPEN"].includes(s); }).length,
+      active: complaints.filter((c) => { const s = normalizeComplaintStatus(c.status); return ["ASSIGNED", "IN_PROGRESS", "APPROVAL"].includes(s); }).length,
+      closed: complaints.filter((c) => { const s = normalizeComplaintStatus(c.status); return ["RESOLVED", "CLOSED"].includes(s); }).length,
+    };
+  }, [meta, complaints]);
 
   const profileStats = [
     { value: counts.open,   label: "Pending"  },

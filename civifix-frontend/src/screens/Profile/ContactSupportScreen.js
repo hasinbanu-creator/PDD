@@ -1,13 +1,14 @@
-import React from "react";
+import React, { useContext } from "react";
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Linking } from "react-native";
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { COLORS, FONT_SIZES, SPACING, BORDER_RADIUS, SHADOWS } from "../../constants/theme";
 import Screen from "../../components/Screen";
+import { AuthContext } from "../../context/AuthContext";
 
-const ContactMethod = ({ icon, title, subtitle, onPress }) => (
+const ContactMethod = ({ icon, title, subtitle, onPress, primaryColor }) => (
   <TouchableOpacity style={styles.methodCard} activeOpacity={0.8} onPress={onPress}>
-    <View style={styles.methodIcon}>
-      <Icon name={icon} size={24} color={COLORS.primary} />
+    <View style={[styles.methodIcon, { backgroundColor: `${primaryColor}15` }]}>
+      <Icon name={icon} size={24} color={primaryColor} />
     </View>
     <View style={styles.methodInfo}>
       <Text style={styles.methodTitle}>{title}</Text>
@@ -18,6 +19,10 @@ const ContactMethod = ({ icon, title, subtitle, onPress }) => (
 );
 
 const ContactSupportScreen = ({ navigation }) => {
+  const { user } = useContext(AuthContext);
+  const isInspector = user?.role === "INSPECTOR";
+  const primaryColor = isInspector ? "#0F8A83" : COLORS.primary;
+
   const handleEmailPress = () => {
     Linking.openURL("mailto:civifix.support@gmail.com");
   };
@@ -42,6 +47,7 @@ const ContactSupportScreen = ({ navigation }) => {
           icon="email-outline"
           title="Email Support"
           subtitle="civifix.support@gmail.com"
+          primaryColor={primaryColor}
           onPress={handleEmailPress}
         />
       </ScrollView>
@@ -73,7 +79,7 @@ const styles = StyleSheet.create({
     ...SHADOWS.sm,
   },
   methodIcon: {
-    width: 48, height: 48, borderRadius: 24, backgroundColor: `${COLORS.primary}15`,
+    width: 48, height: 48, borderRadius: 24,
     alignItems: "center", justifyContent: "center", marginRight: SPACING.md,
   },
   methodInfo: { flex: 1 },

@@ -27,8 +27,9 @@ import {
 } from "lucide-react";
 import { useComplaints, useWardComplaints } from "@/hooks/use-complaints";
 import { useInspectorDashboard, useAdminDashboard, useWorkerDashboard } from "@/hooks/use-dashboard";
+import api from "@/lib/api";
 
-// --- Types ---
+
 type ComplaintStatus = "OPEN" | "PENDING" | "WORKING" | "IN_PROGRESS" | "APPROVAL" | "CLOSED" | "RESOLVED" | "REJECTED";
 type ComplaintType = "ROAD_DAMAGE" | "POTHOLE" | "GARBAGE" | "STREETLIGHT" | "WATER_SUPPLY" | "DRAINAGE" | "SANITATION" | "TREE_CUTTING" | "CONSTRUCTION" | "OTHER";
 
@@ -334,6 +335,40 @@ function InspectorDashboard() {
   const { user } = useAuth();
   const router = useRouter();
   const [selectedDistrict, setSelectedDistrict] = useState<string>("all");
+  const [selectedWard, setSelectedWard] = useState<string>("all");
+  const [districtsList, setDistrictsList] = useState<any[]>([]);
+  const [wardsList, setWardsList] = useState<any[]>([]);
+
+  // Fetch districts on mount
+  useEffect(() => {
+    api.get("/admin/districts?active_only=false").then((res: any) => {
+      const data = res?.data?.data ?? res?.data ?? [];
+      setDistrictsList(data);
+    }).catch(err => console.error("Failed to load districts:", err));
+  }, []);
+
+  // Fetch wards dynamically when district changes
+  useEffect(() => {
+    if (selectedDistrict === "all") {
+      setWardsList([]);
+      setSelectedWard("all");
+      return;
+    }
+    const distObj = districtsList.find((d: any) => d.name === selectedDistrict);
+    const distId = distObj ? distObj._id : selectedDistrict;
+
+    api.get(`/wards?district_id=${distId}&limit=200`).then((res: any) => {
+      const unwrapped = res?.data?.data ?? res?.data ?? {};
+      const list = Array.isArray(unwrapped) ? unwrapped : (unwrapped.data || []);
+      setWardsList(list);
+      setSelectedWard("all");
+    }).catch(err => {
+      console.error("Failed to load wards for district:", err);
+      setWardsList([]);
+      setSelectedWard("all");
+    });
+  }, [selectedDistrict, districtsList]);
+
   const { data: rawRes, isLoading: isLoadingComplaints, refetch } = useWardComplaints({
     district: selectedDistrict === "all" ? "" : selectedDistrict,
     limit: 100,
@@ -345,22 +380,31 @@ function InspectorDashboard() {
 
   const complaints = res?.complaints || res?.data || (Array.isArray(res) ? res : []) || [];
 
+  // Client-side ward filtering
+  const filteredByWard = useMemo(() => {
+    if (selectedWard === "all") return complaints;
+    return complaints.filter((c: any) => {
+      const wardId = c.ward_id || c.wardId || (c.ward?._id ?? c.ward?.id);
+      const wardName = c.wardName || c.ward_name || c.ward?.ward_name || c.ward;
+      return wardId === selectedWard || wardName === selectedWard;
+    });
+  }, [complaints, selectedWard]);
+
   const stats = useMemo(() => {
-    if (res?.stats) return res.stats;
-    const total = complaints.length;
-    const pending = complaints.filter((c: any) => ["OPEN", "PENDING"].includes(c.status)).length;
-    const in_progress = complaints.filter((c: any) => ["IN_PROGRESS", "WORKING", "ACCEPTED", "FIELD_VISIT", "APPROVAL"].includes(c.status)).length;
-    const resolved = complaints.filter((c: any) => ["RESOLVED", "CLOSED"].includes(c.status)).length;
-    const rejected = complaints.filter((c: any) => c.status === "REJECTED").length;
+    const total = filteredByWard.length;
+    const pending = filteredByWard.filter((c: any) => ["OPEN", "PENDING"].includes(c.status)).length;
+    const in_progress = filteredByWard.filter((c: any) => ["IN_PROGRESS", "WORKING", "ACCEPTED", "FIELD_VISIT", "APPROVAL"].includes(c.status)).length;
+    const resolved = filteredByWard.filter((c: any) => ["RESOLVED", "CLOSED"].includes(c.status)).length;
+    const rejected = filteredByWard.filter((c: any) => c.status === "REJECTED").length;
     return { total, pending, in_progress, resolved, rejected };
-  }, [complaints, res]);
+  }, [filteredByWard]);
 
   const refreshData = () => {
     refetch();
   };
 
   const filteredComplaints = useMemo(() => {
-    return complaints.filter((c: any) => {
+    return filteredByWard.filter((c: any) => {
       if (statusFilter !== "All") {
         if (statusFilter === "Pending" && !["OPEN", "PENDING"].includes(c.status)) return false;
         if (statusFilter === "In Progress" && !["IN_PROGRESS", "WORKING", "ACCEPTED", "FIELD_VISIT", "APPROVAL"].includes(c.status)) return false;
@@ -382,7 +426,7 @@ function InspectorDashboard() {
       }
       return true;
     });
-  }, [complaints, statusFilter, searchQuery]);
+  }, [filteredByWard, statusFilter, searchQuery]);
 
   return (
     <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -405,24 +449,45 @@ function InspectorDashboard() {
           </button>
         ))}
       </div>
-
       <div className="px-4 md:px-0">
-        {/* District selection and Search */}
-        <div className="mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="flex flex-col gap-1">
-            <h3 className="text-lg font-bold text-slate-800">Select District</h3>
-            <select
-              value={selectedDistrict}
-              onChange={(e) => setSelectedDistrict(e.target.value)}
-              className="bg-white text-slate-700 font-semibold text-sm px-4 py-3 rounded-2xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#0F8A83] min-w-[200px] shadow-sm cursor-pointer"
-            >
-              <option value="all">All Districts</option>
-              {DISTRICTS.map((district) => (
-                <option key={district} value={district}>
-                  {district}
-                </option>
-              ))}
-            </select>
+        {/* District and Ward selection and Search */}
+        <div className="mb-6 flex flex-col md:flex-row md:items-end justify-between gap-4">
+          <div className="flex flex-wrap items-center gap-4">
+            <div className="flex flex-col gap-1">
+              <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest">District</h3>
+              <select
+                value={selectedDistrict}
+                onChange={(e) => setSelectedDistrict(e.target.value)}
+                className="bg-white text-slate-700 font-semibold text-sm px-4 py-3 rounded-2xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#0F8A83] min-w-[200px] shadow-sm cursor-pointer"
+              >
+                <option value="all">All Districts</option>
+                {DISTRICTS.map((district) => (
+                  <option key={district} value={district}>
+                    {district}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="flex flex-col gap-1">
+              <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest">Ward</h3>
+              <select
+                value={selectedWard}
+                onChange={(e) => setSelectedWard(e.target.value)}
+                className="bg-white text-slate-700 font-semibold text-sm px-4 py-3 rounded-2xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#0F8A83] min-w-[200px] shadow-sm cursor-pointer"
+              >
+                <option value="all">All Wards</option>
+                {wardsList.map((ward) => {
+                  const wardId = ward._id || ward.id;
+                  const label = ward.label || `${ward.ward_number} - ${ward.ward_name}`;
+                  return (
+                    <option key={wardId} value={wardId}>
+                      {label}
+                    </option>
+                  );
+                })}
+              </select>
+            </div>
           </div>
 
           <div className="relative flex-1 max-w-md mt-6 md:mt-0">
@@ -437,7 +502,7 @@ function InspectorDashboard() {
           </div>
         </div>
 
-        {/* Filter Chips */}
+
         <div className="flex flex-wrap gap-2 mb-8">
           {["All", "Pending", "In Progress", "Resolved", "Rejected"].map(filter => (
             <button
@@ -458,9 +523,16 @@ function InspectorDashboard() {
 
         {/* Table */}
         <div className="bg-white border border-slate-200 rounded-3xl shadow-sm overflow-hidden mb-8">
-          <div className="p-6 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
-            <h3 className="text-lg font-bold text-slate-800">
-              {selectedDistrict === "all" ? "All Complaints" : `Complaints in ${selectedDistrict}`}
+          <div className="p-6 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">            <h3 className="text-lg font-bold text-slate-800">
+              {selectedDistrict === "all"
+                ? "All Complaints"
+                : selectedWard === "all"
+                ? `Complaints in ${selectedDistrict}`
+                : `Complaints in ${selectedDistrict} - Ward ${
+                    wardsList.find((w: any) => (w._id || w.id) === selectedWard)?.label ||
+                    wardsList.find((w: any) => (w._id || w.id) === selectedWard)?.ward_name ||
+                    "Selected Ward"
+                  }`}
             </h3>
             <button onClick={() => refreshData()} className="text-[#0F8A83] hover:text-[#0D7D76] text-sm font-bold flex items-center gap-2 transition-colors">
               Refresh <Activity className="w-4 h-4" />
@@ -494,7 +566,11 @@ function InspectorDashboard() {
                         <ClipboardList className="w-8 h-8 text-slate-400" />
                       </div>
                       <p className="text-base font-bold text-slate-700">
-                        {selectedDistrict && selectedDistrict !== "all" ? "No complaints found for this district." : "No complaints found"}
+                        {selectedDistrict && selectedDistrict !== "all"
+                          ? selectedWard !== "all"
+                            ? "No complaints found for this ward."
+                            : "No complaints found for this district."
+                          : "No complaints found"}
                       </p>
                       <p className="text-sm font-medium text-slate-500 mt-1">Try adjusting your filters or search query.</p>
                     </td>

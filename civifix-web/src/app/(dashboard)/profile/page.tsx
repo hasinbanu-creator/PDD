@@ -1,9 +1,10 @@
 "use client";
 
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/auth-context";
 import { useComplaints } from "@/hooks/use-complaints";
+import api from "@/lib/api";
 import {
   User,
   Mail,
@@ -24,16 +25,19 @@ import {
 const ROLE_META: Record<string, { label: string, color: string, bg: string, gradient: string }> = {
   SUPER_ADMIN:    { label: "Super Admin",     color: "text-primary",    bg: "bg-primary/10",    gradient: "from-primary to-primary/80" },
   DISTRICT_ADMIN: { label: "District Admin",  color: "text-purple-600",  bg: "bg-purple-500/10",  gradient: "from-purple-600 to-purple-800" },
-  INSPECTOR:      { label: "Inspector",       color: "text-secondary",    bg: "bg-secondary/10",    gradient: "from-secondary to-secondary/80" },
+  INSPECTOR:      { label: "Inspector",       color: "text-[#0F8A83]",    bg: "bg-[#DDF8F5]",    gradient: "from-[#0F8A83] to-[#0B6E69]" },
   WORKER:         { label: "Worker",          color: "text-success", bg: "bg-success/10", gradient: "from-success to-success/80" },
   CITIZEN:        { label: "Citizen",         color: "text-accent",   bg: "bg-accent/10",   gradient: "from-primary to-primary/90" },
 };
 
-function MenuItem({ icon: Icon, title, subtitle, colorClass, bgClass, danger, onClick }: any) {
+function MenuItem({ icon: Icon, title, subtitle, colorClass, bgClass, danger, onClick, isInspector }: any) {
+  const hoverBorder = danger ? 'hover:border-destructive/30' : isInspector ? 'hover:border-[#0F8A83]/30' : 'hover:border-primary/30';
+  const chevronHover = danger ? 'text-destructive/50 group-hover:text-destructive' : isInspector ? 'text-muted-foreground group-hover:text-[#0F8A83]' : 'text-muted-foreground group-hover:text-primary';
+
   return (
     <button 
       onClick={onClick}
-      className={`w-full flex items-center p-5 bg-card rounded-[2rem] mb-4 shadow-sm hover:shadow-md transition-all duration-300 border border-border group ${danger ? 'hover:border-destructive/30' : 'hover:border-primary/30'} hover:-translate-y-0.5`}
+      className={`w-full flex items-center p-5 bg-card rounded-[2rem] mb-4 shadow-sm hover:shadow-md transition-all duration-300 border border-border group ${hoverBorder} hover:-translate-y-0.5`}
     >
       <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 mr-4 ${danger ? 'bg-destructive/10 text-destructive' : `${bgClass} ${colorClass}`}`}>
         <Icon className="w-6 h-6" />
@@ -42,7 +46,7 @@ function MenuItem({ icon: Icon, title, subtitle, colorClass, bgClass, danger, on
         <h3 className={`text-base font-black ${danger ? 'text-destructive' : 'text-foreground'}`}>{title}</h3>
         {subtitle && <p className="text-sm text-muted-foreground font-semibold mt-0.5">{subtitle}</p>}
       </div>
-      <ChevronRight className={`w-5 h-5 ${danger ? 'text-destructive/50 group-hover:text-destructive' : 'text-muted-foreground group-hover:text-primary'} transition-colors`} />
+      <ChevronRight className={`w-5 h-5 ${chevronHover} transition-colors`} />
     </button>
   );
 }
@@ -77,11 +81,52 @@ export default function ProfilePage() {
     }
   };
 
+  const [assignedWard, setAssignedWard] = useState<any>(null);
+  const [inspectorComplaints, setInspectorComplaints] = useState<any[]>([]);
+  const [loadingInspectorData, setLoadingInspectorData] = useState<boolean>(false);
+
+  useEffect(() => {
+    if (role === "INSPECTOR") {
+      setLoadingInspectorData(true);
+      Promise.all([
+        api.get("/wards/inspector/assigned").then(res => res?.data?.data ?? res?.data).catch(e => null),
+        api.get("/inspector/complaints?limit=100").then(res => res?.data?.complaints ?? res?.data?.data ?? res?.data ?? []).catch(e => [])
+      ]).then(([ward, complaints]) => {
+        setAssignedWard(ward);
+        const list = Array.isArray(complaints) ? complaints : [];
+        setInspectorComplaints(list);
+      }).catch(err => {
+        console.error("Failed to load inspector data:", err);
+      }).finally(() => {
+        setLoadingInspectorData(false);
+      });
+    }
+  }, [role]);
+
   // Stats
   const { data: rawComplaintsData } = useComplaints({ limit: 100 }, { enabled: role === "CITIZEN" });
   const complaintsData: any = rawComplaintsData;
   
   const stats = React.useMemo(() => {
+    if (role === "INSPECTOR") {
+      const wardId = assignedWard?._id || assignedWard?.ward_id;
+      // Filter complaints belonging to inspector's assigned ward
+      const assignedTickets = inspectorComplaints.filter((c: any) => {
+        const cWardId = c.ward_id || c.wardId || (c.ward?._id ?? c.ward?.id);
+        return cWardId === wardId;
+      });
+
+      const pending = assignedTickets.filter((c: any) => ["OPEN", "PENDING"].includes(c.status)).length;
+      const resolved = assignedTickets.filter((c: any) => ["RESOLVED", "CLOSED"].includes(c.status)).length;
+      const rejected = assignedTickets.filter((c: any) => c.status === "REJECTED").length;
+
+      return [
+        { value: resolved.toString(), label: "Resolved" },
+        { value: pending.toString(), label: "Pending" },
+        { value: rejected.toString(), label: "Rejected" },
+      ];
+    }
+
     if (role !== "CITIZEN") {
       return [
         { value: "—", label: "Stat 1" },
@@ -105,7 +150,10 @@ export default function ProfilePage() {
       { value: complaints.filter((c: any) => ["WORKING", "APPROVAL"].includes(c.status)).length.toString(), label: "Active" },
       { value: complaints.filter((c: any) => c.status === "CLOSED").length.toString(), label: "Resolved" },
     ];
-  }, [role, complaintsData]);
+  }, [role, complaintsData, assignedWard, inspectorComplaints]);
+
+  const menuBg = role === "INSPECTOR" ? "bg-[#DDF8F5]" : "bg-primary/10";
+  const menuText = role === "INSPECTOR" ? "text-[#0F8A83]" : "text-primary";
 
   return (
     <div className="flex-1 bg-background min-h-screen pb-20 md:pb-8">
@@ -137,17 +185,38 @@ export default function ProfilePage() {
                   <span className="text-sm font-semibold">{displayPhone}</span>
                 </div>
               )}
-              {district && (
-                <div className="flex items-center gap-2 text-white/90">
-                  <MapPin className="w-4 h-4" />
-                  <span className="text-sm font-semibold">{district}</span>
-                </div>
-              )}
-              {user?.ward && (
-                <div className="flex items-center gap-2 text-white/90">
-                  <MapPin className="w-4 h-4" />
-                  <span className="text-sm font-semibold">Ward: {user.ward}</span>
-                </div>
+              {role === "INSPECTOR" ? (
+                <>
+                  {user?.district && (
+                    <div className="flex items-center gap-2 text-white/90">
+                      <MapPin className="w-4 h-4" />
+                      <span className="text-sm font-semibold">{user.district}</span>
+                    </div>
+                  )}
+                  {assignedWard && (
+                    <div className="flex items-center gap-2 text-white/90">
+                      <MapPin className="w-4 h-4" />
+                      <span className="text-sm font-semibold">
+                        Ward: #{assignedWard.ward_number} - {assignedWard.ward_name}
+                      </span>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <>
+                  {district && (
+                    <div className="flex items-center gap-2 text-white/90">
+                      <MapPin className="w-4 h-4" />
+                      <span className="text-sm font-semibold">{district}</span>
+                    </div>
+                  )}
+                  {user?.ward && (
+                    <div className="flex items-center gap-2 text-white/90">
+                      <MapPin className="w-4 h-4" />
+                      <span className="text-sm font-semibold">Ward: {user.ward}</span>
+                    </div>
+                  )}
+                </>
               )}
             </div>
 
@@ -193,8 +262,9 @@ export default function ProfilePage() {
           icon={UserCog} 
           title="Personal Information" 
           subtitle="Edit name, phone, address" 
-          colorClass="text-primary" 
-          bgClass="bg-primary/10" 
+          colorClass={menuText} 
+          bgClass={menuBg} 
+          isInspector={role === "INSPECTOR"}
           onClick={() => router.push("/settings")}
         />
 
@@ -202,8 +272,9 @@ export default function ProfilePage() {
           icon={HelpCircle} 
           title="Contact Support" 
           subtitle="Get help with your queries" 
-          colorClass="text-secondary" 
-          bgClass="bg-secondary/10" 
+          colorClass={menuText} 
+          bgClass={menuBg} 
+          isInspector={role === "INSPECTOR"}
           onClick={() => router.push("/support")}
         />
 

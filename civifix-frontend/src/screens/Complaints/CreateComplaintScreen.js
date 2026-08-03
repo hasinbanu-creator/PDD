@@ -341,22 +341,28 @@ export const CreateComplaintScreen = ({ route, navigation }) => {
 
   useEffect(() => { setForm(EMPTY_FORM); }, []);
 
-  useEffect(() => { fetchWards(); }, []);
+  useEffect(() => {
+    fetchWards();
+  }, [user?.district_id, user?.district]);
 
   const fetchWards = async () => {
     setWardsLoading(true);
     try {
-      const constituencyId = user?.constituency_id ?? user?.assembly_constituency_id;
-      if (!constituencyId) {
+      const districtId = user?.district_id ?? user?.district;
+      if (!districtId) {
         setWards([]);
         setWardsLoading(false);
         return;
       }
-      const res = await authService.getWardsByConstituency(constituencyId);
-      const list = Array.isArray(res?.data) ? res.data : Array.isArray(res) ? res : [];
+      const res = await authService.getWardsByDistrict(districtId, { limit: 200 });
+      const list = Array.isArray(res) ? res : res?.data || [];
       setWards(list);
-    } catch { setWards([]); }
-    finally { setWardsLoading(false); }
+    } catch (err) {
+      console.error("[CreateComplaintScreen] fetchWards error:", err);
+      setWards([]);
+    } finally {
+      setWardsLoading(false);
+    }
   };
 
   const updateField = (field, value) => {
@@ -615,13 +621,19 @@ export const CreateComplaintScreen = ({ route, navigation }) => {
   const wardItems = wards.map((w) => {
     const idVal = w._id && typeof w._id === 'object' ? w._id.$oid ?? String(w._id) : w._id;
     return {
-      ...w, value: String(idVal ?? w.ward_id),
-      label: w.label ?? w.ward_name ?? w.name ?? idVal,
+      ...w,
+      value: String(idVal ?? w.ward_id),
+      label: w.display_name ?? w.label ?? w.ward_name ?? w.name ?? idVal,
     };
   }).sort((a, b) => {
-    if (a.ward_number && b.ward_number) return a.ward_number - b.ward_number;
+    const numA = parseInt(a.ward_number, 10);
+    const numB = parseInt(b.ward_number, 10);
+    if (!isNaN(numA) && !isNaN(numB)) {
+      return numA - numB;
+    }
     return a.label.localeCompare(b.label, undefined, { numeric: true, sensitivity: 'base' });
   });
+
   const selectedType = COMPLAINT_TYPES.find((t) => t.value === form.complaint_type);
   const selectedPri  = PRIORITIES.find((p) => p.value === form.priority);
 

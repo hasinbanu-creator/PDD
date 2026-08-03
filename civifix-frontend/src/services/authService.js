@@ -90,63 +90,13 @@ export const authService = {
   },
 
   createComplaint: async (complaintData) => {
-    console.log("========== TRACE: createComplaint ==========");
-    console.log("1. Entered authService.createComplaint()");
-    const url = `${api.defaults.baseURL}${ENDPOINTS.CREATE_COMPLAINT}`;
-    console.log("2. URL computed:", url);
-    
-    const token = await AsyncStorage.getItem("authToken");
-    const maskedToken = token ? `${token.substring(0, 4)}...${token.substring(token.length - 4)}` : "null";
-    console.log("3. Authorization header: Bearer", maskedToken);
-    
-    console.log("4. Validating FormData...");
-    if (complaintData && complaintData._parts) {
-      console.log("   - FormData keys:", complaintData._parts.map(p => p[0]));
-      console.log("DEBUG: FormData._parts:\n", JSON.stringify(complaintData._parts, null, 2));
-    }
-
-    try {
-      console.log("5. Calling fetch()...");
-      console.log("DEBUG: API request body:", complaintData);
-      const response = await fetch(url, {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${token}`,
-          "Accept": "application/json"
-          // CRITICAL: Do NOT set Content-Type manually for FormData in React Native fetch!
-        },
-        body: complaintData
-      });
-      console.log("6. fetch() completed without crashing!");
-      console.log("7. Response status:", response.status);
-      
-      const responseData = await response.json();
-      console.log("DEBUG: API response:\n", JSON.stringify(responseData, null, 2));
-      
-      if (!response.ok) {
-        console.error("8. Server returned error:", responseData);
-        console.log("DEBUG: Backend error:", responseData);
-        let errorMsg = responseData.message;
-        if (!errorMsg && Array.isArray(responseData.detail)) {
-          console.log("DEBUG: Validation errors:", responseData.detail);
-          errorMsg = responseData.detail.map(err => {
-            const field = err.loc ? err.loc[err.loc.length - 1] : "Field";
-            return `${field}: ${err.msg}`;
-          }).join(", ");
-        } else if (!errorMsg && typeof responseData.detail === "string") {
-          errorMsg = responseData.detail;
-        }
-        throw new Error(errorMsg || "Failed to create complaint");
-      }
-      console.log("[createComplaint] API response data:", responseData);
-      return responseData.data;
-    } catch (err) {
-      console.log("DEBUG: Network failures:", err);
-      console.error("6. fetch() or execution crashed before returning a response!");
-      console.error("   -> Error:", err.message);
-      console.error("   -> Stack Trace:", err.stack);
-      throw err;
-    }
+    const response = await api.post(ENDPOINTS.CREATE_COMPLAINT, complaintData, {
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "multipart/form-data",
+      },
+    });
+    return unwrapResponse(response);
   },
 
   getToken: async () => {
@@ -226,21 +176,21 @@ export const authService = {
     return unwrapResponse(res);
   },
 
-  /**
-   * Get ALL wards for the authenticated inspector's district.
-   * Calls GET /api/v1/wards — backend reads district from JWT token.
-   * Response after unwrapResponse: { data: Ward[], total, page, limit, pages }
-   */
-  getAllWards: async ({ page = 1, limit = 100 } = {}) => {
-    console.log("[getAllWards] Calling GET /wards, page:", page, "limit:", limit);
-    const res = await api.get("/wards", { params: { page, limit } });
+  getDistricts: async () => {
+    const res = await api.get("/admin/districts?active_only=false");
+    return unwrapResponse(res);
+  },
+
+  getAllWards: async ({ page = 1, limit = 100, district_id } = {}) => {
+    console.log("[getAllWards] Calling GET /wards, page:", page, "limit:", limit, "district_id:", district_id);
+    const params = { page, limit };
+    if (district_id) params.district_id = district_id;
+    const res = await api.get("/wards", { params });
     const result = unwrapResponse(res);
     console.log("[getAllWards] Response:", JSON.stringify(result)?.substring(0, 200));
     return result;
   },
 
-
-  // ─── WARD MANAGEMENT ─────────────────────────────────────────────────────────
   getWards: async ({ page = 1, limit = 20, is_active = true } = {}) => {
     const res = await api.get("/wards/district", {
       params: { page, limit, is_active },
@@ -322,51 +272,12 @@ export const authService = {
   },
 
   inspectorResolveComplaint: async (complaintId, payload) => {
-    console.log("========== TRACE: inspectorResolveComplaint ==========");
-    console.log("1. Entered authService.inspectorResolveComplaint()");
-    const url = `${api.defaults.baseURL}/inspector/complaints/${complaintId}/resolve`;
-    console.log("2. URL computed:", url);
-    
-    const token = await AsyncStorage.getItem("authToken");
-    const maskedToken = token ? `${token.substring(0, 4)}...${token.substring(token.length - 4)}` : "null";
-    console.log("3. Authorization header: Bearer", maskedToken);
-    
-    console.log("4. Validating FormData...");
-    if (payload && payload._parts) {
-      console.log("   - FormData keys:", payload._parts.map(p => p[0]));
-      const images = payload._parts.filter(p => p[0] === 'images');
-      images.forEach((img, i) => {
-        console.log(`   - Image ${i + 1} URI:`, img[1]?.uri);
-        console.log(`   - Image ${i + 1} MIME type:`, img[1]?.type);
-      });
-    }
-
-    try {
-      console.log("5. Calling fetch()...");
-      const response = await fetch(url, {
-        method: "PUT",
-        headers: {
-          "Authorization": `Bearer ${token}`,
-          "Accept": "application/json"
-          // Do NOT set Content-Type manually
-        },
-        body: payload
-      });
-      console.log("6. fetch() completed without crashing!");
-      console.log("7. Response status:", response.status);
-      
-      const responseData = await response.json();
-      if (!response.ok) {
-        console.error("8. Server returned error:", responseData);
-        throw new Error(responseData.message || "Failed to resolve complaint");
-      }
-      return responseData;
-    } catch (err) {
-      console.error("6. fetch() or execution crashed before returning a response!");
-      console.error("   -> Error:", err.message);
-      console.error("   -> Stack Trace:", err.stack);
-      throw err;
-    }
+    const response = await api.put(`/inspector/complaints/${complaintId}/resolve`, payload, {
+      headers: {
+        Accept: "application/json",
+      },
+    });
+    return unwrapResponse(response);
   },
 };
 

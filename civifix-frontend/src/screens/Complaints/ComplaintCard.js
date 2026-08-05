@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useContext } from "react";
 import { Text, TouchableOpacity, View } from "react-native";
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { COLORS, FONT_SIZES, SPACING } from "../../constants/theme";
 import { getComplaintStatusMeta } from "../../utils/status";
 import authService from "../../services/authService";
+import { AuthContext } from "../../context/AuthContext";
 
 let districtsCache = null;
 let districtsPromise = null;
@@ -94,7 +95,16 @@ export const ComplaintCard = ({ complaint, onPress }) => {
   const id        = complaint?.complaint_id || (complaint?._id && !/^[0-9a-fA-F]{24}$/.test(complaint._id) ? complaint._id : "");
   const citizen   = complaint?.citizenName || complaint?.citizen_name || complaint?.citizen?.name || "Citizen";
   const date      = formatDate(complaint?.created_at);
-  const priority  = complaint?.priority || "MEDIUM";
+  const { user } = useContext(AuthContext);
+  const isInspector = user?.role === "INSPECTOR";
+
+  const rawPriority = (complaint?.ai?.priority_prediction?.priority || complaint?.ai_priority?.priority || complaint?.final_priority || complaint?.priority || "MEDIUM").toUpperCase();
+  const isHigh = rawPriority === "HIGH";
+  const isMed = rawPriority === "MEDIUM";
+  const isLow = rawPriority === "LOW";
+  
+  const priorityLabel = isHigh ? "🔴 High" : isMed ? "🟡 Medium" : isLow ? "🟢 Low" : rawPriority;
+  const priorityColor = isHigh ? "#DC2626" : isMed ? "#D97706" : isLow ? "#059669" : "#64748B";
 
   const [district, setDistrict] = useState("Not Available");
   const [ward, setWard] = useState("Not Available");
@@ -220,8 +230,8 @@ export const ComplaintCard = ({ complaint, onPress }) => {
               <Text style={{ color: "#64748B", fontSize: FONT_SIZES.xs }}>{id}</Text>
             </View>
             <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-              <Icon name="flag-outline" size={14} color={priority === "HIGH" ? "#DC2626" : priority === "MEDIUM" ? "#D97706" : "#059669"} />
-              <Text style={{ color: "#64748B", fontSize: FONT_SIZES.xs }}>{priority}</Text>
+              <Icon name="flag-outline" size={14} color={priorityColor} />
+              <Text style={{ color: priorityColor, fontSize: FONT_SIZES.xs, fontWeight: "bold" }}>{priorityLabel}</Text>
             </View>
             <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
               <Icon name="account-outline" size={14} color="#64748B" />
@@ -238,6 +248,10 @@ export const ComplaintCard = ({ complaint, onPress }) => {
             <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
               <Icon name="map-marker-outline" size={14} color="#64748B" />
               <Text style={{ color: "#64748B", fontSize: FONT_SIZES.xs }}>{ward}</Text>
+            </View>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+              <Icon name="account-group-outline" size={14} color={COLORS.primary} />
+              <Text style={{ color: COLORS.primary, fontSize: FONT_SIZES.xs, fontWeight: "700" }}>{complaint?.support_count || 0} Citizens</Text>
             </View>
             <View style={{ flexDirection: "row", alignItems: "center", gap: 4, width: "100%", marginTop: 2 }}>
               <Icon name="map-marker-radius-outline" size={14} color="#64748B" />

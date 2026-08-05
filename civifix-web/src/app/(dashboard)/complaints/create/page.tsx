@@ -9,6 +9,7 @@ import { useWards } from "@/hooks/use-wards";
 import { useCreateComplaint } from "@/hooks/use-complaints";
 import {
   AlertCircle,
+  AlertTriangle,
   Map,
   ClipboardList,
   Wrench,
@@ -68,6 +69,84 @@ export default function CreateComplaintPage() {
   const [createdComplaint, setCreatedComplaint] = useState<any>(null);
   const [step, setStep] = useState(1);
   const [districts, setDistricts] = useState<any[]>([]);
+
+  const [verifying, setVerifying] = useState(false);
+  const [aiVerifiedPayload, setAiVerifiedPayload] = useState<any>(null);
+  const [verificationPopup, setVerificationPopup] = useState<string | null>(null);
+
+  const [duplicateMatch, setDuplicateMatch] = useState<any>(null);
+  const [duplicatePopup, setDuplicatePopup] = useState(false);
+  const [supporting, setSupporting] = useState(false);
+
+  const handleSupportExisting = async () => {
+    if (!duplicateMatch || !duplicateMatch.existing_complaint) return;
+    setSupporting(true);
+    try {
+      await api.post(`/complaints/${duplicateMatch.existing_complaint.id}/support`);
+      alert(`You are now supporting complaint ${duplicateMatch.matched_complaint_id}!`);
+      setDuplicatePopup(false);
+      router.push("/dashboard");
+    } catch (err: any) {
+      console.error("Support existing failed", err);
+      alert(err?.response?.data?.detail || "You have already supported this complaint.");
+    } finally {
+      setSupporting(false);
+    }
+  };
+
+  const verifyImage = async (file: File) => {
+    setVerifying(true);
+    setVerificationPopup("loading");
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      
+      const response = await api.post("/complaints/verify-image", formData);
+      const result = response.data?.data;
+      
+      setAiVerifiedPayload(result);
+      
+      if (!result) {
+        setVerificationPopup("unavailable");
+        return;
+      }
+      
+      if (result.is_low_quality) {
+        setVerificationPopup("low_quality");
+        return;
+      }
+      
+      if (!result.contains_civic_issue) {
+        setVerificationPopup("fail");
+        return;
+      }
+      
+      // Check for category mismatch
+      const formCat = String(form.complaint_type).replace(/_/g, "").toLowerCase();
+      const aiCat = String(result.predicted_category).replace(/_/g, "").toLowerCase();
+      
+      if (formCat && aiCat && formCat !== aiCat && result.predicted_category !== "OTHER") {
+        setVerificationPopup("mismatch");
+      } else {
+        setVerificationPopup("success");
+      }
+      
+    } catch (err) {
+      console.error("AI image verification error:", err);
+      setVerificationPopup("unavailable");
+    } finally {
+      setVerifying(false);
+    }
+  };
+
+  const isSubmitDisabled = () => {
+    if (verifying) return true;
+    if (selectedImages.length > 0) {
+      if (!aiVerifiedPayload) return true;
+      if (!aiVerifiedPayload.contains_civic_issue || aiVerifiedPayload.is_low_quality) return true;
+    }
+    return false;
+  };
 
   useEffect(() => {
     api.get("/admin/districts?active_only=false").then((res: any) => {
@@ -267,8 +346,8 @@ export default function CreateComplaintPage() {
     return Object.keys(next).length === 0;
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async (e: React.FormEvent, bypassDuplicateCheck = false) => {
+    if (e) e.preventDefault();
     
     const next: Record<string, string> = {};
     if (!user?.district_id && !user?.district) {
@@ -315,6 +394,15 @@ export default function CreateComplaintPage() {
       if (form.address) formData.append("address", form.address);
       if (form.landmark) formData.append("landmark", form.landmark);
       if (form.citizen_note) formData.append("citizen_note", form.citizen_note.trim());
+      if (aiVerifiedPayload) {
+        formData.append("ai_verification", JSON.stringify(aiVerifiedPayload));
+      }
+      if (bypassDuplicateCheck) {
+        formData.append("force_create", "true");
+        if (duplicateMatch) {
+          formData.append("duplicate_detection", JSON.stringify(duplicateMatch));
+        }
+      }
       
       if (selectedImages.length === 0) {
         formData.append("images", new Blob([""], { type: "application/octet-stream" }), "");
@@ -330,6 +418,12 @@ export default function CreateComplaintPage() {
       });
 
       const result = await createComplaint.mutateAsync(formData as any);
+      if (result && result.status === "duplicate_check") {
+        setDuplicateMatch(result.data);
+        setDuplicatePopup(true);
+        setLoading(false);
+        return;
+      }
       setCreatedComplaint(result);
       setShowSuccess(true);
     } catch (err: any) {
@@ -365,6 +459,17 @@ export default function CreateComplaintPage() {
               <span className="text-xs font-bold text-muted-foreground">Status</span>
               <span className="text-xs font-black text-accent bg-accent/10 px-3 py-1 rounded-full">{status}</span>
             </div>
+            {(() => {
+              const rawPriority = (createdComplaint.ai?.priority_prediction?.priority || createdComplaint.ai_priority?.priority || createdComplaint.final_priority || createdComplaint.priority || "Medium");
+              const emojiPriority = String(rawPriority).toUpperCase() === "HIGH" ? "🔴 High" :
+                                    String(rawPriority).toUpperCase() === "MEDIUM" ? "🟡 Medium" : "🟢 Low";
+              return (
+                <div className="flex justify-between items-center mb-3 pb-3 border-b border-border/50">
+                  <span className="text-xs font-bold text-muted-foreground">AI Priority</span>
+                  <span className="text-sm font-extrabold text-foreground">{emojiPriority}</span>
+                </div>
+              );
+            })()}
             <div className="flex justify-between items-center">
               <span className="text-xs font-bold text-muted-foreground">Est. Resolution</span>
               <span className="text-sm font-bold text-foreground">48 hours</span>
@@ -493,12 +598,13 @@ export default function CreateComplaintPage() {
                   <div className="border-2 border-dashed border-border rounded-2xl p-6 flex flex-col items-center justify-center bg-muted/20 hover:bg-muted/40 transition-colors relative cursor-pointer group">
                     <input 
                       type="file" 
-                      multiple 
                       accept="image/*" 
                       className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
                       onChange={(e) => {
-                        if (e.target.files) {
-                          setSelectedImages([...selectedImages, ...Array.from(e.target.files)]);
+                        if (e.target.files && e.target.files.length > 0) {
+                          const file = e.target.files[0];
+                          setSelectedImages([file]);
+                          verifyImage(file);
                         }
                       }}
                     />
@@ -519,7 +625,8 @@ export default function CreateComplaintPage() {
                             onClick={(e) => {
                               e.preventDefault();
                               e.stopPropagation();
-                              setSelectedImages(selectedImages.filter((_, index) => index !== i));
+                              setSelectedImages([]);
+                              setAiVerifiedPayload(null);
                             }}
                             className="absolute top-1 right-1 bg-black/60 text-white w-6 h-6 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
                           >
@@ -535,13 +642,14 @@ export default function CreateComplaintPage() {
               <div className="mt-8 flex justify-end">
                 <button
                   type="button"
+                  disabled={isSubmitDisabled()}
                   onClick={() => {
                     let isValid = true;
                     if (!form.complaint_type) { updateField("complaint_type", ""); isValid = false; }
                     if (form.description.length < 10) { updateField("description", ""); isValid = false; }
                     if (isValid) setStep(2);
                   }}
-                  className="py-4 px-8 bg-primary hover:bg-primary/90 text-primary-foreground rounded-2xl font-black text-sm tracking-wide shadow-md shadow-primary/20 transition-all hover:-translate-y-0.5"
+                  className="py-4 px-8 bg-primary hover:bg-primary/90 text-primary-foreground rounded-2xl font-black text-sm tracking-wide shadow-md shadow-primary/20 transition-all hover:-translate-y-0.5 disabled:opacity-50"
                 >
                   Continue
                 </button>
@@ -771,6 +879,268 @@ export default function CreateComplaintPage() {
           </div>
         </form>
       </div>
+
+      {/* AI Image Verification Dialog Overlay */}
+      {verificationPopup && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="bg-card border border-border rounded-[2rem] p-8 max-w-md w-full shadow-2xl scale-in duration-200">
+            {verificationPopup === "loading" && (
+              <div className="text-center py-6">
+                <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-6"></div>
+                <h3 className="text-xl font-black text-foreground">🤖 Verifying uploaded image...</h3>
+                <p className="text-sm text-muted-foreground mt-2 font-medium">Please wait while Gemini AI analyzes the image.</p>
+              </div>
+            )}
+
+            {verificationPopup === "success" && aiVerifiedPayload && (
+              <div className="text-center">
+                <div className="w-16 h-16 bg-success/10 text-[#059669] rounded-full flex items-center justify-center mx-auto mb-6">
+                  <CheckCircle2 className="w-10 h-10 text-[#059669]" />
+                </div>
+                <h3 className="text-2xl font-black text-foreground mb-2">✅ Image Verified</h3>
+                <p className="text-sm text-muted-foreground font-medium mb-6">
+                  AI has successfully verified this image as a valid civic issue.
+                </p>
+                <div className="bg-muted/30 border border-border rounded-2xl p-4 text-left mb-6 text-sm">
+                  <div className="flex justify-between py-1.5 border-b border-border/50">
+                    <span className="font-bold text-muted-foreground">Detected Category:</span>
+                    <span className="font-extrabold text-foreground capitalize">
+                      {String(aiVerifiedPayload.predicted_category).replace(/_/g, " ").toLowerCase()}
+                    </span>
+                  </div>
+                  <div className="flex justify-between py-1.5">
+                    <span className="font-bold text-muted-foreground">Confidence:</span>
+                    <span className="font-extrabold text-foreground">
+                      {(() => {
+                        const conf = aiVerifiedPayload.confidence;
+                        return conf <= 1.0 ? `${Math.round(conf * 100)}%` : `${conf}%`;
+                      })()}
+                    </span>
+                  </div>
+                </div>
+                <div className="flex gap-3">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedImages([]);
+                      setAiVerifiedPayload(null);
+                      setVerificationPopup(null);
+                    }}
+                    className="flex-1 py-3 px-4 bg-muted hover:bg-muted/80 text-foreground font-bold rounded-xl text-xs transition-colors"
+                  >
+                    Upload Another
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setVerificationPopup(null)}
+                    className="flex-1 py-3 px-4 bg-primary hover:bg-primary/90 text-primary-foreground font-bold rounded-xl text-xs shadow-md shadow-primary/10 transition-colors"
+                  >
+                    Continue Complaint
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {verificationPopup === "fail" && aiVerifiedPayload && (
+              <div className="text-center">
+                <div className="w-16 h-16 bg-destructive/10 text-destructive rounded-full flex items-center justify-center mx-auto mb-6">
+                  <AlertTriangle className="w-10 h-10 text-red-600" />
+                </div>
+                <h3 className="text-2xl font-black text-foreground mb-2">⚠ Image Verification Failed</h3>
+                <p className="text-sm text-muted-foreground font-medium mb-4">
+                  The uploaded image does not appear to contain a civic issue.
+                </p>
+                <div className="bg-destructive/5 border border-destructive/10 rounded-2xl p-4 text-left mb-6 text-sm">
+                  <div className="flex justify-between py-1">
+                    <span className="font-bold text-destructive">AI Detected:</span>
+                    <span className="font-extrabold text-destructive capitalize">
+                      {String(aiVerifiedPayload.predicted_category || "Unrelated Object").replace(/_/g, " ").toLowerCase()}
+                    </span>
+                  </div>
+                </div>
+                <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest text-left mb-3">
+                  Please upload an image showing an actual civic issue:
+                </p>
+                <div className="grid grid-cols-2 gap-2 text-left mb-6 text-[11px] font-bold text-slate-500">
+                  <span>• Garbage</span>
+                  <span>• Road Pothole</span>
+                  <span>• Water Leakage</span>
+                  <span>• Drainage Blockage</span>
+                  <span>• Broken Street Light</span>
+                  <span>• Damaged Park</span>
+                  <span className="col-span-2">• Illegal Dumping</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedImages([]);
+                    setAiVerifiedPayload(null);
+                    setVerificationPopup(null);
+                  }}
+                  className="w-full py-3.5 bg-primary hover:bg-primary/90 text-primary-foreground font-bold rounded-xl text-xs transition-colors"
+                >
+                  Upload Another Image
+                </button>
+              </div>
+            )}
+
+            {verificationPopup === "low_quality" && (
+              <div className="text-center">
+                <div className="w-16 h-16 bg-amber-500/10 text-amber-500 rounded-full flex items-center justify-center mx-auto mb-6">
+                  <AlertTriangle className="w-10 h-10 text-amber-500" />
+                </div>
+                <h3 className="text-2xl font-black text-foreground mb-2">⚠ Image Quality Too Low</h3>
+                <p className="text-sm text-muted-foreground font-medium mb-6">
+                  The uploaded image is too blurry or unclear for AI verification. Please upload a clearer image.
+                </p>
+                <div className="flex gap-3">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedImages([]);
+                      setAiVerifiedPayload(null);
+                      setVerificationPopup(null);
+                    }}
+                    className="flex-1 py-3 px-4 bg-muted hover:bg-muted/80 text-foreground font-bold rounded-xl text-xs transition-colors"
+                  >
+                    Retake Photo
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedImages([]);
+                      setAiVerifiedPayload(null);
+                      setVerificationPopup(null);
+                    }}
+                    className="flex-1 py-3 px-4 bg-primary hover:bg-primary/90 text-primary-foreground font-bold rounded-xl text-xs transition-colors"
+                  >
+                    Choose Another
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {verificationPopup === "mismatch" && aiVerifiedPayload && (
+              <div className="text-center">
+                <div className="w-16 h-16 bg-amber-500/10 text-amber-500 rounded-full flex items-center justify-center mx-auto mb-6">
+                  <AlertTriangle className="w-10 h-10 text-amber-500" />
+                </div>
+                <h3 className="text-2xl font-black text-foreground mb-2">⚠ Category Mismatch</h3>
+                <p className="text-sm text-muted-foreground font-medium mb-4">
+                  AI believes this image belongs to:
+                </p>
+                <div className="bg-amber-500/5 border border-amber-500/10 rounded-2xl p-4 text-center mb-4">
+                  <span className="font-extrabold text-amber-600 text-lg capitalize">
+                    {String(aiVerifiedPayload.predicted_category).replace(/_/g, " ").toLowerCase()}
+                  </span>
+                </div>
+                <p className="text-sm font-bold text-foreground mb-6">
+                  Would you like to update the complaint category?
+                </p>
+                <div className="flex gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setVerificationPopup(null)}
+                    className="flex-1 py-3 px-4 bg-muted hover:bg-muted/80 text-foreground font-bold rounded-xl text-xs transition-colors"
+                  >
+                    Keep My Selection
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      updateField("complaint_type", aiVerifiedPayload.predicted_category);
+                      setVerificationPopup(null);
+                    }}
+                    className="flex-1 py-3 px-4 bg-primary hover:bg-primary/90 text-primary-foreground font-bold rounded-xl text-xs transition-colors"
+                  >
+                    Use AI Category
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {verificationPopup === "unavailable" && (
+              <div className="text-center">
+                <div className="w-16 h-16 bg-amber-500/10 text-amber-500 rounded-full flex items-center justify-center mx-auto mb-6">
+                  <AlertTriangle className="w-10 h-10 text-amber-500" />
+                </div>
+                <h3 className="text-2xl font-black text-foreground mb-2">⚠ AI Verification Unavailable</h3>
+                <p className="text-sm text-muted-foreground font-medium mb-6">
+                  Unable to verify the uploaded image at the moment. Please try again later.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setVerificationPopup(null)}
+                  className="w-full py-3 bg-primary hover:bg-primary/90 text-primary-foreground font-bold rounded-xl text-xs transition-colors"
+                >
+                  Close
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* AI Duplicate Complaint Warning Dialog */}
+      {duplicatePopup && duplicateMatch && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="bg-card border border-border rounded-[2rem] p-8 max-w-md w-full shadow-2xl scale-in duration-200">
+            <div className="text-center">
+              <div className="w-16 h-16 bg-amber-500/10 text-amber-500 rounded-full flex items-center justify-center mx-auto mb-6">
+                <AlertTriangle className="w-10 h-10 text-amber-500" />
+              </div>
+              <h3 className="text-2xl font-black text-foreground mb-2">⚠ Similar Complaint Found</h3>
+              <p className="text-sm text-muted-foreground font-medium mb-6">
+                A similar complaint already exists in your ward.
+              </p>
+              
+              <div className="bg-muted/30 border border-border rounded-2xl p-4 text-left mb-6 text-sm space-y-2">
+                <div className="flex justify-between py-1 border-b border-border/50">
+                  <span className="font-bold text-muted-foreground">Complaint ID:</span>
+                  <span className="font-extrabold text-foreground">{duplicateMatch.matched_complaint_id}</span>
+                </div>
+                <div className="flex justify-between py-1 border-b border-border/50">
+                  <span className="font-bold text-muted-foreground">Status:</span>
+                  <span className="font-extrabold text-foreground capitalize">{String(duplicateMatch.existing_complaint?.status).toLowerCase()}</span>
+                </div>
+                <div className="flex justify-between py-1 border-b border-border/50">
+                  <span className="font-bold text-muted-foreground">Supported By:</span>
+                  <span className="font-extrabold text-foreground">{duplicateMatch.existing_complaint?.support_count || 0} Citizens</span>
+                </div>
+                <div className="flex justify-between py-1 border-b border-border/50">
+                  <span className="font-bold text-muted-foreground">Similarity:</span>
+                  <span className="font-extrabold text-amber-600">{duplicateMatch.similarity}%</span>
+                </div>
+                <div className="pt-2 text-xs font-semibold text-foreground italic">
+                  &ldquo;{duplicateMatch.reason}&rdquo;
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-3">
+                <button
+                  type="button"
+                  disabled={supporting}
+                  onClick={handleSupportExisting}
+                  className="w-full py-3.5 bg-primary hover:bg-primary/90 disabled:opacity-55 text-primary-foreground font-black rounded-xl text-xs transition-colors shadow-md shadow-primary/10"
+                >
+                  {supporting ? "Adding Support..." : "Support Existing Complaint"}
+                </button>
+                <button
+                  type="button"
+                  disabled={supporting}
+                  onClick={() => {
+                    setDuplicatePopup(false);
+                    handleSubmit(null as any, true);
+                  }}
+                  className="w-full py-3 bg-muted hover:bg-muted/80 text-foreground font-bold rounded-xl text-xs transition-colors"
+                >
+                  Create New Complaint Anyway
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

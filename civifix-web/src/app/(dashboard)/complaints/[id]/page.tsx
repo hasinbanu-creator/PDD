@@ -35,9 +35,11 @@ import {
   Play,
   X,
   History,
-  MoreVertical
+  MoreVertical,
+  Sparkles
 } from "lucide-react";
 import { useAuth } from "@/context/auth-context";
+import api from "@/lib/api";
 
 const getCleanDistrict = (c: any) => {
   if (!c) return "Not Available";
@@ -271,6 +273,20 @@ export default function ComplaintDetailsPage() {
     }
   };
 
+  const handlePriorityOverride = async (newPriority: string) => {
+    try {
+      setUpdating(true);
+      await api.put(`/inspector/complaints/${id}/priority`, { priority: newPriority });
+      refetch();
+    } catch (e: any) {
+      console.error(e);
+      const msg = e.response?.data?.message || e.message || "Failed to override priority";
+      alert(msg);
+    } finally {
+      setUpdating(false);
+    }
+  };
+
   const addNote = async () => {
     try {
       setUpdating(true);
@@ -314,7 +330,8 @@ export default function ComplaintDetailsPage() {
 
   const typeMeta = TYPE_META[complaint.complaint_type] || TYPE_META.OTHER;
   const statusCfg = STATUS_CONFIG[complaint.status] || STATUS_CONFIG.PENDING;
-  const priorityCfg = PRIORITY_CONFIG[complaint.priority] || PRIORITY_CONFIG.MEDIUM;
+  const rawFinalPriority = (complaint.final_priority || complaint.priority || "MEDIUM").toUpperCase();
+  const priorityCfg = PRIORITY_CONFIG[rawFinalPriority] || PRIORITY_CONFIG.MEDIUM;
   const StatusIcon = statusCfg.icon;
   const TypeIcon = typeMeta.icon;
 
@@ -361,9 +378,11 @@ export default function ComplaintDetailsPage() {
               <StatusIcon className={`w-5 h-5 ${statusCfg.color}`} />
               <span className={`text-sm font-bold ${statusCfg.color}`}>{statusCfg.label}</span>
             </div>
-            <div className={`flex items-center gap-2 px-4 py-2 rounded-xl border border-border ${priorityCfg.bg}`}>
-              <AlertCircle className={`w-5 h-5 ${priorityCfg.color}`} />
-              <span className={`text-sm font-bold ${priorityCfg.color}`}>{priorityCfg.label} Priority</span>
+            <div className={`flex items-center gap-2 px-4 py-2 rounded-xl border border-slate-200/60 ${priorityCfg.bg}`}>
+              <span className={`text-sm font-bold ${priorityCfg.color}`}>
+                {rawFinalPriority === "HIGH" ? "🔴 High" :
+                 rawFinalPriority === "MEDIUM" ? "🟡 Medium" : "🟢 Low"} Priority
+              </span>
             </div>
             <div className="ml-auto text-sm font-bold text-muted-foreground flex items-center gap-2 bg-muted/50 px-4 py-2 rounded-xl border border-border/50">
               <Clock className="w-4 h-4" />
@@ -412,6 +431,10 @@ export default function ComplaintDetailsPage() {
                   <span className="font-semibold text-foreground">{complaint.landmark || "Not Available"}</span>
                 </div>
                 <div className="flex gap-2">
+                  <span className="font-bold text-muted-foreground w-28 shrink-0">Supported By :</span>
+                  <span className="font-extrabold text-primary">{complaint.support_count || 0} Citizens</span>
+                </div>
+                <div className="flex gap-2">
                   <span className="font-bold text-muted-foreground w-28 shrink-0">Complaint ID :</span>
                   <span className="font-semibold text-foreground">
                     {complaint.complaintId || complaint.complaint_id || (complaint._id && !/^[0-9a-fA-F]{24}$/.test(complaint._id) ? complaint._id : "Not Available")}
@@ -426,6 +449,45 @@ export default function ComplaintDetailsPage() {
             label="Coordinates"
             value={complaint.latitude && complaint.longitude ? `${complaint.latitude}, ${complaint.longitude}` : null}
           />
+
+          {(() => {
+            const pred = complaint.ai?.priority_prediction || complaint.ai_priority;
+            if (!pred) return null;
+            
+            const rawPriority = (pred.priority || "Medium").toUpperCase();
+            const emojiPriority = rawPriority === "HIGH" ? "🔴 High" :
+                                  rawPriority === "MEDIUM" ? "🟡 Medium" : "🟢 Low";
+            const isInspector = user?.role === "INSPECTOR";
+
+            return (
+              <div className="flex gap-4 py-4 border-b border-slate-200/60 last:border-none">
+                <div className="w-10 h-10 rounded-xl bg-purple-500/10 flex items-center justify-center shrink-0 mt-0.5">
+                  <Sparkles className="w-5 h-5 text-purple-600" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-black text-purple-600 uppercase tracking-widest mb-2">AI Priority Recommendation</p>
+                  <div className="space-y-1.5 text-sm">
+                    <div className="flex gap-2">
+                      <span className="font-bold text-muted-foreground w-28 shrink-0">AI Priority :</span>
+                      <span className="font-semibold text-foreground">{emojiPriority}</span>
+                    </div>
+                    {isInspector && pred.confidence !== undefined && (
+                      <div className="flex gap-2">
+                        <span className="font-bold text-muted-foreground w-28 shrink-0">Confidence :</span>
+                        <span className="font-semibold text-foreground">{pred.confidence}%</span>
+                      </div>
+                    )}
+                    {pred.reason && (
+                      <div className="flex gap-2">
+                        <span className="font-bold text-muted-foreground w-28 shrink-0">Reason :</span>
+                        <span className="font-semibold text-foreground">{pred.reason}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
 
           {(() => {
             let complaintImages: string[] = [];
@@ -631,6 +693,49 @@ export default function ComplaintDetailsPage() {
         {/* Inspector Actions — simplified workflow */}
         {user?.role === "INSPECTOR" && (
           <>
+            {/* Priority Override Section for Inspectors */}
+            <div className="bg-white rounded-[2rem] p-6 shadow-sm border border-slate-200 mb-6">
+              <div className="flex items-center gap-3 mb-6 pb-4 border-b border-slate-100">
+                <div className="w-10 h-10 rounded-xl bg-purple-500/10 flex items-center justify-center">
+                  <Sparkles className="w-5 h-5 text-purple-600" />
+                </div>
+                <h3 className="text-lg font-black text-slate-800">Priority Override</h3>
+              </div>
+              <div className="flex flex-col gap-4">
+                <div className="flex gap-2 items-center">
+                  <span className="text-sm font-semibold text-slate-600 mr-2">Override Priority:</span>
+                  {["Low", "Medium", "High"].map((level) => {
+                    const currentFinal = complaint.final_priority || complaint.ai?.priority_prediction?.priority || complaint.priority || "Medium";
+                    const isSelected = String(currentFinal).toLowerCase() === level.toLowerCase();
+                    return (
+                      <button
+                        key={level}
+                        disabled={updating}
+                        onClick={() => handlePriorityOverride(level)}
+                        className={`px-4 py-2 rounded-xl text-sm font-bold transition-all border ${
+                          isSelected
+                            ? level === "High"
+                              ? "bg-red-500 text-white border-red-500 shadow-md shadow-red-500/20 animate-none"
+                              : level === "Medium"
+                              ? "bg-amber-500 text-white border-amber-500 shadow-md shadow-amber-500/20 animate-none"
+                              : "bg-emerald-600 text-white border-emerald-600 shadow-md shadow-emerald-600/20 animate-none"
+                            : "bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100"
+                        }`}
+                      >
+                        {level}
+                      </button>
+                    );
+                  })}
+                </div>
+                
+                {complaint.priority_updated_by && (
+                  <div className="text-xs text-slate-500 bg-slate-50 rounded-xl p-3 border border-slate-150">
+                    <p className="font-semibold text-slate-600">Priority updated by: <span className="font-bold text-slate-800">{complaint.priority_updated_by}</span></p>
+                    <p className="mt-0.5 text-slate-400">At: {new Date(complaint.priority_updated_at).toLocaleString()}</p>
+                  </div>
+                )}
+              </div>
+            </div>
             {/* OPEN: Start Work + Reject */}
             {complaint.status === "OPEN" && (
               <div className="bg-white rounded-[2rem] p-6 shadow-sm border border-slate-200 mb-6">

@@ -192,6 +192,9 @@ const ComplaintItem = ({ complaint, index, total, onPress }) => {
         <Text style={{ color: COLORS.textLight, fontSize: 9.5, fontWeight: "700", marginTop: 2 }}>
           {complaint.complaint_id || complaint._id || "#CIV-NEW"}
         </Text>
+        <Text style={{ color: COLORS.primary, fontSize: 9.5, fontWeight: "700", marginTop: 2 }}>
+          Supported by {complaint.support_count || 0} Citizens
+        </Text>
       </View>
       <View style={{ alignItems: "flex-end", gap: 4 }}>
         <View style={{ backgroundColor: status.bg, borderRadius: 999, paddingHorizontal: 8, paddingVertical: 4 }}>
@@ -514,7 +517,12 @@ const InspectorComplaintItem = ({ complaint, index, total, onPress }) => {
   const desc   = complaint.description || "No description provided";
   
   const compId = complaint.complaint_id || (complaint.complaintId && !/^[0-9a-fA-F]{24}$/.test(complaint.complaintId) ? complaint.complaintId : "") || (complaint._id && !/^[0-9a-fA-F]{24}$/.test(complaint._id) ? complaint._id : "") || "#CIV-NEW";
-  const priority = complaint.priority || "MEDIUM";
+  const rawPriority = (complaint.ai_priority?.priority || complaint.priority || "MEDIUM").toUpperCase();
+  const isHigh = rawPriority === "HIGH";
+  const isMed = rawPriority === "MEDIUM";
+  const isLow = rawPriority === "LOW";
+  const priorityLabel = isHigh ? "🔴 High" : isMed ? "🟡 Medium" : isLow ? "🟢 Low" : rawPriority;
+  const priorityColor = isHigh ? "#DC2626" : isMed ? "#D97706" : isLow ? "#059669" : "#64748B";
   const citizenName = complaint.citizenName || complaint.citizen_name || complaint.citizen?.name || (complaint.user_id?.name || "Not Available");
   const createdDate = complaint.created_at ? new Date(complaint.created_at).toLocaleDateString() : "—";
   
@@ -612,6 +620,7 @@ const InspectorComplaintItem = ({ complaint, index, total, onPress }) => {
         <Text style={{ fontSize: 12, color: "#4B5563" }}><Text style={{ fontWeight: "bold" }}>Ward :</Text> {wardName}</Text>
         <Text style={{ fontSize: 12, color: "#4B5563" }}><Text style={{ fontWeight: "bold" }}>Address :</Text> {address}</Text>
         <Text style={{ fontSize: 12, color: "#4B5563" }}><Text style={{ fontWeight: "bold" }}>Landmark :</Text> {landmarkVal}</Text>
+        <Text style={{ fontSize: 12, color: COLORS.primary }}><Text style={{ fontWeight: "bold" }}>Supported By :</Text> {complaint.support_count || 0} Citizens</Text>
       </View>
       
       <View style={{ marginTop: 8, flexDirection: "row", alignItems: "center", justifyContent: "space-between", width: "100%" }}>
@@ -621,8 +630,8 @@ const InspectorComplaintItem = ({ complaint, index, total, onPress }) => {
         </View>
         <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-            <Icon name="flag-outline" size={14} color={priority === "HIGH" ? "#DC2626" : priority === "MEDIUM" ? "#D97706" : "#059669"} />
-            <Text style={{ color: COLORS.textLight, fontSize: FONT_SIZES.xs }}>{priority}</Text>
+            <Icon name="flag-outline" size={14} color={priorityColor} />
+            <Text style={{ color: priorityColor, fontSize: FONT_SIZES.xs, fontWeight: "bold" }}>{priorityLabel}</Text>
           </View>
           {hasImages && (
             <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
@@ -646,8 +655,9 @@ const InspectorDashboard = ({ navigation, meData, user }) => {
   const [selectedWardId, setSelectedWardId] = useState("all");
   const [showWardPicker, setShowWardPicker] = useState(false);
 
-  const [complaints, setComplaints]     = useState([]);
+  const [complaints, setComplaints] = useState([]);
   const [statusFilter, setStatusFilter] = useState("All");
+  const [priorityFilter, setPriorityFilter] = useState("All");
   
   const [loadingDistricts, setLoadingDistricts] = useState(true);
   const [loadingWards, setLoadingWards] = useState(false);
@@ -1051,6 +1061,37 @@ const InspectorDashboard = ({ navigation, meData, user }) => {
         })}
       </ScrollView>
 
+      {/* ── Priority Chips ───────────────────────────────────────────── */}
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: SPACING.xs, marginBottom: SPACING.md }}>
+        {["All", "High", "Medium", "Low"].map(p => {
+          const isSelected = priorityFilter === p;
+          return (
+            <TouchableOpacity
+              key={p}
+              onPress={() => setPriorityFilter(p)}
+              style={{
+                paddingHorizontal: 16,
+                paddingVertical: 8,
+                borderRadius: 20,
+                backgroundColor: isSelected ? "#8B5CF6" : COLORS.card,
+                borderWidth: 1,
+                borderColor: isSelected ? "#8B5CF6" : COLORS.border,
+                marginRight: 8,
+                ...SHADOWS.sm,
+              }}
+            >
+              <Text style={{
+                color: isSelected ? "#fff" : COLORS.textDark,
+                fontWeight: isSelected ? "700" : "500",
+                fontSize: FONT_SIZES.sm
+              }}>
+                {p} Priority
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
+      </ScrollView>
+
       {/* ── Complaints List ───────────────────────────────────────────── */}
       <SectionTitle
         left={selectedDistrict === "all"
@@ -1070,11 +1111,16 @@ const InspectorDashboard = ({ navigation, meData, user }) => {
 
       <ListCard
         empty={!loadingComplaints && filteredByWard.filter(c => {
-          if (statusFilter === "All") return true;
-          if (statusFilter === "Pending") return ["OPEN", "PENDING"].includes(c.status);
-          if (statusFilter === "In Progress") return ["IN_PROGRESS", "WORKING", "ACCEPTED", "FIELD_VISIT", "APPROVAL"].includes(c.status);
-          if (statusFilter === "Resolved") return ["RESOLVED", "CLOSED"].includes(c.status);
-          if (statusFilter === "Rejected") return c.status === "REJECTED";
+          if (statusFilter !== "All") {
+            if (statusFilter === "Pending" && !["OPEN", "PENDING"].includes(c.status)) return false;
+            if (statusFilter === "In Progress" && !["IN_PROGRESS", "WORKING", "ACCEPTED", "FIELD_VISIT", "APPROVAL"].includes(c.status)) return false;
+            if (statusFilter === "Resolved" && !["RESOLVED", "CLOSED"].includes(c.status)) return false;
+            if (statusFilter === "Rejected" && c.status !== "REJECTED") return false;
+          }
+          if (priorityFilter !== "All") {
+            const rawP = (c.ai?.priority_prediction?.priority || c.ai_priority?.priority || c.final_priority || c.priority || "MEDIUM").toUpperCase();
+            if (rawP !== priorityFilter.toUpperCase()) return false;
+          }
           return true;
         }).length === 0}
         emptyLabel={selectedWardId === "all"
@@ -1085,11 +1131,16 @@ const InspectorDashboard = ({ navigation, meData, user }) => {
         {loadingComplaints
           ? <View style={{ padding: SPACING.xl }}><ActivityIndicator color="#0F8A83" /></View>
           : filteredByWard.filter(c => {
-              if (statusFilter === "All") return true;
-              if (statusFilter === "Pending") return ["OPEN", "PENDING"].includes(c.status);
-              if (statusFilter === "In Progress") return ["IN_PROGRESS", "WORKING", "ACCEPTED", "FIELD_VISIT", "APPROVAL"].includes(c.status);
-              if (statusFilter === "Resolved") return ["RESOLVED", "CLOSED"].includes(c.status);
-              if (statusFilter === "Rejected") return c.status === "REJECTED";
+              if (statusFilter !== "All") {
+                if (statusFilter === "Pending" && !["OPEN", "PENDING"].includes(c.status)) return false;
+                if (statusFilter === "In Progress" && !["IN_PROGRESS", "WORKING", "ACCEPTED", "FIELD_VISIT", "APPROVAL"].includes(c.status)) return false;
+                if (statusFilter === "Resolved" && !["RESOLVED", "CLOSED"].includes(c.status)) return false;
+                if (statusFilter === "Rejected" && c.status !== "REJECTED") return false;
+              }
+              if (priorityFilter !== "All") {
+                const rawP = (c.ai?.priority_prediction?.priority || c.ai_priority?.priority || c.final_priority || c.priority || "MEDIUM").toUpperCase();
+                if (rawP !== priorityFilter.toUpperCase()) return false;
+              }
               return true;
             }).map((c, i, arr) => (
               <InspectorComplaintItem

@@ -166,6 +166,18 @@ const SuccessModal = ({ visible, complaint, onView, onDone }) => {
             <Text style={ss.idText}>{complaintId}</Text>
           </View>
 
+          {(() => {
+            const rawPriority = (complaint?.ai?.priority_prediction?.priority || complaint?.ai_priority?.priority || complaint?.final_priority || complaint?.priority || "Medium");
+            const emojiPriority = String(rawPriority).toUpperCase() === "HIGH" ? "🔴 High" :
+                                  String(rawPriority).toUpperCase() === "MEDIUM" ? "🟡 Medium" : "🟢 Low";
+            return (
+              <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", marginTop: 8, gap: 6 }}>
+                <Text style={{ fontSize: 13, fontWeight: "bold", color: "#64748B" }}>AI Priority:</Text>
+                <Text style={{ fontSize: 13, fontWeight: "800", color: "#1F2937" }}>{emojiPriority}</Text>
+              </View>
+            );
+          })()}
+
           <View style={ss.timelineStrip}>
             {[
               { icon: "check-circle",           label: "Submitted",   color: "#059669", done: true  },
@@ -339,6 +351,61 @@ export const CreateComplaintScreen = ({ route, navigation }) => {
   const [uploadingImages, setUploadingImages] = useState(false);
   const [successData, setSuccessData]   = useState(null);
   const [districts, setDistricts]       = useState([]);
+
+  const [verifying, setVerifying] = useState(false);
+  const [aiVerifiedPayload, setAiVerifiedPayload] = useState(null);
+  const [verificationPopup, setVerificationPopup] = useState(null);
+
+  const verifyImage = async (imageUri) => {
+    setVerifying(true);
+    setVerificationPopup("loading");
+    try {
+      console.log("[CreateComplaintScreen] Sending image for verification:", imageUri);
+      const result = await authService.verifyImage(imageUri);
+      console.log("[CreateComplaintScreen] Verification result:", JSON.stringify(result));
+      
+      setAiVerifiedPayload(result);
+      
+      if (!result) {
+        setVerificationPopup("unavailable");
+        return;
+      }
+      
+      if (result.is_low_quality) {
+        setVerificationPopup("low_quality");
+        return;
+      }
+      
+      if (!result.contains_civic_issue) {
+        setVerificationPopup("fail");
+        return;
+      }
+      
+      // Category Mismatch check
+      const formCat = String(form.complaint_type).replace(/_/g, "").toLowerCase();
+      const aiCat = String(result.predicted_category).replace(/_/g, "").toLowerCase();
+      
+      if (formCat && aiCat && formCat !== aiCat && result.predicted_category !== "OTHER") {
+        setVerificationPopup("mismatch");
+      } else {
+        setVerificationPopup("success");
+      }
+    } catch (err) {
+      console.error("[CreateComplaintScreen] Image verification failed:", err);
+      setVerificationPopup("unavailable");
+    } finally {
+      setVerifying(false);
+    }
+  };
+
+  const isSubmitDisabled = () => {
+    if (verifying) return true;
+    if (selectedImages.length > 0) {
+      if (!aiVerifiedPayload) return true;
+      if (!aiVerifiedPayload.contains_civic_issue || aiVerifiedPayload.is_low_quality) return true;
+    }
+    return false;
+  };
 
   useEffect(() => {
     const loadDistricts = async () => {
@@ -562,20 +629,23 @@ export const CreateComplaintScreen = ({ route, navigation }) => {
 
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsMultipleSelection: true,
-        selectionLimit: 5 - selectedImages.length,
+        allowsMultipleSelection: false,
         quality: 0.9,
       });
 
       if (result.canceled) return;
 
-      const pickedImages = (result.assets || []).map((asset) => ({
+      const asset = result.assets?.[0];
+      if (!asset) return;
+
+      const picked = {
         uri: asset.uri,
         name: asset.fileName || `photo-${Date.now()}.jpg`,
         type: (asset.type === 'image' ? 'image/jpeg' : asset.type) || 'image/jpeg',
-      }));
+      };
 
-      setSelectedImages((prev) => [...prev, ...pickedImages].slice(0, 5));
+      setSelectedImages([picked]);
+      verifyImage(picked.uri);
     } catch (error) {
       console.log("[CreateComplaintScreen] pickImages error", error);
       Alert.alert("Gallery error", "Unable to open the photo library right now. Please try again.");
@@ -620,8 +690,11 @@ export const CreateComplaintScreen = ({ route, navigation }) => {
 
     try {
       setLoading(true);
-      // Removed pre-upload. We pass raw images to preview screen.
-      const nextForm = { ...form, images: selectedImages };
+      const nextForm = { 
+        ...form, 
+        images: selectedImages,
+        ai_verification: aiVerifiedPayload ? JSON.stringify(aiVerifiedPayload) : null 
+      };
 
       navigation.navigate("ComplaintPreview", {
         form: nextForm,
@@ -836,7 +909,10 @@ export const CreateComplaintScreen = ({ route, navigation }) => {
                     <Image source={{ uri: image.uri }} style={styles.imagePreview} />
                     <TouchableOpacity
                       style={styles.removeImageBtn}
-                      onPress={() => setSelectedImages((prev) => prev.filter((_, idx) => idx !== index))}
+                      onPress={() => {
+                        setSelectedImages([]);
+                        setAiVerifiedPayload(null);
+                      }}
                     >
                       <Icon name="close" size={12} color="#fff" />
                     </TouchableOpacity>
@@ -879,8 +955,8 @@ export const CreateComplaintScreen = ({ route, navigation }) => {
 
           {/* ── Submit ── */}
           <TouchableOpacity
-            onPress={submit} disabled={loading}
-            activeOpacity={0.85} style={styles.submitWrap}
+            onPress={submit} disabled={loading || isSubmitDisabled()}
+            activeOpacity={0.85} style={[styles.submitWrap, (loading || isSubmitDisabled()) && { opacity: 0.6 }]}
           >
             <LinearGradient
               colors={[PRIMARY, PRIMARY_DARK]}
@@ -894,6 +970,196 @@ export const CreateComplaintScreen = ({ route, navigation }) => {
           <View style={{ height: 40 }} />
         </ScrollView>
       </KeyboardAvoidingView>
+
+      <Modal visible={!!verificationPopup} transparent animationType="fade" statusBarTranslucent>
+        <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.6)", justifyContent: "center", alignItems: "center", padding: 20 }}>
+          <View style={{ backgroundColor: "#fff", borderRadius: 24, padding: 24, width: "100%", maxWidth: 340, shadowColor: "#000", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.15, shadowRadius: 12, elevation: 6 }}>
+            
+            {verificationPopup === "loading" && (
+              <View style={{ alignItems: "center", paddingVertical: 20 }}>
+                <ActivityIndicator size="large" color={PRIMARY} style={{ marginBottom: 20 }} />
+                <Text style={{ fontSize: 18, fontWeight: "900", color: "#1F2937", textAlign: "center" }}>🤖 Verifying uploaded image...</Text>
+                <Text style={{ fontSize: 13, color: "#6B7280", marginTop: 8, textAlign: "center" }}>Please wait while Gemini AI analyzes the image.</Text>
+              </View>
+            )}
+
+            {verificationPopup === "success" && aiVerifiedPayload && (
+              <View style={{ alignItems: "center" }}>
+                <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: "#ECFDF5", alignItems: "center", justifyContent: "center", marginBottom: 16 }}>
+                  <Icon name="check-circle" size={32} color="#059669" />
+                </View>
+                <Text style={{ fontSize: 20, fontWeight: "900", color: "#1F2937", marginBottom: 6 }}>✅ Image Verified</Text>
+                <Text style={{ fontSize: 13, color: "#6B7280", textAlign: "center", marginBottom: 16 }}>
+                  AI has successfully verified this image as a valid civic issue.
+                </Text>
+                <View style={{ width: "100%", backgroundColor: "#F9FAFB", borderRadius: 16, padding: 12, borderWidth: 1, borderColor: "#E5E7EB", marginBottom: 20 }}>
+                  <View style={{ flexDirection: "row", justifyContent: "space-between", paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: "#E5E7EB" }}>
+                    <Text style={{ fontWeight: "700", color: "#6B7280", fontSize: 12 }}>Detected Category:</Text>
+                    <Text style={{ fontWeight: "900", color: "#1F2937", fontSize: 12, textTransform: "capitalize" }}>
+                      {String(aiVerifiedPayload.predicted_category).replace(/_/g, " ").toLowerCase()}
+                    </Text>
+                  </View>
+                  <View style={{ flexDirection: "row", justifyContent: "space-between", paddingVertical: 6 }}>
+                    <Text style={{ fontWeight: "700", color: "#6B7280", fontSize: 12 }}>Confidence:</Text>
+                    <Text style={{ fontWeight: "900", color: "#1F2937", fontSize: 12 }}>
+                      {(() => {
+                        const conf = aiVerifiedPayload.confidence;
+                        return conf <= 1.0 ? `${Math.round(conf * 100)}%` : `${conf}%`;
+                      })()}
+                    </Text>
+                  </View>
+                </View>
+                <View style={{ flexDirection: "row", gap: 10, width: "100%" }}>
+                  <TouchableOpacity
+                    style={{ flex: 1, paddingVertical: 12, borderRadius: 10, backgroundColor: "#F3F4F6", alignItems: "center" }}
+                    onPress={() => {
+                      setSelectedImages([]);
+                      setAiVerifiedPayload(null);
+                      setVerificationPopup(null);
+                    }}
+                  >
+                    <Text style={{ fontWeight: "700", color: "#4B5563", fontSize: 13 }}>Upload Another</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={{ flex: 1, paddingVertical: 12, borderRadius: 10, backgroundColor: PRIMARY, alignItems: "center" }}
+                    onPress={() => setVerificationPopup(null)}
+                  >
+                    <Text style={{ fontWeight: "700", color: "#fff", fontSize: 13 }}>Continue</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            )}
+
+            {verificationPopup === "fail" && aiVerifiedPayload && (
+              <View style={{ alignItems: "center" }}>
+                <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: "#FEF2F2", alignItems: "center", justifyContent: "center", marginBottom: 16 }}>
+                  <Icon name="alert-triangle" size={32} color="#DC2626" />
+                </View>
+                <Text style={{ fontSize: 18, fontWeight: "900", color: "#1F2937", marginBottom: 6, textAlign: "center" }}>⚠ Image Verification Failed</Text>
+                <Text style={{ fontSize: 13, color: "#6B7280", textAlign: "center", marginBottom: 12 }}>
+                  The uploaded image does not appear to contain a civic issue.
+                </Text>
+                <View style={{ width: "100%", backgroundColor: "#FEF2F2", borderRadius: 12, padding: 10, borderWidth: 1, borderColor: "#FCA5A5", marginBottom: 12 }}>
+                  <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
+                    <Text style={{ fontWeight: "700", color: "#DC2626", fontSize: 12 }}>AI Detected:</Text>
+                    <Text style={{ fontWeight: "900", color: "#DC2626", fontSize: 12, textTransform: "capitalize" }}>
+                      {String(aiVerifiedPayload.predicted_category || "Unrelated Object").replace(/_/g, " ").toLowerCase()}
+                    </Text>
+                  </View>
+                </View>
+                <Text style={{ fontSize: 11, fontWeight: "800", color: "#6B7280", alignSelf: "flex-start", textTransform: "uppercase", marginBottom: 6 }}>
+                  Please upload a civic issue:
+                </Text>
+                <View style={{ width: "100%", flexDirection: "row", flexWrap: "wrap", gap: 6, marginBottom: 20 }}>
+                  {["Garbage", "Road Pothole", "Water Leakage", "Drainage Block", "Broken Light", "Damaged Park", "Illegal Dumping"].map(item => (
+                    <Text key={item} style={{ backgroundColor: "#F3F4F6", paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, fontSize: 10, fontWeight: "700", color: "#4B5563" }}>{item}</Text>
+                  ))}
+                </View>
+                <TouchableOpacity
+                  style={{ width: "100%", paddingVertical: 12, borderRadius: 10, backgroundColor: PRIMARY, alignItems: "center" }}
+                  onPress={() => {
+                    setSelectedImages([]);
+                    setAiVerifiedPayload(null);
+                    setVerificationPopup(null);
+                  }}
+                >
+                  <Text style={{ fontWeight: "700", color: "#fff", fontSize: 13 }}>Upload Another Image</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+
+            {verificationPopup === "low_quality" && (
+              <View style={{ alignItems: "center" }}>
+                <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: "#FFFBEB", alignItems: "center", justifyContent: "center", marginBottom: 16 }}>
+                  <Icon name="alert-circle" size={32} color="#F59E0B" />
+                </View>
+                <Text style={{ fontSize: 18, fontWeight: "900", color: "#1F2937", marginBottom: 6, textAlign: "center" }}>⚠ Image Quality Too Low</Text>
+                <Text style={{ fontSize: 13, color: "#6B7280", textAlign: "center", marginBottom: 20 }}>
+                  The uploaded image is too blurry or unclear for AI verification. Please upload a clearer image.
+                </Text>
+                <View style={{ flexDirection: "row", gap: 10, width: "100%" }}>
+                  <TouchableOpacity
+                    style={{ flex: 1, paddingVertical: 12, borderRadius: 10, backgroundColor: "#F3F4F6", alignItems: "center" }}
+                    onPress={() => {
+                      setSelectedImages([]);
+                      setAiVerifiedPayload(null);
+                      setVerificationPopup(null);
+                    }}
+                  >
+                    <Text style={{ fontWeight: "700", color: "#4B5563", fontSize: 13 }}>Retake Photo</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={{ flex: 1, paddingVertical: 12, borderRadius: 10, backgroundColor: PRIMARY, alignItems: "center" }}
+                    onPress={() => {
+                      setSelectedImages([]);
+                      setAiVerifiedPayload(null);
+                      setVerificationPopup(null);
+                    }}
+                  >
+                    <Text style={{ fontWeight: "700", color: "#fff", fontSize: 13 }}>Choose Another</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            )}
+
+            {verificationPopup === "mismatch" && aiVerifiedPayload && (
+              <View style={{ alignItems: "center" }}>
+                <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: "#FFFBEB", alignItems: "center", justifyContent: "center", marginBottom: 16 }}>
+                  <Icon name="alert-circle-outline" size={32} color="#F59E0B" />
+                </View>
+                <Text style={{ fontSize: 18, fontWeight: "900", color: "#1F2937", marginBottom: 6 }}>⚠ Category Mismatch</Text>
+                <Text style={{ fontSize: 13, color: "#6B7280", textAlign: "center", marginBottom: 12 }}>
+                  AI believes this image belongs to:
+                </Text>
+                <View style={{ backgroundColor: "#FFFBEB", paddingVertical: 10, paddingHorizontal: 20, borderRadius: 12, borderWidth: 1, borderColor: "#FDE68A", marginBottom: 16 }}>
+                  <Text style={{ fontSize: 16, fontWeight: "900", color: "#D97706", textTransform: "capitalize" }}>
+                    {String(aiVerifiedPayload.predicted_category).replace(/_/g, " ").toLowerCase()}
+                  </Text>
+                </View>
+                <Text style={{ fontSize: 13, fontWeight: "700", color: "#374151", textAlign: "center", marginBottom: 20 }}>
+                  Would you like to update the complaint category?
+                </Text>
+                <View style={{ flexDirection: "row", gap: 10, width: "100%" }}>
+                  <TouchableOpacity
+                    style={{ flex: 1, paddingVertical: 12, borderRadius: 10, backgroundColor: "#F3F4F6", alignItems: "center" }}
+                    onPress={() => setVerificationPopup(null)}
+                  >
+                    <Text style={{ fontWeight: "700", color: "#4B5563", fontSize: 13 }}>Keep My Option</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={{ flex: 1, paddingVertical: 12, borderRadius: 10, backgroundColor: PRIMARY, alignItems: "center" }}
+                    onPress={() => {
+                      updateField("complaint_type", aiVerifiedPayload.predicted_category);
+                      setVerificationPopup(null);
+                    }}
+                  >
+                    <Text style={{ fontWeight: "700", color: "#fff", fontSize: 13 }}>Use AI Category</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            )}
+
+            {verificationPopup === "unavailable" && (
+              <View style={{ alignItems: "center" }}>
+                <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: "#FFFBEB", alignItems: "center", justifyContent: "center", marginBottom: 16 }}>
+                  <Icon name="alert-circle-outline" size={32} color="#F59E0B" />
+                </View>
+                <Text style={{ fontSize: 18, fontWeight: "900", color: "#1F2937", marginBottom: 6, textAlign: "center" }}>⚠ AI Verification Unavailable</Text>
+                <Text style={{ fontSize: 13, color: "#6B7280", textAlign: "center", marginBottom: 20 }}>
+                  Unable to verify the uploaded image at the moment. Please try again later.
+                </Text>
+                <TouchableOpacity
+                  style={{ width: "100%", paddingVertical: 12, borderRadius: 10, backgroundColor: PRIMARY, alignItems: "center" }}
+                  onPress={() => setVerificationPopup(null)}
+                >
+                  <Text style={{ fontWeight: "700", color: "#fff", fontSize: 13 }}>Close</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+
+          </View>
+        </View>
+      </Modal>
 
       <SuccessModal
         visible={!!successData}

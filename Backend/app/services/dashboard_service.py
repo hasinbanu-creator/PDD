@@ -176,14 +176,28 @@ class DashboardService:
                 {**query, "status": "APPROVAL"}
             )
 
-            # Get recent complaints in ward
+            # Get recent complaints in ward and sort in Python
             complaints = await complaints_collection.find(query)\
-                .sort("created_at", -1)\
-                .limit(10)\
-                .to_list(length=10)
+                .to_list(length=100)
+
+            priority_map = {"CRITICAL": 0, "HIGH": 0, "MEDIUM": 1, "LOW": 2}
+            def get_sort_prio(c):
+                fp = c.get("final_priority")
+                if fp:
+                    return priority_map.get(str(fp).upper(), 1)
+                p = c.get("priority", "MEDIUM")
+                return priority_map.get(str(p).upper(), 1)
+
+            complaints.sort(key=lambda c: (
+                get_sort_prio(c),
+                -c.get("support_count", 0),
+                -c.get("created_at").timestamp() if c.get("created_at") else 0
+            ))
+            complaints = complaints[:10]
 
             ward_complaints = []
             for complaint in complaints:
+                fp = complaint.get("final_priority") or (str(complaint.get("priority", "MEDIUM")).strip().capitalize() if str(complaint.get("priority", "MEDIUM")).strip().capitalize() in ["Low", "Medium", "High"] else "Medium")
                 ward_complaints.append({
                     "_id": str(complaint.get("_id")),
                     "complaint_id": complaint.get("complaint_id"),
@@ -191,7 +205,14 @@ class DashboardService:
                     "description": complaint.get("description"),
                     "status": complaint.get("status"),
                     "priority": complaint.get("priority", "MEDIUM"),
-                    "created_at": complaint.get("created_at", datetime.utcnow()).isoformat()
+                    "created_at": complaint.get("created_at", datetime.utcnow()).isoformat(),
+                    "ai_priority": complaint.get("ai_priority"),
+                    "ai_verification": complaint.get("ai_verification"),
+                    "ai": complaint.get("ai"),
+                    "final_priority": fp,
+                    "priority_updated_by": complaint.get("priority_updated_by"),
+                    "priority_updated_at": complaint.get("priority_updated_at").isoformat() if isinstance(complaint.get("priority_updated_at"), datetime) else complaint.get("priority_updated_at"),
+                    "support_count": complaint.get("support_count", 0)
                 })
 
             # Get assigned workers count

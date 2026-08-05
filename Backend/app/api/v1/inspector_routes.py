@@ -84,20 +84,43 @@ async def get_inspector_dashboard(current_user: Dict[str, Any] = Depends(get_cur
         completed_today = await db.complaints.count_documents({"ward_id": ward_id, "status": {"$in": ["RESOLVED", "CLOSED"]}, "updated_at": {"$gte": today}})
         high_priority = await db.complaints.count_documents({"ward_id": ward_id, "priority": {"$in": ["HIGH", "CRITICAL"]}, "status": {"$nin": ["RESOLVED", "CLOSED", "REJECTED"]}})
         
-        # Get a few recent complaints needing action
+        # Get recent complaints and sort in Python
         recent = await db.complaints.find(
             {"ward_id": ward_id, "status": {"$nin": ["RESOLVED", "CLOSED", "REJECTED"]}}
-        ).sort("created_at", -1).limit(5).to_list(length=5)
+        ).to_list(length=50)
+
+        priority_map = {"CRITICAL": 0, "HIGH": 0, "MEDIUM": 1, "LOW": 2}
+        def get_sort_prio(c):
+            fp = c.get("final_priority")
+            if fp:
+                return priority_map.get(str(fp).upper(), 1)
+            p = c.get("priority", "MEDIUM")
+            return priority_map.get(str(p).upper(), 1)
+
+        recent.sort(key=lambda c: (
+            get_sort_prio(c),
+            -c.get("support_count", 0),
+            -c.get("created_at").timestamp() if c.get("created_at") else 0
+        ))
+        recent = recent[:5]
         
         recent_formatted = []
         for c in recent:
+            fp = c.get("final_priority") or (str(c.get("priority", "MEDIUM")).strip().capitalize() if str(c.get("priority", "MEDIUM")).strip().capitalize() in ["Low", "Medium", "High"] else "Medium")
             recent_formatted.append({
                 "_id": str(c["_id"]),
                 "complaint_id": c.get("complaint_id"),
                 "title": c.get("title", c.get("complaint_type", "")),
                 "status": c.get("status"),
                 "priority": c.get("priority", "MEDIUM"),
-                "created_at": c.get("created_at").isoformat() if c.get("created_at") else None
+                "created_at": c.get("created_at").isoformat() if c.get("created_at") else None,
+                "ai_priority": c.get("ai_priority"),
+                "ai_verification": c.get("ai_verification"),
+                "ai": c.get("ai"),
+                "final_priority": fp,
+                "priority_updated_by": c.get("priority_updated_by"),
+                "priority_updated_at": c.get("priority_updated_at").isoformat() if isinstance(c.get("priority_updated_at"), datetime) else c.get("priority_updated_at"),
+                "support_count": c.get("support_count", 0)
             })
             
         return ResponseHandler.success(
@@ -190,13 +213,26 @@ async def get_ward_complaints(
 
         skip = (page - 1) * limit
         logger.info(f"[complaints] MongoDB query: {query}, skip={skip}, limit={limit}")
-        complaints = await db.complaints.find(query)\
-            .sort("created_at", -1)\
-            .skip(skip)\
-            .limit(limit)\
-            .to_list(length=limit)
+        
+        # Fetch matching complaints to sort in python
+        all_matches = await db.complaints.find(query).to_list(length=1000)
+        
+        priority_map = {"CRITICAL": 0, "HIGH": 0, "MEDIUM": 1, "LOW": 2}
+        def get_sort_prio(c):
+            fp = c.get("final_priority")
+            if fp:
+                return priority_map.get(str(fp).upper(), 1)
+            p = c.get("priority", "MEDIUM")
+            return priority_map.get(str(p).upper(), 1)
 
-        total = await db.complaints.count_documents(query)
+        all_matches.sort(key=lambda c: (
+            get_sort_prio(c),
+            -c.get("support_count", 0),
+            -c.get("created_at").timestamp() if c.get("created_at") else 0
+        ))
+
+        complaints = all_matches[skip:skip+limit]
+        total = len(all_matches)
         logger.info(f"[complaints] Returned {len(complaints)} complaints, total matching: {total}")
 
         # Collect unique user_ids and ward_ids to batch query them
@@ -290,6 +326,9 @@ async def get_ward_complaints(
                 "citizenEmail": citizen_email,
                 "citizenPhone": citizen_phone,
                 "images": complaint.get("images") or complaint.get("image_urls") or [],
+                "ai_priority": complaint.get("ai_priority"),
+                "ai_verification": complaint.get("ai_verification"),
+                "support_count": complaint.get("support_count", 0),
                 "citizen": {
                     "name": citizen_name
                 },
@@ -833,3 +872,66 @@ async def update_checklist(
             errors=str(e),
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
+
+
+class PriorityOverrideRequest(BaseModel):
+    priority: str  # "Low", "Medium", "High"
+
+
+@router.put(
+    "/complaints/{complaint_id}/priority",
+    summary="Override complaint priority",
+    dependencies=[Depends(require_role("INSPECTOR"))]
+)
+async def override_priority(
+    complaint_id: str,
+    payload: PriorityOverrideRequest,
+    current_user: Dict[str, Any] = Depends(get_current_user)
+):
+    """Override AI priority prediction by Inspector"""
+    try:
+        complaint = await _find_complaint_by_identifier(complaint_id)
+        if not complaint:
+            return ResponseHandler.error(
+                message="Complaint not found",
+                status_code=status.HTTP_404_NOT_FOUND
+            )
+
+        new_priority = payload.priority.strip().capitalize()
+        if new_priority not in ["Low", "Medium", "High"]:
+            return ResponseHandler.error(
+                message="Invalid priority value. Must be 'Low', 'Medium', or 'High'.",
+                status_code=status.HTTP_400_BAD_REQUEST
+            )
+
+        compat_priority = new_priority.upper()
+
+        update_doc = {
+            "final_priority": new_priority,
+            "priority": compat_priority,
+            "priority_updated_by": current_user.get("name") or current_user.get("username") or current_user.get("email") or "Inspector",
+            "priority_updated_at": datetime.utcnow(),
+            "updated_at": datetime.utcnow()
+        }
+
+        await db.complaints.update_one(
+            {"_id": complaint.get("_id")},
+            {"$set": update_doc}
+        )
+
+        return ResponseHandler.success(
+            message="Priority overridden successfully",
+            data={
+                "final_priority": new_priority,
+                "priority_updated_by": update_doc["priority_updated_by"],
+                "priority_updated_at": update_doc["priority_updated_at"].isoformat()
+            }
+        )
+    except Exception as e:
+        logger.error(f"Error overriding priority: {str(e)}")
+        return ResponseHandler.error(
+            message="Failed to override priority",
+            errors=str(e),
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+

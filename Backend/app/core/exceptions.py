@@ -184,6 +184,17 @@ class RoleNotFoundException(CivifixException):
         )
 
 
+class ImageVerificationException(CivifixException):
+    """Raised when image verification fails or blocks submission"""
+    def __init__(self, message: str, errors: Optional[dict] = None):
+        super().__init__(
+            message=message,
+            status_code=status.HTTP_400_BAD_REQUEST,
+            error_code="IMAGE_VERIFICATION_FAILED"
+        )
+        self.errors = errors
+
+
 # Exception handlers for FastAPI
 
 async def civifix_exception_handler(
@@ -197,7 +208,7 @@ async def civifix_exception_handler(
         "error_code": exc.error_code
     }
     
-    if isinstance(exc, ValidationException) and exc.errors:
+    if hasattr(exc, "errors") and exc.errors is not None:
         content["errors"] = exc.errors
     
     return JSONResponse(

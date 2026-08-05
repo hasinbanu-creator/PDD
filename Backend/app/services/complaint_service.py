@@ -649,7 +649,13 @@ class ComplaintService:
             "createdAt": complaint.get("created_at"),
             "updated_at": complaint.get("updated_at"),
             "updatedAt": complaint.get("updated_at"),
-            "closed_at": complaint.get("closed_at")
+            "closed_at": complaint.get("closed_at"),
+            "ai_verification": complaint.get("ai_verification"),
+            "ai_priority": complaint.get("ai_priority"),
+            "ai": complaint.get("ai"),
+            "final_priority": complaint.get("final_priority") or (str(complaint.get("priority", "MEDIUM")).strip().capitalize() if str(complaint.get("priority", "MEDIUM")).strip().capitalize() in ["Low", "Medium", "High"] else "Medium"),
+            "priority_updated_by": complaint.get("priority_updated_by"),
+            "priority_updated_at": complaint.get("priority_updated_at").isoformat() if isinstance(complaint.get("priority_updated_at"), datetime) else complaint.get("priority_updated_at")
         }
 
     def _format_history(self, history: dict) -> dict:
@@ -667,4 +673,53 @@ class ComplaintService:
             "role": history.get("role"),
             "remarks": history.get("remarks"),
             "timestamp": history.get("timestamp")
+        }
+
+    async def support_complaint(self, complaint_id: str, citizen_id: str) -> dict:
+        """Register citizen support for an existing complaint"""
+        db_id = None
+        if len(complaint_id) == 24:
+            try:
+                db_id = ObjectId(complaint_id)
+            except Exception:
+                pass
+        
+        query = {"$or": []}
+        if db_id:
+            query["$or"].append({"_id": db_id})
+        query["$or"].append({"complaint_id": complaint_id})
+        
+        complaint = await self.complaint_repo.db.complaints.find_one(query)
+        if not complaint:
+            raise ResourceNotFoundError("Complaint not found")
+            
+        complaint_oid = complaint["_id"]
+        
+        # Check if already supported by this user
+        existing_support = await self.complaint_repo.db.complaint_supports.find_one({
+            "complaint_id": str(complaint_oid),
+            "citizen_id": str(citizen_id)
+        })
+        if existing_support:
+            raise ValidationError("You have already supported this complaint.")
+            
+        # Create support record
+        support_doc = {
+            "complaint_id": str(complaint_oid),
+            "citizen_id": str(citizen_id),
+            "supported_at": datetime.utcnow()
+        }
+        await self.complaint_repo.db.complaint_supports.insert_one(support_doc)
+        
+        # Update support count
+        await self.complaint_repo.db.complaints.update_one(
+            {"_id": complaint_oid},
+            {"$inc": {"support_count": 1}}
+        )
+        
+        # Fetch updated complaint
+        updated = await self.complaint_repo.db.complaints.find_one({"_id": complaint_oid})
+        return {
+            "complaint_id": updated.get("complaint_id"),
+            "support_count": updated.get("support_count", 0)
         }

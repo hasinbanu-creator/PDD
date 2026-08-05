@@ -171,16 +171,29 @@ function ComplaintItem({ complaint, index, total }: any) {
         <div className="text-xs font-semibold text-foreground mt-0.5 break-all">
           {complaint.complaint_id || complaint.complaintId || complaint._id || "Not Available"}
         </div>
+        <div className="text-[10px] font-bold text-primary mt-3 flex items-center gap-1.5">
+          <Users className="w-3.5 h-3.5 shrink-0" />
+          <span>Supported by {complaint.support_count || 0} Citizens</span>
+        </div>
       </div>
       <div className="flex flex-col items-end gap-3 shrink-0">
         <span className={`px-3 py-1 rounded-full text-xs font-bold ${status.bg} ${status.color}`}>
           {status.label}
         </span>
-        {complaint.priority && isInspector && (
-          <span className={`px-3 py-1 rounded-full text-xs font-bold ${complaint.priority === 'HIGH' ? 'bg-destructive/10 text-destructive' : 'bg-muted text-muted-foreground'}`}>
-            {complaint.priority}
-          </span>
-        )}
+        {isInspector && (() => {
+          const rawPriority = (complaint.ai?.priority_prediction?.priority || complaint.ai_priority?.priority || complaint.final_priority || complaint.priority || "MEDIUM").toUpperCase();
+          const badgeText = rawPriority === "HIGH" ? "🔴 High" :
+                            rawPriority === "MEDIUM" ? "🟡 Medium" :
+                            rawPriority === "LOW" ? "🟢 Low" : rawPriority;
+          const bgClass = rawPriority === "HIGH" ? "bg-red-500/10 text-red-600 border border-red-200" :
+                          rawPriority === "MEDIUM" ? "bg-yellow-500/10 text-yellow-600 border border-yellow-200" :
+                          rawPriority === "LOW" ? "bg-green-500/10 text-green-600 border border-green-200" : "bg-muted text-muted-foreground";
+          return (
+            <span className={`px-3 py-1 rounded-full text-xs font-black ${bgClass}`}>
+              {badgeText}
+            </span>
+          );
+        })()}
         <ChevronRight className="w-5 h-5 text-muted-foreground mt-auto" />
       </div>
     </Link>
@@ -391,6 +404,7 @@ function InspectorDashboard() {
   const res: any = rawRes;
 
   const [statusFilter, setStatusFilter] = useState("All");
+  const [priorityFilter, setPriorityFilter] = useState("All");
   const [searchQuery, setSearchQuery] = useState("");
 
   const complaints = res?.complaints || res?.data || (Array.isArray(res) ? res : []) || [];
@@ -426,6 +440,10 @@ function InspectorDashboard() {
         if (statusFilter === "Resolved" && !["RESOLVED", "CLOSED"].includes(c.status)) return false;
         if (statusFilter === "Rejected" && c.status !== "REJECTED") return false;
       }
+      if (priorityFilter !== "All") {
+        const rawP = (c.ai?.priority_prediction?.priority || c.ai_priority?.priority || c.final_priority || c.priority || "MEDIUM").toUpperCase();
+        if (rawP !== priorityFilter.toUpperCase()) return false;
+      }
       if (searchQuery) {
         const q = searchQuery.toLowerCase();
         const idMatch = (c.complaint_id || c.complaintId || c._id || "").toLowerCase().includes(q);
@@ -440,7 +458,7 @@ function InspectorDashboard() {
       }
       return true;
     });
-  }, [filteredByWard, statusFilter, searchQuery]);
+  }, [filteredByWard, statusFilter, priorityFilter, searchQuery]);
 
   return (
     <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -517,7 +535,7 @@ function InspectorDashboard() {
         </div>
 
 
-        <div className="flex flex-wrap gap-2 mb-8">
+        <div className="flex flex-wrap gap-2 mb-4">
           {["All", "Pending", "In Progress", "Resolved", "Rejected"].map(filter => (
             <button
               key={filter}
@@ -531,6 +549,22 @@ function InspectorDashboard() {
               <span className={`ml-2 px-2 py-0.5 rounded-full text-xs font-black ${statusFilter === filter ? 'bg-[#0B6E69] text-[#DDF8F5]' : 'bg-slate-100 text-slate-500'}`}>
                 {filter === "All" ? stats.total : filter === "Pending" ? stats.pending : filter === "In Progress" ? stats.in_progress : filter === "Resolved" ? stats.resolved : stats.rejected}
               </span>
+            </button>
+          ))}
+        </div>
+
+        <div className="flex flex-wrap gap-2 mb-8 items-center bg-slate-50 p-4 rounded-2xl border border-slate-100/80">
+          <span className="text-xs font-black text-slate-500 uppercase tracking-widest mr-2">Priority Filter:</span>
+          {["All", "High", "Medium", "Low"].map(pFilter => (
+            <button
+              key={pFilter}
+              onClick={() => setPriorityFilter(pFilter)}
+              className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all shadow-sm border ${priorityFilter === pFilter
+                  ? "bg-purple-600 text-white border-purple-600 shadow-purple-600/20"
+                  : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
+                }`}
+            >
+              {pFilter}
             </button>
           ))}
         </div>
@@ -628,6 +662,10 @@ function InspectorDashboard() {
                               <span className="font-semibold text-slate-700 ml-1">{getCleanWard(c)}</span>
                             </p>
                             <p className="truncate">
+                              <span className="font-bold text-slate-500">Supported By:</span>
+                              <span className="font-extrabold text-teal-600 ml-1">{c.support_count || 0} Citizens</span>
+                            </p>
+                            <p className="truncate">
                               <span className="font-bold text-slate-500">Address:</span>
                               <span className="font-semibold text-slate-700 ml-1">{c.address || "Not Available"}</span>
                             </p>
@@ -647,9 +685,20 @@ function InspectorDashboard() {
                             <span className={`px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-wider ${statusStyles.bg} ${statusStyles.color}`}>
                               {statusStyles.label}
                             </span>
-                            <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-slate-100 text-slate-500 border border-slate-200/60`}>
-                              {c.priority || "MEDIUM"}
-                            </span>
+                            {(() => {
+                              const rawPriority = (c.ai?.priority_prediction?.priority || c.ai_priority?.priority || c.final_priority || c.priority || "MEDIUM").toUpperCase();
+                              const badgeText = rawPriority === "HIGH" ? "🔴 High" :
+                                                rawPriority === "MEDIUM" ? "🟡 Medium" :
+                                                rawPriority === "LOW" ? "🟢 Low" : rawPriority;
+                              const bgClass = rawPriority === "HIGH" ? "bg-red-500/10 text-red-600 border border-red-200" :
+                                              rawPriority === "MEDIUM" ? "bg-yellow-500/10 text-yellow-600 border border-yellow-200" :
+                                              rawPriority === "LOW" ? "bg-green-500/10 text-green-600 border border-green-200" : "bg-slate-100 text-slate-500 border border-slate-200/60";
+                              return (
+                                <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border ${bgClass}`}>
+                                  {badgeText}
+                                </span>
+                              );
+                            })()}
                           </div>
                         </td>
                         <td className="p-5 text-right align-middle">

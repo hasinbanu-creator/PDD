@@ -49,6 +49,13 @@ def complaint_document(data) -> dict:
         "updated_at": now,
         "updatedAt": now,
         "closed_at": None,
+        "ai_verification": data.ai_verification if hasattr(data, "ai_verification") else None,
+        "ai_priority": data.ai_priority if hasattr(data, "ai_priority") else None,
+        "ai": data.ai if hasattr(data, "ai") else None,
+        "final_priority": data.final_priority if hasattr(data, "final_priority") else None,
+        "priority_updated_by": data.priority_updated_by if hasattr(data, "priority_updated_by") else None,
+        "priority_updated_at": data.priority_updated_at if hasattr(data, "priority_updated_at") else None,
+        "support_count": getattr(data, "support_count", 0),
     }
 
 
@@ -118,5 +125,6 @@ def complaint_response(doc) -> dict:
     
     doc["createdAt"] = doc.get("created_at")
     doc["updatedAt"] = doc.get("updated_at")
+    doc["support_count"] = doc.get("support_count", 0)
     
     return doc

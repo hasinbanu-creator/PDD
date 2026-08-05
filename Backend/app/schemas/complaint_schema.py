@@ -80,6 +80,13 @@ class ComplaintCreateSchema(BaseModel):
     districtName: Optional[str] = Field(None, description="District Name")
     wardId: Optional[str] = Field(None, description="Ward ID")
     wardName: Optional[str] = Field(None, description="Ward Name")
+    ai_verification: Optional[dict] = Field(None, description="AI verification results")
+    ai_priority: Optional[dict] = Field(None, description="AI priority prediction results")
+    ai: Optional[dict] = Field(None, description="AI prediction and verification object")
+    final_priority: Optional[str] = Field(None, description="Final priority of the complaint")
+    priority_updated_by: Optional[str] = Field(None, description="User who overrode priority")
+    priority_updated_at: Optional[str] = Field(None, description="Timestamp of override")
+    support_count: Optional[int] = Field(0, description="Support Count")
 
     @validator("description")
     def validate_description(cls, v):
@@ -216,6 +223,7 @@ class ComplaintResponseSchema(BaseModel):
     ward: Optional[str] = None
     images: Optional[List[str]] = None
     updatedAt: Optional[datetime] = None
+    support_count: Optional[int] = Field(0, description="Support Count")
 
     class Config:
         populate_by_name = True

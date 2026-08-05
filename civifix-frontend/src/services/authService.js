@@ -237,9 +237,13 @@ export const authService = {
     return unwrapResponse(response);
   },
 
+  overrideComplaintPriority: async (id, priority) => {
+    const response = await api.put(`/inspector/complaints/${id}/priority`, { priority });
+    return unwrapResponse(response);
+  },
 
 
-  // --- Uploads ---
+
   uploadImages: async (formData) => {
     const response = await api.post(ENDPOINTS.UPLOAD_IMAGES, formData, {
       timeout: 180000,
@@ -247,6 +251,27 @@ export const authService = {
         Accept: "application/json",
       },
     });
+    return unwrapResponse(response);
+  },
+
+  verifyImage: async (imageUri) => {
+    const formData = new FormData();
+    formData.append("file", {
+      uri: imageUri,
+      name: `photo-${Date.now()}.jpg`,
+      type: "image/jpeg"
+    });
+    const response = await api.post("/complaints/verify-image", formData, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+        Accept: "application/json",
+      }
+    });
+    return unwrapResponse(response);
+  },
+
+  supportComplaint: async (complaintId) => {
+    const response = await api.post(`/complaints/${complaintId}/support`);
     return unwrapResponse(response);
   },
 

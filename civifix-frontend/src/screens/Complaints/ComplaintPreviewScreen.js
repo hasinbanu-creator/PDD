@@ -1,4 +1,4 @@
-import { Platform, View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, ActivityIndicator, Dimensions } from 'react-native';
+import { Platform, View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, ActivityIndicator, Dimensions, Alert, Modal } from 'react-native';
 import React, { useState, useContext, useEffect } from "react";
 import { AuthContext } from "../../context/AuthContext";
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
@@ -19,6 +19,10 @@ const ComplaintPreviewScreen = ({ route, navigation }) => {
   const [viewerVisible, setViewerVisible] = useState(false);
   const [viewerImageUrl, setViewerImageUrl] = useState("");
   const [userDistrictName, setUserDistrictName] = useState("");
+
+  const [duplicateMatch, setDuplicateMatch] = useState(null);
+  const [duplicatePopup, setDuplicatePopup] = useState(false);
+  const [supporting, setSupporting] = useState(false);
 
   useEffect(() => {
     if (districtName) {
@@ -45,7 +49,25 @@ const ComplaintPreviewScreen = ({ route, navigation }) => {
     }
   }, [districtName, user]);
 
-  const handleSubmit = async () => {
+  const handleSupportExisting = async () => {
+    if (!duplicateMatch || !duplicateMatch.existing_complaint) return;
+    setSupporting(true);
+    try {
+      await authService.supportComplaint(duplicateMatch.existing_complaint.id);
+      Alert.alert(
+        "Supported Successfully",
+        `You are now supporting complaint ${duplicateMatch.matched_complaint_id}!`,
+        [{ text: "OK", onPress: () => navigation.popToTop() }]
+      );
+      setDuplicatePopup(false);
+    } catch (err) {
+      Alert.alert("Already Supported", getErrorMessage(err, "You have already supported this complaint."));
+    } finally {
+      setSupporting(false);
+    }
+  };
+
+  const handleSubmit = async (bypassDuplicateCheck = false) => {
     try {
       setSubmitting(true);
 
@@ -71,6 +93,15 @@ const ComplaintPreviewScreen = ({ route, navigation }) => {
       if (form.address) formData.append("address", String(form.address));
       if (form.landmark) formData.append("landmark", String(form.landmark));
       if (form.citizen_note) formData.append("citizen_note", String(form.citizen_note).trim());
+      if (form.ai_verification) {
+        formData.append("ai_verification", form.ai_verification);
+      }
+      if (bypassDuplicateCheck) {
+        formData.append("force_create", "true");
+        if (duplicateMatch) {
+          formData.append("duplicate_detection", JSON.stringify(duplicateMatch));
+        }
+      }
       
       if (Array.isArray(form.images)) {
         form.images.forEach((img, index) => {
@@ -89,6 +120,13 @@ const ComplaintPreviewScreen = ({ route, navigation }) => {
       }
 
       const created = await authService.createComplaint(formData);
+      
+      if (created && created.status === "duplicate_check") {
+        setDuplicateMatch(created.data);
+        setDuplicatePopup(true);
+        setSubmitting(false);
+        return;
+      }
       
       navigation.replace("ComplaintSuccess", { complaint: created });
     } catch (err) {
@@ -218,6 +256,71 @@ const ComplaintPreviewScreen = ({ route, navigation }) => {
         imageUrl={viewerImageUrl}
         onClose={() => setViewerVisible(false)}
       />
+      <Modal
+        visible={duplicatePopup}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setDuplicatePopup(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.warningIconContainer}>
+              <Icon name="alert-decagram" size={48} color="#D97706" />
+            </View>
+            <Text style={styles.modalTitle}>Similar Complaint Found</Text>
+            <Text style={styles.modalSubtitle}>A similar complaint already exists in your ward.</Text>
+            
+            {duplicateMatch && (
+              <View style={styles.dupDetailsCard}>
+                <View style={styles.dupDetailRow}>
+                  <Text style={styles.dupDetailLabel}>Complaint ID:</Text>
+                  <Text style={styles.dupDetailValue}>{duplicateMatch.matched_complaint_id}</Text>
+                </View>
+                <View style={styles.dupDetailRow}>
+                  <Text style={styles.dupDetailLabel}>Status:</Text>
+                  <Text style={[styles.dupDetailValue, {textTransform: 'capitalize'}]}>
+                    {String(duplicateMatch.existing_complaint?.status).toLowerCase()}
+                  </Text>
+                </View>
+                <View style={styles.dupDetailRow}>
+                  <Text style={styles.dupDetailLabel}>Supported By:</Text>
+                  <Text style={styles.dupDetailValue}>{duplicateMatch.existing_complaint?.support_count || 0} Citizens</Text>
+                </View>
+                <View style={styles.dupDetailRow}>
+                  <Text style={styles.dupDetailLabel}>Similarity:</Text>
+                  <Text style={[styles.dupDetailValue, {color: '#D97706', fontWeight: 'bold'}]}>{duplicateMatch.similarity}%</Text>
+                </View>
+                <Text style={styles.dupReasonItalic}>
+                  &ldquo;{duplicateMatch.reason}&rdquo;
+                </Text>
+              </View>
+            )}
+
+            <TouchableOpacity 
+              style={styles.supportButton}
+              disabled={supporting}
+              onPress={handleSupportExisting}
+            >
+              {supporting ? (
+                <ActivityIndicator color="#fff" size="small" />
+              ) : (
+                <Text style={styles.supportButtonText}>Support Existing Complaint</Text>
+              )}
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              style={styles.anywayButton}
+              disabled={supporting}
+              onPress={() => {
+                setDuplicatePopup(false);
+                handleSubmit(true);
+              }}
+            >
+              <Text style={styles.anywayButtonText}>Create New Complaint Anyway</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 };
@@ -265,6 +368,50 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.primary, alignItems: "center", justifyContent: "center",
   },
   submitBtnText: { color: COLORS.card, fontWeight: "700", fontSize: FONT_SIZES.base },
+
+  modalOverlay: {
+    flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', alignItems: 'center', padding: 20
+  },
+  modalContent: {
+    backgroundColor: '#fff', borderRadius: 24, padding: 24, width: '100%', maxWidth: 340, alignItems: 'center'
+  },
+  warningIconContainer: {
+    width: 72, height: 72, borderRadius: 36, backgroundColor: '#FEF3C7', justifyContent: 'center', alignItems: 'center', marginBottom: 16
+  },
+  modalTitle: {
+    fontSize: 20, fontWeight: '800', color: '#1F2937', marginBottom: 8, textAlign: 'center'
+  },
+  modalSubtitle: {
+    fontSize: 13, color: '#6B7280', fontWeight: '500', marginBottom: 20, textAlign: 'center'
+  },
+  dupDetailsCard: {
+    width: '100%', backgroundColor: '#F9FAFB', borderRadius: 16, borderWidth: 1, borderColor: '#E5E7EB', padding: 16, marginBottom: 20
+  },
+  dupDetailRow: {
+    flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: '#F3F4F6'
+  },
+  dupDetailLabel: {
+    fontSize: 12, fontWeight: '700', color: '#6B7280'
+  },
+  dupDetailValue: {
+    fontSize: 12, fontWeight: '800', color: '#1F2937'
+  },
+  dupReasonItalic: {
+    fontSize: 11, fontStyle: 'italic', fontWeight: '600', color: '#4B5563', marginTop: 10, textAlign: 'center'
+  },
+  supportButton: {
+    width: '100%', paddingVertical: 14, borderRadius: 12, backgroundColor: COLORS.primary, alignItems: 'center', marginBottom: 10,
+    shadowColor: COLORS.primary, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.15, shadowRadius: 8, elevation: 4
+  },
+  supportButtonText: {
+    color: '#fff', fontWeight: '800', fontSize: 13
+  },
+  anywayButton: {
+    width: '100%', paddingVertical: 12, borderRadius: 12, backgroundColor: '#F3F4F6', alignItems: 'center'
+  },
+  anywayButtonText: {
+    color: '#4B5563', fontWeight: '700', fontSize: 12
+  },
 });
 
 export default ComplaintPreviewScreen;

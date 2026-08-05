@@ -531,6 +531,7 @@ export default function ComplaintsListPage() {
                               <div className="space-y-1">
                                 <div><span className="text-muted-foreground font-bold">District:</span> {getCleanDistrict(complaint)}</div>
                                 <div><span className="text-muted-foreground font-bold">Ward:</span> {getCleanWard(complaint)}</div>
+                                <div><span className="text-muted-foreground font-bold">Supported By:</span> {complaint.support_count || 0} Citizens</div>
                                 <div className="truncate max-w-[220px]" title={complaint.address}><span className="text-muted-foreground font-bold">Address:</span> {complaint.address || "Not Available"}</div>
                                 <div className="truncate max-w-[220px]" title={complaint.landmark}><span className="text-muted-foreground font-bold">Landmark:</span> {complaint.landmark || "Not Available"}</div>
                               </div>
@@ -542,11 +543,20 @@ export default function ComplaintsListPage() {
                               <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase ${status.bg} ${status.color}`}>
                                 {status.label}
                               </span>
-                              {complaint.priority && (
-                                <span className={`ml-2 px-2 py-1 rounded-full text-[10px] font-bold ${complaint.priority === 'HIGH' ? 'bg-destructive/10 text-destructive' : 'bg-muted text-muted-foreground'}`}>
-                                  {complaint.priority}
-                                </span>
-                              )}
+                              {(() => {
+                                const rawPriority = (complaint.ai?.priority_prediction?.priority || complaint.ai_priority?.priority || complaint.final_priority || complaint.priority || "MEDIUM").toUpperCase();
+                                const badgeText = rawPriority === "HIGH" ? "🔴 High" :
+                                                  rawPriority === "MEDIUM" ? "🟡 Medium" :
+                                                  rawPriority === "LOW" ? "🟢 Low" : rawPriority;
+                                const bgClass = rawPriority === "HIGH" ? "bg-red-500/10 text-red-600 border border-red-200" :
+                                                rawPriority === "MEDIUM" ? "bg-yellow-500/10 text-yellow-600 border border-yellow-200" :
+                                                rawPriority === "LOW" ? "bg-green-500/10 text-green-600 border border-green-200" : "bg-muted text-muted-foreground";
+                                return (
+                                  <span className={`ml-2 px-2.5 py-1 rounded-full text-[10px] font-black border ${bgClass}`}>
+                                    {badgeText}
+                                  </span>
+                                );
+                              })()}
                             </td>
                             <td className="p-4 pr-6 text-right">
                               <div className={`w-8 h-8 rounded-full ${isPrivileged ? 'group-hover:bg-[#0F8A83]/10' : 'group-hover:bg-primary/10'} flex items-center justify-center ml-auto transition-colors`}>
@@ -638,11 +648,20 @@ export default function ComplaintsListPage() {
                                 <Clock className="w-3.5 h-3.5" />
                                 {new Date(complaint.created_at).toLocaleDateString()}
                               </span>
-                              {complaint.priority && (isInspector || isWorker) && (
-                                <span className={`px-2.5 py-1 rounded-md text-[10px] font-black ${complaint.priority === 'HIGH' ? 'bg-destructive/10 text-destructive' : 'bg-muted text-muted-foreground'}`}>
-                                  {complaint.priority}
-                                </span>
-                              )}
+                              {(() => {
+                                const rawPriority = (complaint.ai?.priority_prediction?.priority || complaint.ai_priority?.priority || complaint.final_priority || complaint.priority || "MEDIUM").toUpperCase();
+                                const badgeText = rawPriority === "HIGH" ? "🔴 High" :
+                                                  rawPriority === "MEDIUM" ? "🟡 Medium" :
+                                                  rawPriority === "LOW" ? "🟢 Low" : rawPriority;
+                                const bgClass = rawPriority === "HIGH" ? "bg-red-500/10 text-red-600 border border-red-200" :
+                                                rawPriority === "MEDIUM" ? "bg-yellow-500/10 text-yellow-600 border border-yellow-200" :
+                                                rawPriority === "LOW" ? "bg-green-500/10 text-green-600 border border-green-200" : "bg-muted text-muted-foreground";
+                                return (
+                                  <span className={`px-2.5 py-1 rounded-md text-[10px] font-black border ${bgClass}`}>
+                                    {badgeText}
+                                  </span>
+                                );
+                              })()}
                             </div>
 
                             <div className={`w-10 h-10 rounded-full bg-muted ${isPrivileged ? 'group-hover:bg-[#0F8A83]/10' : 'group-hover:bg-primary/10'} flex items-center justify-center transition-colors`}>

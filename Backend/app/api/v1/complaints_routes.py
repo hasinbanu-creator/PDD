@@ -37,6 +37,76 @@ def get_complaint_service(db=Depends(get_database)):
 
 
 @router.post(
+    "/verify-image",
+    response_model=dict,
+    summary="Verify Complaint Image via AI",
+    tags=["Complaints"]
+)
+async def verify_complaint_image_endpoint(
+    file: UploadFile = File(...),
+    current_user: dict = Depends(get_current_user)
+):
+    """Verify uploaded image contains a valid civic issue and is not blurry"""
+    import traceback
+    from fastapi.responses import JSONResponse
+    
+    try:
+        content = await file.read()
+        content_length = len(content)
+        logger.info(f"[AI Image Verification Endpoint] Received file: '{file.filename}', Content Type: '{file.content_type}', Size: {content_length} bytes")
+        
+        from app.ai.image_verification import verify_complaint_image
+        result = await verify_complaint_image(content, file.content_type)
+        
+        if result.get("api_status") in ["TIMEOUT", "API_ERROR", "FAILED"]:
+            error_msg = result.get("error_details") or result.get("api_error_details") or "AI Verification Unavailable"
+            logger.error(f"[AI Image Verification Endpoint] Gemini verification failed. Status: {result.get('api_status')}, Error: {error_msg}")
+            
+            # Map appropriate status code. e.g. 503 if API error/timeout, 500 otherwise.
+            status_code = status.HTTP_503_SERVICE_UNAVAILABLE if result.get("api_status") in ["TIMEOUT", "API_ERROR"] else status.HTTP_500_INTERNAL_SERVER_ERROR
+            return JSONResponse(
+                status_code=status_code,
+                content={
+                    "success": False,
+                    "error": f"Gemini returned: {error_msg}"
+                }
+            )
+            
+        is_verified = result.get("contains_civic_issue", False) and not result.get("is_low_quality", False)
+        
+        # Convert confidence to percentage if float
+        raw_conf = result.get("confidence", 1.0)
+        if isinstance(raw_conf, (int, float)):
+            if raw_conf <= 1.0:
+                confidence_val = int(raw_conf * 100)
+            else:
+                confidence_val = int(raw_conf)
+        else:
+            confidence_val = 100
+
+        logger.info(f"[AI Image Verification Endpoint] Image verified successfully. contains_civic_issue: {result.get('contains_civic_issue')}, is_low_quality: {result.get('is_low_quality')}")
+        
+        return {
+            "success": True,
+            "verified": is_verified,
+            "category_match": True,
+            "confidence": confidence_val,
+            "message": "Image verified successfully.",
+            "data": result
+        }
+    except Exception as e:
+        tb = traceback.format_exc()
+        logger.error(f"[AI Image Verification Endpoint] Unexpected crash in endpoint:\n{tb}")
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content={
+                "success": False,
+                "error": f"Internal server error: {str(e)}"
+            }
+        )
+
+
+@router.post(
     "",
     response_model=dict,
     status_code=status.HTTP_201_CREATED,
@@ -58,6 +128,9 @@ async def create_complaint(
     districtName: Optional[str] = Form(None),
     wardId: Optional[str] = Form(None),
     wardName: Optional[str] = Form(None),
+    ai_verification: Optional[str] = Form(None),
+    force_create: Optional[bool] = Form(False),
+    duplicate_detection: Optional[str] = Form(None),
     current_user: dict = Depends(get_current_user),
     service: ComplaintService = Depends(get_complaint_service)
 ):
@@ -69,10 +142,28 @@ async def create_complaint(
         logger.info(f"Complaint creation requested by user: {user_id}")
         
         image_urls = []
+        ai_verification_result = None
+        parsed_duplicate_detection = None
+        
+        if ai_verification:
+            try:
+                import json
+                ai_verification_result = json.loads(ai_verification)
+                logger.info(f"Loaded client-side ai_verification payload: {ai_verification_result}")
+            except Exception as parse_err:
+                logger.error(f"Failed to parse client ai_verification: {str(parse_err)}")
+                
+        if duplicate_detection:
+            try:
+                import json
+                parsed_duplicate_detection = json.loads(duplicate_detection)
+                logger.info(f"Loaded client-side duplicate_detection payload: {parsed_duplicate_detection}")
+            except Exception as parse_err:
+                logger.error(f"Failed to parse client duplicate_detection: {str(parse_err)}")
         if images:
             upload_dir = os.path.join("uploads", user_id, "images")
             os.makedirs(upload_dir, exist_ok=True)
-            for file in images:
+            for idx, file in enumerate(images):
                 if not file.filename:
                     continue
                 file_uuid = uuid.uuid4().hex[:8]
@@ -80,10 +171,201 @@ async def create_complaint(
                 file_path = os.path.join(upload_dir, new_filename)
                 
                 content = await file.read()
+                
+                # Perform AI verification on the first valid image
+                if idx == 0 and not ai_verification_result:
+                    try:
+                        from app.ai.image_verification import verify_complaint_image
+                        from app.core.exceptions import ImageVerificationException
+                        
+                        ai_verification_result = await verify_complaint_image(content, file.content_type)
+                        
+                        if ai_verification_result and not ai_verification_result.get("should_allow_submission", True):
+                            raise ImageVerificationException(
+                                message="Image verification failed: image does not contain a civic issue.",
+                                errors=ai_verification_result
+                            )
+                    except ImageVerificationException:
+                        raise
+                    except Exception as ai_err:
+                        logger.error(f"Error calling AI image verification: {str(ai_err)}")
+                
                 async with aiofiles.open(file_path, 'wb') as out_file:
                     await out_file.write(content)
                 # Store exactly as requested: <user_id>/images/complaint_<uuid>.jpg
                 image_urls.append(f"{user_id}/images/{new_filename}")
+
+        # Resolve district and ward names to pass to Gemini
+        district_name_resolved = districtName or "Not Available"
+        ward_name_resolved = wardName or "Not Available"
+        
+        target_ward_id = wardId or ward_id
+        if (not districtName or not wardName) and target_ward_id:
+            try:
+                from app.repositories.ward_repository import WardRepository
+                from app.db.mongodb import get_database
+                db_conn = get_database()
+                w_repo = WardRepository(db_conn)
+                ward_doc = await w_repo.get_by_id(target_ward_id)
+                if ward_doc:
+                    if not wardName:
+                        ward_name_resolved = ward_doc.get("ward_name") or "Not Available"
+                    dist_id = ward_doc.get("district_id")
+                    if dist_id and not districtName:
+                        dist_doc = await db_conn["districts"].find_one({"_id": dist_id})
+                        if dist_doc:
+                            district_name_resolved = dist_doc.get("name") or "Not Available"
+            except Exception as lookup_err:
+                logger.error(f"Failed to lookup names for priority prediction: {lookup_err}")
+
+        # Run Priority Prediction
+        ai_priority_result = None
+        try:
+            from app.ai.priority_prediction import predict_complaint_priority
+            ai_priority_result = await predict_complaint_priority(
+                category=complaint_type,
+                description=description,
+                district=district_name_resolved,
+                ward=ward_name_resolved
+            )
+        except Exception as pred_err:
+            logger.error(f"Error invoking priority prediction: {pred_err}")
+            ai_priority_result = {
+                "priority": "Medium",
+                "confidence": 0,
+                "reason": "AI prediction unavailable.",
+                "api_status": "FAILED"
+            }
+
+        # Override complaint priority with predicted priority
+        pred_p = ai_priority_result.get("priority", "Medium") if ai_priority_result else "Medium"
+        compat_priority = pred_p.upper()
+        if compat_priority not in ["LOW", "MEDIUM", "HIGH", "CRITICAL"]:
+            compat_priority = "MEDIUM"
+
+        ai_block = {}
+        if ai_priority_result:
+            ai_block["priority_prediction"] = {
+                "priority": ai_priority_result.get("priority", "Medium"),
+                "confidence": ai_priority_result.get("confidence", 0),
+                "reason": ai_priority_result.get("reason", "AI prediction unavailable.")
+            }
+        if ai_verification_result:
+            conf = ai_verification_result.get("confidence", 100)
+            if isinstance(conf, (int, float)):
+                if conf <= 1.0:
+                    conf = int(conf * 100)
+                else:
+                    conf = int(conf)
+            ai_block["image_verification"] = {
+                "contains_civic_issue": ai_verification_result.get("contains_civic_issue", True),
+                "predicted_category": ai_verification_result.get("predicted_category", "OTHER"),
+                "confidence": conf,
+                "reason": ai_verification_result.get("reason", ""),
+                "verified_at": ai_verification_result.get("verified_at") or datetime.utcnow().isoformat()
+            }
+
+        # Resolve target district id and ward id
+        target_ward_id = wardId or ward_id
+        target_district_id = districtId
+        if not target_district_id and target_ward_id:
+            try:
+                from app.repositories.ward_repository import WardRepository
+                w_repo = WardRepository(service.complaint_repo.db)
+                ward_doc = await w_repo.get_by_id(target_ward_id)
+                if ward_doc:
+                    target_district_id = str(ward_doc.get("district_id"))
+            except Exception:
+                pass
+        if not target_district_id:
+            target_district_id = current_user.get("district_id")
+
+        # Run duplicate detection if not forced and target parameters are resolved
+        existing_complaints = []
+        if not force_create and target_ward_id and target_district_id:
+            try:
+                from bson import ObjectId
+                def make_id(val):
+                    try:
+                        return ObjectId(val)
+                    except:
+                        return val
+                
+                query = {
+                    "district_id": {"$in": [target_district_id, make_id(target_district_id)]},
+                    "ward_id": {"$in": [target_ward_id, make_id(target_ward_id)]},
+                    "status": {"$nin": ["RESOLVED", "CLOSED", "REJECTED"]}
+                }
+                
+                existing_docs = await service.complaint_repo.db.complaints.find(query).to_list(length=100)
+                for doc in existing_docs:
+                    existing_complaints.append(doc)
+            except Exception as query_err:
+                logger.error(f"Failed to query existing complaints for duplicate checking: {query_err}")
+
+        if not force_create and existing_complaints:
+            try:
+                from app.ai.duplicate_detection import detect_duplicate_complaint
+                new_comp_payload = {
+                    "category": complaint_type,
+                    "description": description,
+                    "district": district_name_resolved,
+                    "ward": ward_name_resolved
+                }
+                duplicate_result = await detect_duplicate_complaint(new_comp_payload, existing_complaints)
+                
+                if duplicate_result and duplicate_result.get("duplicate") is True:
+                    # Find matching complaint in database
+                    matched_id = duplicate_result.get("matched_complaint_id")
+                    matched_doc = None
+                    for c in existing_complaints:
+                        if str(c.get("_id")) == str(matched_id) or c.get("complaint_id") == str(matched_id):
+                            matched_doc = c
+                            break
+                    
+                    if not matched_doc and matched_id:
+                        from bson import ObjectId
+                        try:
+                            matched_doc = await service.complaint_repo.db.complaints.find_one({
+                                "$or": [
+                                    {"_id": ObjectId(matched_id) if len(str(matched_id)) == 24 else matched_id},
+                                    {"complaint_id": matched_id}
+                                ]
+                            })
+                        except Exception:
+                            pass
+                    
+                    if matched_doc:
+                        formatted_existing = {
+                            "id": str(matched_doc["_id"]),
+                            "complaint_id": matched_doc.get("complaint_id"),
+                            "complaint_type": matched_doc.get("complaint_type"),
+                            "status": matched_doc.get("status"),
+                            "support_count": matched_doc.get("support_count", 0),
+                            "description": matched_doc.get("description")
+                        }
+                        
+                        return {
+                            "status": "duplicate_check",
+                            "message": "Similar complaint found",
+                            "data": {
+                                "duplicate": True,
+                                "matched_complaint_id": matched_doc.get("complaint_id") or str(matched_doc["_id"]),
+                                "similarity": duplicate_result.get("similarity", 95),
+                                "reason": duplicate_result.get("reason", "Possible duplicate complaint."),
+                                "existing_complaint": formatted_existing
+                            }
+                        }
+            except Exception as ai_dup_err:
+                logger.error(f"Error in duplicate checking flow: {str(ai_dup_err)}")
+
+        if parsed_duplicate_detection:
+            ai_block["duplicate_detection"] = {
+                "duplicate": parsed_duplicate_detection.get("duplicate", True),
+                "matched_complaint_id": parsed_duplicate_detection.get("matched_complaint_id"),
+                "similarity": parsed_duplicate_detection.get("similarity", 90),
+                "reason": parsed_duplicate_detection.get("reason", "Possible duplicate complaint.")
+            }
 
         complaint_data = ComplaintCreateSchema(
             ward_id=wardId or ward_id,
@@ -94,12 +376,16 @@ async def create_complaint(
             address=address,
             landmark=landmark,
             citizen_note=citizen_note,
-            priority=Priority(priority) if priority else Priority.MEDIUM,
+            priority=Priority(compat_priority),
             image_urls=image_urls,
             districtId=districtId,
             districtName=districtName,
             wardId=wardId or ward_id,
-            wardName=wardName
+            wardName=wardName,
+            ai_verification=ai_verification_result,
+            ai_priority=ai_priority_result,
+            ai=ai_block,
+            final_priority=pred_p
         )
         logger.info(f"Complaint payload: {complaint_data.dict()}")
         
@@ -480,4 +766,31 @@ async def reopen_complaint(
         raise HTTPException(status_code=e.status_code, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail="Internal server error")
+
+
+@router.post(
+    "/{complaint_id}/support",
+    response_model=dict,
+    summary="Support an existing complaint",
+    tags=["Complaints"]
+)
+async def support_complaint(
+    complaint_id: str,
+    current_user: dict = Depends(get_current_user),
+    service: ComplaintService = Depends(get_complaint_service)
+):
+    """Register citizen support for an existing complaint"""
+    try:
+        citizen_id = current_user["user_id"]
+        result = await service.support_complaint(complaint_id, citizen_id)
+        return {
+            "status": "success",
+            "message": "Support registered successfully",
+            "data": result
+        }
+    except CivifixException as ce:
+        raise HTTPException(status_code=ce.status_code, detail=ce.message)
+    except Exception as e:
+        logger.error(f"Error supporting complaint: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to register support")
 

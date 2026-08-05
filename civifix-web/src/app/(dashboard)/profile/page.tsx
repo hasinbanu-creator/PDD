@@ -68,7 +68,8 @@ export default function ProfilePage() {
   const displayName = user?.name || user?.full_name || "Welcome Back!";
   const displayEmail = user?.email || "";
   const displayPhone = user?.mobile_number || "";
-  const district = user?.district || "";
+  const district = user?.district && !/^[0-9a-fA-F]{24}$/.test(user.district) ? user.district : "";
+  const ward = user?.ward && !/^[0-9a-fA-F]{24}$/.test(user.ward) ? user.ward : "";
 
   const getInitials = (name: string) => {
     return name.split(" ").map(n => n[0]).join("").substring(0, 2).toUpperCase() || "?";
@@ -187,10 +188,10 @@ export default function ProfilePage() {
               )}
               {role === "INSPECTOR" ? (
                 <>
-                  {user?.district && (
+                  {district && (
                     <div className="flex items-center gap-2 text-white/90">
                       <MapPin className="w-4 h-4" />
-                      <span className="text-sm font-semibold">{user.district}</span>
+                      <span className="text-sm font-semibold">{district}</span>
                     </div>
                   )}
                   {assignedWard && (
@@ -210,10 +211,10 @@ export default function ProfilePage() {
                       <span className="text-sm font-semibold">{district}</span>
                     </div>
                   )}
-                  {user?.ward && (
+                  {ward && (
                     <div className="flex items-center gap-2 text-white/90">
                       <MapPin className="w-4 h-4" />
-                      <span className="text-sm font-semibold">Ward: {user.ward}</span>
+                      <span className="text-sm font-semibold">Ward: {ward}</span>
                     </div>
                   )}
                 </>

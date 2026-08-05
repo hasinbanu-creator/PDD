@@ -11,8 +11,11 @@ import {
   StyleSheet,
   Dimensions,
   TouchableWithoutFeedback,
-  Keyboard
+  Keyboard,
+  ActivityIndicator
 } from "react-native";
+import { LinearGradient } from 'react-native-linear-gradient';
+
 import { Button } from "../../components/Button";
 // import Icon from "react-native-vector-icons/MaterialCommunityIcons";
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
@@ -25,6 +28,7 @@ export const LoginScreen = ({ navigation }) => {
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
+  const [isFocused, setIsFocused] = useState(false);
   const { signIn, error: authError } = useContext(AuthContext);
 
   const validateForm = () => {
@@ -100,8 +104,12 @@ export const LoginScreen = ({ navigation }) => {
 
             <View style={styles.fieldGroup}>
               <Text style={styles.fieldLabel}>EMAIL ADDRESS</Text>
-              <View style={[styles.inputWrap, errors.email && styles.inputError]}>
-                <Icon name="email-outline" size={20} color={COLORS.textGray} />
+              <View style={[
+                styles.inputWrap, 
+                errors.email && styles.inputError,
+                isFocused && styles.inputFocused
+              ]}>
+                <Icon name="email-outline" size={20} color={isFocused ? PRIMARY : COLORS.textGray} />
                 <TextInput
                   style={styles.input}
                   placeholder="Enter your email address"
@@ -114,6 +122,8 @@ export const LoginScreen = ({ navigation }) => {
                   keyboardType="email-address"
                   autoCapitalize="none"
                   autoCorrect={false}
+                  onFocus={() => setIsFocused(true)}
+                  onBlur={() => setIsFocused(false)}
                 />
               </View>
               {errors.email ? (
@@ -124,16 +134,28 @@ export const LoginScreen = ({ navigation }) => {
             {authError ? (
               <Text style={styles.authError}>{authError}</Text>
             ) : null}
-
-            <Button
-              title="CONTINUE →"
-              loading={loading}
+            <TouchableOpacity
+              activeOpacity={0.82}
               onPress={handleLogin}
               disabled={loading}
-              style={styles.continueButton}
-              textStyle={styles.continueButtonText}
-            />
-
+              style={[styles.continueBtnContainer, loading && styles.continueBtnDisabled]}
+            >
+              <LinearGradient
+                colors={["#2563EB", "#1D4ED8"]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={styles.continueBtn}
+              >
+                {loading ? (
+                  <ActivityIndicator color="#fff" size="small" />
+                ) : (
+                  <View style={styles.continueBtnContent}>
+                    <Text style={styles.continueBtnText}>Continue</Text>
+                    <Icon name="arrow-right" size={18} color="#fff" style={styles.continueBtnIcon} />
+                  </View>
+                )}
+              </LinearGradient>
+            </TouchableOpacity>
             <View style={styles.registerRow}>
               <Text style={styles.registerText}>Don't have an account? </Text>
               <TouchableOpacity onPress={() => navigation.navigate("Register")}>
@@ -170,6 +192,7 @@ export const LoginScreen = ({ navigation }) => {
 
 const HERO_HEIGHT = 340;
 const PRIMARY = "#2563EB";
+const ERROR = "#DC2626";
 
 const styles = StyleSheet.create({
   flex: {
@@ -308,8 +331,12 @@ const styles = StyleSheet.create({
     gap: 10,
     backgroundColor: "#fafafa",
   },
-  inputError: {
+  inputFocused: {
     borderColor: PRIMARY,
+    backgroundColor: "#fff",
+  },
+  inputError: {
+    borderColor: ERROR,
   },
   input: {
     flex: 1,
@@ -319,38 +346,51 @@ const styles = StyleSheet.create({
     fontFamily: Platform.OS === "ios" ? "System" : "Roboto",
   },
   errorText: {
-    color: PRIMARY,
+    color: ERROR,
     fontSize: 11,
     marginTop: 4,
     marginLeft: 2,
   },
   authError: {
-    color: PRIMARY,
+    color: ERROR,
     fontSize: 12,
     textAlign: "center",
     marginBottom: SPACING.sm,
   },
-
-  ctaBtn: {
+  continueBtnContainer: {
     width: "100%",
-    paddingVertical: 15,
-    backgroundColor: PRIMARY,
-    borderRadius: 12,
+    shadowColor: PRIMARY,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.2,
+    shadowRadius: 12,
+    elevation: 4,
+    marginTop: 8,
+    marginBottom: SPACING.lg,
+  },
+  continueBtn: {
+    width: "100%",
+    height: 56,
+    borderRadius: 28,
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: SPACING.lg,
-    marginTop: 4,
   },
-  ctaBtnDisabled: {
+  continueBtnDisabled: {
     opacity: 0.7,
   },
-  ctaBtnText: {
-    color: "#fff",
-    fontSize: 14,
-    fontWeight: "800",
-    letterSpacing: 1,
+  continueBtnContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
   },
-
+  continueBtnText: {
+    color: "#fff",
+    fontSize: 15,
+    fontWeight: "700",
+  },
+  continueBtnIcon: {
+    marginLeft: 2,
+  },
   orText: {
     textAlign: "center",
     fontSize: 14,
@@ -359,7 +399,6 @@ const styles = StyleSheet.create({
     marginTop: SPACING.xxl,
     fontWeight: "500",
   },
-
   socialRow: {
     flexDirection: "row",
     gap: 12,
@@ -400,7 +439,7 @@ const styles = StyleSheet.create({
     lineHeight: 16,
   },
   tosLink: {
-    color: "#aaa",
+    color: PRIMARY,
     textDecorationLine: "underline",
   },
 });

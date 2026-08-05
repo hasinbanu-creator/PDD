@@ -43,20 +43,7 @@ class AuthService:
         if not validate_mobile(mobile_number):
             raise AuthenticationException("Invalid mobile number", "INVALID_MOBILE")
             
-        if not constituency_id:
-            raise AuthenticationException("Please select your Assembly Constituency.", "MISSING_CONSTITUENCY")
-        
-        # Lookup constituency name
         constituency_name = None
-        try:
-            const_doc = await db.constituencies.find_one({"_id": ObjectId(constituency_id) if len(str(constituency_id)) == 24 else constituency_id})
-            if not const_doc:
-                raise AuthenticationException("Assembly Constituency not found", "CONSTITUENCY_NOT_FOUND")
-            constituency_name = const_doc.get("name")
-        except Exception as e:
-            if isinstance(e, AuthenticationException):
-                raise
-            raise AuthenticationException(f"Invalid constituency ID: {str(e)}", "INVALID_CONSTITUENCY")
         
         # Check if user already exists
         existing = await db.users.find_one({

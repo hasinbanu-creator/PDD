@@ -28,6 +28,21 @@ import {
 type ComplaintStatus = "OPEN" | "WORKING" | "APPROVAL" | "CLOSED" | "REJECTED" | "IN_PROGRESS" | "RESOLVED";
 type ComplaintType = "ROAD_DAMAGE" | "POTHOLE" | "GARBAGE" | "STREETLIGHT" | "WATER_SUPPLY" | "DRAINAGE" | "SANITATION" | "TREE_CUTTING" | "CONSTRUCTION" | "OTHER";
 
+const getCleanDistrict = (c: any) => {
+  const val = c.districtName || c.district_name || c.district?.name || c.district;
+  if (typeof val === "string" && val.trim() && !/^[0-9a-fA-F]{24}$/.test(val)) return val;
+  return "Not Available";
+};
+
+const getCleanWard = (c: any) => {
+  const val = c.wardName || c.ward_name || c.ward?.ward_name || c.ward?.name || c.ward;
+  if (typeof val === "string" && val.trim() && !/^[0-9a-fA-F]{24}$/.test(val)) return val;
+  if (c.ward && typeof c.ward === "object") {
+    return c.ward.ward_name || c.ward.name || (c.ward.ward_number != null ? `Ward #${c.ward.ward_number}` : "Not Available");
+  }
+  return "Not Available";
+};
+
 const FILTERS = [
   { key: "ALL", label: "All", icon: ClipboardList },
   { key: "PENDING", label: "Pending", icon: FolderOpen },
@@ -287,7 +302,9 @@ export default function ComplaintsListPage() {
                   >
                     <option value="">All Districts</option>
                     {role === "DISTRICT_ADMIN" ? (
-                      <option value={user?.district_id || user?.district}>{user?.district}</option>
+                      <option value={user?.district_id || (user?.district && /^[0-9a-fA-F]{24}$/.test(user.district) ? user.district : "")}>
+                        {user?.district && !/^[0-9a-fA-F]{24}$/.test(user.district) ? user.district : (districts.find(d => (d._id || d.id) === (user?.district_id || user?.district))?.name || "My District")}
+                      </option>
                     ) : (
                       districts.map(d => (
                         <option key={d._id || d.id} value={d._id || d.id}>{d.name}</option>
@@ -417,9 +434,11 @@ export default function ComplaintsListPage() {
                           className="bg-muted border border-border rounded-full text-xs font-bold text-foreground px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[#0F8A83]/50 cursor-pointer disabled:opacity-60"
                         >
                           <option value="">All Districts</option>
-                          {role === "DISTRICT_ADMIN" ? (
-                            <option value={user?.district_id || user?.district}>{user?.district}</option>
-                          ) : (
+                           {role === "DISTRICT_ADMIN" ? (
+                             <option value={user?.district_id || (user?.district && /^[0-9a-fA-F]{24}$/.test(user.district) ? user.district : "")}>
+                               {user?.district && !/^[0-9a-fA-F]{24}$/.test(user.district) ? user.district : (districts.find(d => (d._id || d.id) === (user?.district_id || user?.district))?.name || "My District")}
+                             </option>
+                           ) : (
                             districts.map(d => (
                               <option key={d._id || d.id} value={d._id || d.id}>{d.name}</option>
                             ))
@@ -492,7 +511,7 @@ export default function ComplaintsListPage() {
                         return (
                           <tr key={complaint._id} className="hover:bg-muted/30 transition-colors group cursor-pointer" onClick={() => window.location.href = `/complaints/${complaint.id || complaint._id || complaint.complaint_id}`}>
                             <td className="p-4 pl-6 text-sm font-bold text-foreground">
-                              {complaint.complaint_id || complaint._id?.substring(0, 6).toUpperCase()}
+                              {complaint.complaint_id || (complaint._id && !/^[0-9a-fA-F]{24}$/.test(complaint._id) ? complaint._id : "")}
                             </td>
                             <td className="p-4 text-sm font-bold text-foreground">
                               {complaint.citizen?.name || complaint.citizenName || complaint.citizen_name || "Citizen"}
@@ -510,8 +529,8 @@ export default function ComplaintsListPage() {
                             </td>
                             <td className="p-4 text-xs font-medium text-foreground">
                               <div className="space-y-1">
-                                <div><span className="text-muted-foreground font-bold">District:</span> {complaint.districtName || complaint.district_name || complaint.district || "Not Available"}</div>
-                                <div><span className="text-muted-foreground font-bold">Ward:</span> {complaint.wardName || complaint.ward_name || complaint.ward?.ward_name || "Not Available"}</div>
+                                <div><span className="text-muted-foreground font-bold">District:</span> {getCleanDistrict(complaint)}</div>
+                                <div><span className="text-muted-foreground font-bold">Ward:</span> {getCleanWard(complaint)}</div>
                                 <div className="truncate max-w-[220px]" title={complaint.address}><span className="text-muted-foreground font-bold">Address:</span> {complaint.address || "Not Available"}</div>
                                 <div className="truncate max-w-[220px]" title={complaint.landmark}><span className="text-muted-foreground font-bold">Landmark:</span> {complaint.landmark || "Not Available"}</div>
                               </div>
@@ -578,8 +597,8 @@ export default function ComplaintsListPage() {
                             <div className="mb-4 space-y-1.5">
                               <div className="text-xs space-y-1 bg-muted/40 p-3 rounded-xl border border-border/50 mb-3">
                                 <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-1">Location</p>
-                                <div><span className="font-bold text-muted-foreground">District:</span> <span className="font-semibold text-foreground">{complaint.districtName || complaint.district_name || "Not Available"}</span></div>
-                                <div><span className="font-bold text-muted-foreground">Ward:</span> <span className="font-semibold text-foreground">{complaint.wardName || complaint.ward_name || "Not Available"}</span></div>
+                                <div><span className="font-bold text-muted-foreground">District:</span> <span className="font-semibold text-foreground">{getCleanDistrict(complaint)}</span></div>
+                                <div><span className="font-bold text-muted-foreground">Ward:</span> <span className="font-semibold text-foreground">{getCleanWard(complaint)}</span></div>
                                 <div className="line-clamp-2" title={complaint.address}><span className="font-bold text-muted-foreground">Address:</span> <span className="font-semibold text-foreground">{complaint.address || "Not Available"}</span></div>
                                 <div className="line-clamp-1" title={complaint.landmark}><span className="font-bold text-muted-foreground">Landmark:</span> <span className="font-semibold text-foreground">{complaint.landmark || "Not Available"}</span></div>
                               </div>
@@ -602,8 +621,8 @@ export default function ComplaintsListPage() {
                               </p>
                               <div className="text-xs space-y-1 bg-muted/40 p-3 rounded-xl border border-border/50">
                                 <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-1">Location</p>
-                                <div><span className="font-bold text-muted-foreground">District:</span> <span className="font-semibold text-foreground">{complaint.districtName || complaint.district_name || "Not Available"}</span></div>
-                                <div><span className="font-bold text-muted-foreground">Ward:</span> <span className="font-semibold text-foreground">{complaint.wardName || complaint.ward_name || "Not Available"}</span></div>
+                                <div><span className="font-bold text-muted-foreground">District:</span> <span className="font-semibold text-foreground">{getCleanDistrict(complaint)}</span></div>
+                                <div><span className="font-bold text-muted-foreground">Ward:</span> <span className="font-semibold text-foreground">{getCleanWard(complaint)}</span></div>
                                 <div className="line-clamp-2" title={complaint.address}><span className="font-bold text-muted-foreground">Address:</span> <span className="font-semibold text-foreground">{complaint.address || "Not Available"}</span></div>
                                 <div className="line-clamp-1" title={complaint.landmark}><span className="font-bold text-muted-foreground">Landmark:</span> <span className="font-semibold text-foreground">{complaint.landmark || "Not Available"}</span></div>
                               </div>
@@ -613,7 +632,7 @@ export default function ComplaintsListPage() {
                           <div className="flex items-center justify-between mt-2 pt-4 border-t border-border/50">
                             <div className="flex items-center gap-3">
                               <span className="text-xs font-black text-muted-foreground tracking-wider bg-muted px-2.5 py-1 rounded-md">
-                                {complaint.complaint_id || complaint._id?.substring(0, 6).toUpperCase()}
+                                {complaint.complaint_id || (complaint._id && !/^[0-9a-fA-F]{24}$/.test(complaint._id) ? complaint._id : "")}
                               </span>
                               <span className="text-xs font-bold text-muted-foreground flex items-center gap-1.5">
                                 <Clock className="w-3.5 h-3.5" />

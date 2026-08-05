@@ -14,6 +14,8 @@ import { Card, GradientBackground } from "../../components";
 import { COLORS, GRADIENTS, SPACING, FONT_SIZES, SHADOWS } from "../../constants/theme";
 import authService from "../../services/authService";
 
+
+
 // ─── CONSTANTS ───────────────────────────────────────────────────────────────
 
 const ROLE_META = {
@@ -182,7 +184,7 @@ const WardInfoCard = ({ ward, onPress, wardLoading }) => {
 
 // ─── ROLE-BASED MENU BUILDER ─────────────────────────────────────────────────
 
-const buildMenuSections = ({ role, navigation, meData }) => {
+const buildMenuSections = ({ role, navigation, meData, resolveDistrict }) => {
   const base = {
     account: [
       {
@@ -236,7 +238,7 @@ const buildMenuSections = ({ role, navigation, meData }) => {
 
   if (role === "DISTRICT_ADMIN") {
     roleSection.push(
-      { id: "inspectors",title: "My Inspectors",      subtitle: `District: ${meData?.district ?? "—"}`, icon: "account-tie",      color: "#0891B2",  onPress: () => navigation.navigate("InspectorsList") },
+      { id: "inspectors",title: "My Inspectors",      subtitle: `District: ${resolveDistrict(meData?.district, meData?.district_name) || "—"}`, icon: "account-tie",      color: "#0891B2",  onPress: () => navigation.navigate("InspectorsList") },
       { id: "workers",   title: "My Workers",         subtitle: "Workers in your district",              icon: "account-hard-hat", color: "#059669",  onPress: () => navigation.navigate("WorkersList")   },
       { id: "wards",     title: "Ward Management",    subtitle: "View and manage wards",                 icon: "map-marker-radius",color: COLORS.primary, onPress: () => navigation.navigate("Wards", { screen: "WardList" }) },
       { id: "complaints",title: "All Complaints",     subtitle: "District complaint board",              icon: "clipboard-list",   color: "#D97706",  onPress: () => navigation.getParent()?.navigate("Complaints") },
@@ -274,6 +276,53 @@ export const ProfileScreen = ({ navigation }) => {
   const [meLoading, setMeLoading] = useState(true);
   const [wardLoading, setWardLoading] = useState(false);
   const [complaintsCount, setComplaintsCount] = useState({ submitted: 0, active: 0, resolved: 0 });
+  const [districts, setDistricts] = useState([]);
+  const [wards, setWards] = useState([]);
+
+  useEffect(() => {
+    authService.getDistricts()
+      .then(res => setDistricts(Array.isArray(res) ? res : res?.data || []))
+      .catch(err => console.warn("Failed to load districts in ProfileScreen:", err));
+  }, []);
+
+  useEffect(() => {
+    const distId = user?.district_id || (user?.district && /^[0-9a-fA-F]{24}$/.test(user.district) ? user.district : "");
+    if (distId) {
+      authService.getWardsByDistrict(distId)
+        .then(res => setWards(Array.isArray(res) ? res : res?.data || []))
+        .catch(err => console.warn("Failed to load wards in ProfileScreen:", err));
+    }
+  }, [user]);
+
+  const resolveDistrict = (distVal, nameVal) => {
+    if (!distVal) return nameVal || "";
+    if (typeof distVal === "object") {
+      return distVal.name || distVal.district_name || nameVal || "";
+    }
+    if (typeof distVal === "string") {
+      if (/^[0-9a-fA-F]{24}$/.test(distVal)) {
+        const found = districts.find(d => (d._id || d.id) === distVal);
+        return found ? found.name : (nameVal || "");
+      }
+      return distVal;
+    }
+    return nameVal || "";
+  };
+
+  const resolveWard = (wardVal, nameVal) => {
+    if (!wardVal) return nameVal || "";
+    if (typeof wardVal === "object") {
+      return wardVal.ward_name || wardVal.name || nameVal || "";
+    }
+    if (typeof wardVal === "string") {
+      if (/^[0-9a-fA-F]{24}$/.test(wardVal)) {
+        const found = wards.find(w => (w._id || w.id || w.ward_id) === wardVal);
+        return found ? (found.ward_number ? `${String(found.ward_number).padStart(2, "0")} - ${found.ward_name}` : found.ward_name) : (nameVal || "");
+      }
+      return wardVal;
+    }
+    return nameVal || "";
+  };
 
   const role = meData?.role ?? user?.role ?? "CITIZEN";
 
@@ -396,7 +445,8 @@ export const ProfileScreen = ({ navigation }) => {
   const displayName  = user?.name  || meData?.email?.split("@")[0] || "Welcome Back!";
   const displayEmail = meData?.email ?? user?.email ?? "";
   const displayPhone = user?.mobile_number ?? user?.mobile ?? "";
-  const district     = meData?.district ?? user?.district ?? "";
+  const district     = resolveDistrict(meData?.district, meData?.district_name) || resolveDistrict(user?.district, user?.district_name) || "";
+  const ward         = resolveWard(meData?.ward, meData?.ward_name) || resolveWard(user?.ward, user?.ward_name) || "";
   const roleMeta     = ROLE_META[role] ?? ROLE_META.CITIZEN;
 
   // Stats row in header — role-dependent
@@ -407,7 +457,7 @@ export const ProfileScreen = ({ navigation }) => {
     role === "WORKER"         ? [{ value: "—", label: "Assigned" }, { value: "—", label: "Active" }, { value: "—", label: "Done" }] :
     /* CITIZEN */               [{ value: String(complaintsCount.submitted), label: "Submitted" }, { value: String(complaintsCount.active), label: "Active" }, { value: String(complaintsCount.resolved), label: "Resolved" }];
 
-  const { roleSection, account, support } = buildMenuSections({ role, navigation, meData });
+  const { roleSection, account, support } = buildMenuSections({ role, navigation, meData, resolveDistrict });
 
   const roleSectionTitle = {
     SUPER_ADMIN:    "Administration",
@@ -487,6 +537,9 @@ export const ProfileScreen = ({ navigation }) => {
               {role === "INSPECTOR" && wardData && (
                 <InfoRow icon="map-marker-radius-outline" value={`Ward: #${wardData.ward_number} - ${wardData.ward_name}`} />
               )}
+              {role === "CITIZEN" && ward ? (
+                <InfoRow icon="map-marker-radius-outline" value={`Ward: ${ward}`} />
+              ) : null}
               <View style={{ marginTop: 8 }}>
                 <Pill label={roleMeta.label} color={roleMeta.color} bg="rgba(255,255,255,0.22)" />
               </View>

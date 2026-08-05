@@ -166,16 +166,6 @@ export const authService = {
     return unwrapResponse(res);
   },
 
-  getConstituenciesByDistrict: async (districtId) => {
-    const res = await api.get(`/districts/${districtId}/constituencies`);
-    return unwrapResponse(res);
-  },
-
-  getWardsByConstituency: async (constituencyId) => {
-    const res = await api.get(`/constituencies/${constituencyId}/wards`);
-    return unwrapResponse(res);
-  },
-
   getDistricts: async () => {
     const res = await api.get("/admin/districts?active_only=false");
     return unwrapResponse(res);

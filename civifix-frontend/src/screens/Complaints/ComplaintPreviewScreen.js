@@ -1,5 +1,5 @@
 import { Platform, View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, ActivityIndicator, Dimensions } from 'react-native';
-import React, { useState, useContext } from "react";
+import React, { useState, useContext, useEffect } from "react";
 import { AuthContext } from "../../context/AuthContext";
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { COLORS, FONT_SIZES, SPACING, BORDER_RADIUS, SHADOWS } from "../../constants/theme";
@@ -13,11 +13,37 @@ import { ImageViewer } from "../../components";
 const { height: SCREEN_HEIGHT, width: SCREEN_WIDTH } = Dimensions.get("window");
 
 const ComplaintPreviewScreen = ({ route, navigation }) => {
-  const { form, ward, selectedType, selectedPri } = route.params;
+  const { form, ward, selectedType, selectedPri, districtName } = route.params;
   const { user } = useContext(AuthContext);
   const [submitting, setSubmitting] = useState(false);
   const [viewerVisible, setViewerVisible] = useState(false);
   const [viewerImageUrl, setViewerImageUrl] = useState("");
+  const [userDistrictName, setUserDistrictName] = useState("");
+
+  useEffect(() => {
+    if (districtName) {
+      setUserDistrictName(districtName);
+    } else {
+      const rawDist = user?.district;
+      const nameVal = user?.district_name;
+      if (typeof nameVal === "string" && nameVal.trim() && !/^[0-9a-fA-F]{24}$/.test(nameVal)) {
+        setUserDistrictName(nameVal);
+      } else if (typeof rawDist === "string" && rawDist.trim() && !/^[0-9a-fA-F]{24}$/.test(rawDist)) {
+        setUserDistrictName(rawDist);
+      } else {
+        const distId = user?.district_id || (typeof rawDist === "string" && /^[0-9a-fA-F]{24}$/.test(rawDist) ? rawDist : "");
+        if (distId) {
+          authService.getDistricts().then(list => {
+            const districtsList = Array.isArray(list) ? list : list?.data || [];
+            const found = districtsList.find(d => (d._id || d.id) === distId);
+            if (found) {
+              setUserDistrictName(found.name);
+            }
+          });
+        }
+      }
+    }
+  }, [districtName, user]);
 
   const handleSubmit = async () => {
     try {
@@ -31,10 +57,11 @@ const ComplaintPreviewScreen = ({ route, navigation }) => {
       formData.append("ward_name", wardName);
       formData.append("wardName", wardName);
 
-      formData.append("district_id", user?.district_id || user?.district || "");
-      formData.append("districtId", user?.district_id || user?.district || "");
-      formData.append("district_name", user?.district_name ?? user?.district ?? "");
-      formData.append("districtName", user?.district_name ?? user?.district ?? "");
+      const resolvedDistId = user?.district_id || (user?.district && /^[0-9a-fA-F]{24}$/.test(user.district) ? user.district : "");
+      formData.append("district_id", resolvedDistId || "");
+      formData.append("districtId", resolvedDistId || "");
+      formData.append("district_name", userDistrictName || "");
+      formData.append("districtName", userDistrictName || "");
 
       formData.append("complaint_type", String(form.complaint_type));
       formData.append("description", String(form.description));
@@ -108,6 +135,7 @@ const ComplaintPreviewScreen = ({ route, navigation }) => {
           {!!form.landmark && (
             <Text style={styles.addressText}>Landmark: {form.landmark}</Text>
           )}
+          <Text style={styles.wardText}>District: {userDistrictName || ""}</Text>
           <Text style={styles.wardText}>Ward: {ward?.label}</Text>
 
           {form.latitude && form.longitude && (

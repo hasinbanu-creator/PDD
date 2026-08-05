@@ -18,6 +18,69 @@ import authService from "../../services/authService";
 import { getErrorMessage } from "../../services/api";
 import { AuthContext } from "../../context/AuthContext";
 import { SPACING } from "../../constants/theme";
+
+let districtsCache = null;
+let districtsPromise = null;
+
+const getDistrictsCached = () => {
+  if (districtsCache) return Promise.resolve(districtsCache);
+  if (!districtsPromise) {
+    districtsPromise = authService.getDistricts()
+      .then(res => {
+        districtsCache = Array.isArray(res) ? res : res?.data || [];
+        return districtsCache;
+      })
+      .catch(err => {
+        console.warn("Failed to load districts cache in ComplaintDetailScreen:", err);
+        districtsPromise = null; // retry
+        return [];
+      });
+  }
+  return districtsPromise;
+};
+
+const wardsCache = {};
+const wardsPromises = {};
+
+const getWardsCached = (districtId) => {
+  if (!districtId) return Promise.resolve([]);
+  if (wardsCache[districtId]) return Promise.resolve(wardsCache[districtId]);
+  if (!wardsPromises[districtId]) {
+    wardsPromises[districtId] = authService.getWardsByDistrict(districtId)
+      .then(res => {
+        wardsCache[districtId] = Array.isArray(res) ? res : res?.data || [];
+        return wardsCache[districtId];
+      })
+      .catch(err => {
+        console.warn(`Failed to load wards cache for district ${districtId} in ComplaintDetailScreen:`, err);
+        wardsPromises[districtId] = null; // retry
+        return [];
+      });
+  }
+  return wardsPromises[districtId];
+};
+
+const getCleanDistrict = (c) => {
+  if (!c) return "Not Available";
+  const val = c.districtName || c.district_name || c.district?.name || c.district;
+  if (typeof val === "string" && val.trim() && !/^[0-9a-fA-F]{24}$/.test(val)) return val;
+  return "Not Available";
+};
+
+const getCleanWard = (c) => {
+  if (!c) return "Not Available";
+  const val = c.wardName || c.ward_name || c.ward?.ward_name || c.ward?.name || c.ward;
+  if (typeof val === "string" && val.trim() && !/^[0-9a-fA-F]{24}$/.test(val)) return val;
+  if (c.ward && typeof c.ward === "object") {
+    return c.ward.ward_name || c.ward.name || (c.ward.ward_number != null ? `Ward #${c.ward.ward_number}` : "Not Available");
+  }
+  return "Not Available";
+};
+
+const getCleanId = (c) => {
+  if (!c) return "Not Available";
+  return c.complaint_id || c.complaintId || (c._id && !/^[0-9a-fA-F]{24}$/.test(c._id) ? c._id : "Not Available");
+};
 import * as ImagePicker from '../../services/ImagePicker';
 
 import { API_URL } from "../../constants/endpoints";
@@ -261,6 +324,66 @@ export const ComplaintDetailScreen = ({ route, navigation }) => {
   const initialComplaint = route.params?.complaint;
   const passedId = route.params?.complaintId;
   const [complaint, setComplaint] = useState(initialComplaint);
+  const [resolvedDistrictName, setResolvedDistrictName] = useState("Not Available");
+  const [resolvedWardName, setResolvedWardName] = useState("Not Available");
+
+  useEffect(() => {
+    if (!complaint) return;
+
+    const rawDist = complaint.district;
+    const nameVal = complaint.districtName || complaint.district_name || complaint.district?.name;
+    if (typeof nameVal === "string" && nameVal.trim() && !/^[0-9a-fA-F]{24}$/.test(nameVal)) {
+      setResolvedDistrictName(nameVal);
+    } else if (typeof rawDist === "string" && rawDist.trim() && !/^[0-9a-fA-F]{24}$/.test(rawDist)) {
+      setResolvedDistrictName(rawDist);
+    } else {
+      const distId = complaint.district_id || (typeof rawDist === "string" && /^[0-9a-fA-F]{24}$/.test(rawDist) ? rawDist : "");
+      if (distId) {
+        getDistrictsCached().then(list => {
+          const found = list.find(d => (d._id || d.id) === distId);
+          if (found) {
+            setResolvedDistrictName(found.name);
+            resolveWard(distId);
+          } else {
+            setResolvedDistrictName("Not Available");
+          }
+        });
+      } else {
+        setResolvedDistrictName("Not Available");
+      }
+    }
+
+    const resolveWard = (distId) => {
+      const rawWard = complaint.ward;
+      const wNameVal = complaint.wardName || complaint.ward_name || complaint.ward?.ward_name || complaint.ward?.name;
+      if (typeof wNameVal === "string" && wNameVal.trim() && !/^[0-9a-fA-F]{24}$/.test(wNameVal)) {
+        setResolvedWardName(wNameVal);
+      } else if (rawWard && typeof rawWard === "object") {
+        if (typeof rawWard.ward_name === "string" && rawWard.ward_name.trim()) setResolvedWardName(rawWard.ward_name);
+        else if (typeof rawWard.name === "string" && rawWard.name.trim()) setResolvedWardName(rawWard.name);
+        else if (rawWard.ward_number != null) setResolvedWardName(`Ward #${rawWard.ward_number}`);
+      } else {
+        const wardId = complaint.ward_id || (typeof rawWard === "string" && /^[0-9a-fA-F]{24}$/.test(rawWard) ? rawWard : "");
+        if (wardId && distId) {
+          getWardsCached(distId).then(list => {
+            const found = list.find(w => (w._id || w.id || w.ward_id) === wardId);
+            if (found) {
+              setResolvedWardName(found.ward_number ? `${String(found.ward_number).padStart(2, "0")} - ${found.ward_name}` : found.ward_name);
+            } else {
+              setResolvedWardName("Not Available");
+            }
+          });
+        } else {
+          setResolvedWardName("Not Available");
+        }
+      }
+    };
+
+    const distId = complaint.district_id || (typeof rawDist === "string" && /^[0-9a-fA-F]{24}$/.test(rawDist) ? rawDist : "");
+    if (distId) {
+      resolveWard(distId);
+    }
+  }, [complaint]);
   
   const complaintId = passedId || initialComplaint?._id || initialComplaint?.complaint_id;
   const [loading, setLoading]     = useState(Boolean(complaintId));
@@ -534,11 +657,11 @@ export const ComplaintDetailScreen = ({ route, navigation }) => {
 
             <InfoRow icon="account-outline"       label="Raised By"   value={complaint?.citizenName || complaint?.citizen_name || complaint?.citizen?.name || "Not Available"} />
             <InfoRow icon="text-box-outline"      label="Description" value={complaint?.description || "Not Available"} />
-            <InfoRow icon="map-outline"           label="District"    value={complaint?.districtName || complaint?.district_name || complaint?.district || "Not Available"} />
-            <InfoRow icon="map-marker-outline"    label="Ward"        value={complaint?.wardName || complaint?.ward_name || complaint?.ward || "Not Available"} />
+            <InfoRow icon="map-outline"           label="District"    value={resolvedDistrictName} />
+            <InfoRow icon="map-marker-outline"    label="Ward"        value={resolvedWardName} />
             <InfoRow icon="home-outline"          label="Address"     value={complaint?.address || "Not Available"} />
             <InfoRow icon="home-map-marker"       label="Landmark"    value={complaint?.landmark || "Not Available"} />
-            <InfoRow icon="identifier"            label="Complaint ID" value={complaint?.complaint_id || complaint?.complaintId || complaint?._id || "Not Available"} />
+            <InfoRow icon="identifier"            label="Complaint ID" value={getCleanId(complaint)} />
             <InfoRow icon="crosshairs-gps"        label="Coordinates"
               value={complaint?.latitude && complaint?.longitude
                 ? `${complaint.latitude}, ${complaint.longitude}` : null} />

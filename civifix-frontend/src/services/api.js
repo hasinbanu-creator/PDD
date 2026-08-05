@@ -1,6 +1,7 @@
 import axios from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { API_URL, ENDPOINTS } from "../constants/endpoints";
+import NetInfo from "@react-native-community/netinfo";
 
 const normalizedBaseUrl = API_URL.endsWith("/") ? API_URL.slice(0, -1) : API_URL;
 
@@ -36,9 +37,20 @@ api.interceptors.request.use(
       }
     }
 
-    const token = await AsyncStorage.getItem("authToken");
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
+    const publicPaths = [
+      "/auth/login",
+      "/auth/register",
+      "/auth/verify-login-otp",
+      "/auth/verify-otp",
+      "/health"
+    ];
+    const isPublic = publicPaths.some(path => config.url && config.url.includes(path));
+
+    if (!isPublic) {
+      const token = await AsyncStorage.getItem("authToken");
+      if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
+      }
     }
 
     // Extensive request debugging
@@ -81,11 +93,21 @@ api.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config;
     
+    // Log reachability
+    let netReachable = "Unknown";
+    try {
+      const netState = await NetInfo.fetch();
+      netReachable = `Reachable: ${netState.isInternetReachable}, Type: ${netState.type}`;
+    } catch (netErr) {
+      console.warn("Failed to check NetInfo reachability:", netErr.message);
+    }
+
     // Extensive diagnostic logs for any failure
     const { config, response, code, message } = error;
     console.error("=============== AXIOS ERROR DIAGNOSTICS ===============");
     console.error(`Error Message: ${message}`);
     console.error(`Error Code: ${code}`);
+    console.error(`Network Reachability: ${netReachable}`);
     
     if (config) {
       const fullUrl = `${config.baseURL || ""}${config.baseURL?.endsWith("/") ? "" : "/"}${config.url || ""}`.replace(/([^:]\/)\/+/g, "$1");
@@ -107,6 +129,13 @@ api.interceptors.response.use(
       }
     }
     console.error("======================================================");
+
+    // Retry failed GET requests once before showing an error
+    if (config && config.method?.toLowerCase() === "get" && !config._getRetry) {
+      config._getRetry = true;
+      console.log(`[API RETRY] Retrying failed GET request: ${config.url}`);
+      return api(config);
+    }
 
     // Dynamic verification on 401 or 403
     if (response?.status === 401 || response?.status === 403) {

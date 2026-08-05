@@ -38,6 +38,23 @@ import {
   MoreVertical
 } from "lucide-react";
 import { useAuth } from "@/context/auth-context";
+
+const getCleanDistrict = (c: any) => {
+  if (!c) return "Not Available";
+  const val = c.districtName || c.district_name || c.district?.name || c.district;
+  if (typeof val === "string" && val.trim() && !/^[0-9a-fA-F]{24}$/.test(val)) return val;
+  return "Not Available";
+};
+
+const getCleanWard = (c: any) => {
+  if (!c) return "Not Available";
+  const val = c.wardName || c.ward_name || c.ward?.ward_name || c.ward?.name || c.ward;
+  if (typeof val === "string" && val.trim() && !/^[0-9a-fA-F]{24}$/.test(val)) return val;
+  if (c.ward && typeof c.ward === "object") {
+    return c.ward.ward_name || c.ward.name || (c.ward.ward_number != null ? `Ward #${c.ward.ward_number}` : "Not Available");
+  }
+  return "Not Available";
+};
 import { complaintsApi } from "@/services/api";
 import ImageLightbox from "@/components/ImageLightbox";
 
@@ -380,11 +397,11 @@ export default function ComplaintDetailsPage() {
                 </div>
                 <div className="flex gap-2">
                   <span className="font-bold text-muted-foreground w-28 shrink-0">District :</span>
-                  <span className="font-semibold text-foreground">{complaint.districtName || complaint.district_name || complaint.district || "Not Available"}</span>
+                  <span className="font-semibold text-foreground">{getCleanDistrict(complaint)}</span>
                 </div>
                 <div className="flex gap-2">
                   <span className="font-bold text-muted-foreground w-28 shrink-0">Ward :</span>
-                  <span className="font-semibold text-foreground">{complaint.wardName || complaint.ward_name || complaint.ward || "Not Available"}</span>
+                  <span className="font-semibold text-foreground">{getCleanWard(complaint)}</span>
                 </div>
                 <div className="flex gap-2">
                   <span className="font-bold text-muted-foreground w-28 shrink-0">Address :</span>
@@ -396,7 +413,9 @@ export default function ComplaintDetailsPage() {
                 </div>
                 <div className="flex gap-2">
                   <span className="font-bold text-muted-foreground w-28 shrink-0">Complaint ID :</span>
-                  <span className="font-semibold text-foreground">{complaint.complaintId || complaint.complaint_id || "Not Available"}</span>
+                  <span className="font-semibold text-foreground">
+                    {complaint.complaintId || complaint.complaint_id || (complaint._id && !/^[0-9a-fA-F]{24}$/.test(complaint._id) ? complaint._id : "Not Available")}
+                  </span>
                 </div>
               </div>
             </div>

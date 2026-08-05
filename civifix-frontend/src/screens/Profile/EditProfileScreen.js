@@ -8,7 +8,7 @@ import Button from "../../components/Button";
 import TextField from "../../components/TextField";
 import { AuthContext } from "../../context/AuthContext";
 import authService from "../../services/authService";
-import api from "../../services/api";
+import api, { getErrorMessage } from "../../services/api";
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 
 const PRIMARY   = COLORS.primary;
@@ -18,9 +18,9 @@ const GRAY_600  = "#4B5563";
 const GRAY_800  = "#1F2937";
 
 /* ── DistrictDropdown ── */
-function DistrictDropdown({ value, districts, loading, onSelect, error }) {
+function DistrictDropdown({ value, districts, loading, onSelect, error, loadingError }) {
   const [open, setOpen] = useState(false);
-  const selected = districts.find((d) => d._id === value || d.id === value);
+  const selected = districts.find((d) => d._id === value || d.id === value || d.name === value);
 
   return (
     <>
@@ -65,7 +65,7 @@ function DistrictDropdown({ value, districts, loading, onSelect, error }) {
               ItemSeparatorComponent={() => <View style={styles.dropdownSep} />}
               renderItem={({ item }) => {
                 const itemId = item._id || item.id;
-                const isSelected = itemId === value;
+                const isSelected = itemId === value || item.name === value;
                 return (
                   <TouchableOpacity
                     style={[styles.dropdownItem, isSelected && styles.dropdownItemActive]}
@@ -88,7 +88,9 @@ function DistrictDropdown({ value, districts, loading, onSelect, error }) {
               ListEmptyComponent={
                 <View style={styles.dropdownEmpty}>
                   <Icon name="map-marker-off-outline" size={32} color={GRAY_400} />
-                  <Text style={styles.dropdownEmptyText}>No districts found</Text>
+                  <Text style={styles.dropdownEmptyText}>
+                    {loadingError ? `Failed to load: ${loadingError}` : "No districts found"}
+                  </Text>
                 </View>
               }
             />
@@ -102,7 +104,7 @@ function DistrictDropdown({ value, districts, loading, onSelect, error }) {
 /* ── WardDropdown ── */
 function WardDropdown({ value, wards, loading, onSelect, error, disabled }) {
   const [open, setOpen] = useState(false);
-  const selected = wards.find((w) => (w._id || w.id || w.ward_id) === value);
+  const selected = wards.find((w) => (w._id || w.id || w.ward_id) === value || w.ward_name === value || w.name === value);
 
   return (
     <>
@@ -153,7 +155,7 @@ function WardDropdown({ value, wards, loading, onSelect, error, disabled }) {
               ItemSeparatorComponent={() => <View style={styles.dropdownSep} />}
               renderItem={({ item }) => {
                 const itemId = item._id || item.id || item.ward_id;
-                const isSelected = itemId === value;
+                const isSelected = itemId === value || item.ward_name === value || item.name === value;
                 return (
                   <TouchableOpacity
                     style={[styles.dropdownItem, isSelected && styles.dropdownItemActive]}
@@ -193,6 +195,7 @@ const EditProfileScreen = ({ navigation }) => {
 
   const [districts, setDistricts] = useState([]);
   const [districtsLoading, setDistrictsLoading] = useState(true);
+  const [districtsError, setDistrictsError] = useState("");
   const [wards, setWards] = useState([]);
   const [wardsLoading, setWardsLoading] = useState(false);
 
@@ -201,8 +204,8 @@ const EditProfileScreen = ({ navigation }) => {
       name: user?.name || "",
       mobile_number: user?.mobile_number || user?.mobile || "",
       address: user?.address || "",
-      district: user?.district || "",
-      ward: user?.ward || "",
+      district: user?.district_id || (user?.district && typeof user.district === "object" ? (user.district._id || user.district.id) : (user?.district && /^[0-9a-fA-F]{24}$/.test(user.district) ? user.district : (user?.district || ""))),
+      ward: user?.ward_id || (user?.ward && typeof user.ward === "object" ? (user.ward._id || user.ward.id) : (user?.ward && /^[0-9a-fA-F]{24}$/.test(user.ward) ? user.ward : (user?.ward || ""))),
     },
   });
 
@@ -211,17 +214,58 @@ const EditProfileScreen = ({ navigation }) => {
   // Fetch districts on mount
   useEffect(() => {
     setDistrictsLoading(true);
+    setDistrictsError("");
     api.get("/admin/districts?active_only=false")
       .then((res) => {
         setDistricts(res.data?.data || []);
+        setDistrictsError("");
       })
       .catch((err) => {
         console.error("Failed to load districts in EditProfile", err);
+        setDistrictsError(getErrorMessage(err));
       })
       .finally(() => {
         setDistrictsLoading(false);
       });
   }, []);
+
+  // Map district name to ID once districts are loaded
+  useEffect(() => {
+    if (districts.length > 0) {
+      const currentVal = watch("district");
+      if (!currentVal || !/^[0-9a-fA-F]{24}$/.test(currentVal)) {
+        const rawDist = user?.district;
+        const found = districts.find(d => 
+          (d._id || d.id) === currentVal || 
+          d.name === currentVal || 
+          d.name === rawDist ||
+          (typeof rawDist === "object" && rawDist && (d.name === rawDist.name || (d._id || d.id) === (rawDist._id || rawDist.id)))
+        );
+        if (found) {
+          setValue("district", found._id || found.id);
+        }
+      }
+    }
+  }, [districts, user]);
+
+  // Map ward name to ID once wards are loaded
+  useEffect(() => {
+    if (wards.length > 0) {
+      const currentVal = watch("ward");
+      if (!currentVal || !/^[0-9a-fA-F]{24}$/.test(currentVal)) {
+        const rawWard = user?.ward;
+        const found = wards.find(w => 
+          (w._id || w.id || w.ward_id) === currentVal || 
+          w.ward_name === currentVal || 
+          w.ward_name === rawWard ||
+          (typeof rawWard === "object" && rawWard && (w.ward_name === rawWard.ward_name || (w._id || w.id || w.ward_id) === (rawWard._id || rawWard.id)))
+        );
+        if (found) {
+          setValue("ward", found._id || found.id);
+        }
+      }
+    }
+  }, [wards, user]);
 
   // Fetch wards when selected district changes
   useEffect(() => {
@@ -261,9 +305,14 @@ const EditProfileScreen = ({ navigation }) => {
 
   const updateProfileMutation = useMutation({
     mutationFn: (data) => authService.updateProfile(data),
-    onSuccess: (updatedUser) => {
+    onSuccess: async (updatedUser) => {
       if (updateUser) {
-        updateUser(updatedUser);
+        try {
+          const profile = await authService.getProfile();
+          updateUser(profile);
+        } catch (err) {
+          updateUser(updatedUser);
+        }
       }
       // Invalidate any queries related to user if needed
       queryClient.invalidateQueries({ queryKey: ["userProfile"] });
@@ -375,18 +424,19 @@ const EditProfileScreen = ({ navigation }) => {
             control={control}
             name="district"
             rules={{ required: "District is required" }}
-            render={({ field: { onChange, value } }) => (
+            render={({ field }) => (
               <View style={styles.inputField}>
                 <Text style={[styles.fieldLabel, { marginBottom: 6 }]}>District</Text>
                 <DistrictDropdown
-                  value={value}
+                  value={field.value}
                   districts={districts}
                   loading={districtsLoading}
-                  onSelect={(id) => {
-                    onChange(id);
+                  onSelect={(val) => {
+                    field.onChange(val);
                     setValue("ward", "");
                   }}
                   error={errors.district?.message}
+                  loadingError={districtsError}
                 />
               </View>
             )}

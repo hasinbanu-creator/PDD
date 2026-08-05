@@ -33,6 +33,21 @@ import api from "@/lib/api";
 type ComplaintStatus = "OPEN" | "PENDING" | "WORKING" | "IN_PROGRESS" | "APPROVAL" | "CLOSED" | "RESOLVED" | "REJECTED";
 type ComplaintType = "ROAD_DAMAGE" | "POTHOLE" | "GARBAGE" | "STREETLIGHT" | "WATER_SUPPLY" | "DRAINAGE" | "SANITATION" | "TREE_CUTTING" | "CONSTRUCTION" | "OTHER";
 
+const getCleanDistrict = (c: any) => {
+  const val = c.districtName || c.district_name || c.district?.name || c.district;
+  if (typeof val === "string" && val.trim() && !/^[0-9a-fA-F]{24}$/.test(val)) return val;
+  return "Not Available";
+};
+
+const getCleanWard = (c: any) => {
+  const val = c.wardName || c.ward_name || c.ward?.ward_name || c.ward?.name || c.ward;
+  if (typeof val === "string" && val.trim() && !/^[0-9a-fA-F]{24}$/.test(val)) return val;
+  if (c.ward && typeof c.ward === "object") {
+    return c.ward.ward_name || c.ward.name || (c.ward.ward_number != null ? `Ward #${c.ward.ward_number}` : "Not Available");
+  }
+  return "Not Available";
+};
+
 // Mock Data / Styles - Updated with premium tokens
 const STATUS_STYLES: Record<ComplaintStatus, { label: string; color: string; bg: string }> = {
   OPEN: { label: "Pending", color: "text-accent", bg: "bg-accent/10" },
@@ -111,8 +126,8 @@ function ComplaintItem({ complaint, index, total }: any) {
   const desc = complaint.description || "No description provided";
   const Icon = meta.icon;
 
-  const districtName = complaint.districtName || complaint.district_name || complaint.district || "Not Available";
-  const wardName = complaint.wardName || complaint.ward_name || complaint.ward?.ward_name || complaint.ward || "Not Available";
+  const districtName = getCleanDistrict(complaint);
+  const wardName = getCleanWard(complaint);
   const citizenName = complaint.citizenName || complaint.citizen_name || complaint.citizen?.name || "Not Available";
 
   return (
@@ -385,7 +400,7 @@ function InspectorDashboard() {
     if (selectedWard === "all") return complaints;
     return complaints.filter((c: any) => {
       const wardId = c.ward_id || c.wardId || (c.ward?._id ?? c.ward?.id);
-      const wardName = c.wardName || c.ward_name || c.ward?.ward_name || c.ward;
+      const wardName = getCleanWard(c);
       return wardId === selectedWard || wardName === selectedWard;
     });
   }, [complaints, selectedWard]);
@@ -416,9 +431,8 @@ function InspectorDashboard() {
         const idMatch = (c.complaint_id || c.complaintId || c._id || "").toLowerCase().includes(q);
         const typeMatch = (c.complaint_type || "").toLowerCase().includes(q);
         const nameMatch = (c.citizen?.name || "").toLowerCase().includes(q);
-        
-        const districtName = (c.districtName || c.district_name || c.district || "").toLowerCase();
-        const wardName = (c.wardName || c.ward_name || c.ward?.ward_name || c.ward || "").toLowerCase();
+        const districtName = getCleanDistrict(c).toLowerCase();
+        const wardName = getCleanWard(c).toLowerCase();
         const addressText = (c.address || "").toLowerCase();
         const landmarkText = (c.landmark || "").toLowerCase();
 
@@ -607,11 +621,11 @@ function InspectorDashboard() {
                           <div className="text-[13px] space-y-0.5 min-w-[280px] max-w-[380px] text-slate-600">
                             <p className="whitespace-normal break-words">
                               <span className="font-bold text-slate-500">District:</span>
-                              <span className="font-semibold text-slate-700 ml-1">{c.districtName || c.district_name || c.district || "Not Available"}</span>
+                              <span className="font-semibold text-slate-700 ml-1">{getCleanDistrict(c)}</span>
                             </p>
                             <p className="whitespace-normal break-words">
                               <span className="font-bold text-slate-500">Ward:</span>
-                              <span className="font-semibold text-slate-700 ml-1">{c.wardName || c.ward_name || c.ward?.ward_name || c.ward || "Not Available"}</span>
+                              <span className="font-semibold text-slate-700 ml-1">{getCleanWard(c)}</span>
                             </p>
                             <p className="truncate">
                               <span className="font-bold text-slate-500">Address:</span>

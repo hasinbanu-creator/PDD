@@ -55,17 +55,45 @@ const ROLE_META = {
   CITIZEN:        { label: "Citizen",        color: "#D97706",      bg: "#FEF3C7" },
 };
 
-const getWardDisplayLabel = (complaint) => {
-  const wardValue = complaint?.ward_id || complaint?.ward_name || complaint?.ward;
+let districtsCache = null;
+let districtsPromise = null;
 
-  if (typeof wardValue === "string" && wardValue.trim()) return wardValue;
-  if (wardValue && typeof wardValue === "object") {
-    if (typeof wardValue.ward_name === "string" && wardValue.ward_name.trim()) return wardValue.ward_name;
-    if (typeof wardValue.name === "string" && wardValue.name.trim()) return wardValue.name;
-    if (wardValue.ward_number != null) return `Ward #${wardValue.ward_number}`;
+const getDistrictsCached = () => {
+  if (districtsCache) return Promise.resolve(districtsCache);
+  if (!districtsPromise) {
+    districtsPromise = authService.getDistricts()
+      .then(res => {
+        districtsCache = Array.isArray(res) ? res : res?.data || [];
+        return districtsCache;
+      })
+      .catch(err => {
+        console.warn("Failed to load districts cache in DashboardScreen:", err);
+        districtsPromise = null; // retry
+        return [];
+      });
   }
+  return districtsPromise;
+};
 
-  return "Assigned Ward";
+const wardsCache = {};
+const wardsPromises = {};
+
+const getWardsCached = (districtId) => {
+  if (!districtId) return Promise.resolve([]);
+  if (wardsCache[districtId]) return Promise.resolve(wardsCache[districtId]);
+  if (!wardsPromises[districtId]) {
+    wardsPromises[districtId] = authService.getWardsByDistrict(districtId)
+      .then(res => {
+        wardsCache[districtId] = Array.isArray(res) ? res : res?.data || [];
+        return wardsCache[districtId];
+      })
+      .catch(err => {
+        console.warn(`Failed to load wards cache for district ${districtId} in DashboardScreen:`, err);
+        wardsPromises[districtId] = null; // retry
+        return [];
+      });
+  }
+  return wardsPromises[districtId];
 };
 
 const ROLE_GRADIENT = {
@@ -250,10 +278,31 @@ const UserProfileCard = ({ meData, user, stats }) => {
   const displayName  = meData?.name  ?? user?.name  ?? "Welcome";
   const displayEmail = meData?.email ?? user?.email ?? "";
   const role         = meData?.role  ?? user?.role  ?? "CITIZEN";
-  const district     = meData?.district ?? user?.district ?? "";
   const roleMeta     = ROLE_META[role]     ?? ROLE_META.CITIZEN;
   const roleGrad     = ROLE_GRADIENT[role] ?? ROLE_GRADIENT.CITIZEN;
   const avatarColor  = roleGrad[0];
+
+  const [district, setDistrict] = useState("");
+
+  useEffect(() => {
+    const rawDist = meData?.district || user?.district;
+    const nameVal = meData?.district_name || user?.district_name;
+    if (typeof nameVal === "string" && nameVal.trim() && !/^[0-9a-fA-F]{24}$/.test(nameVal)) {
+      setDistrict(nameVal);
+    } else if (typeof rawDist === "string" && rawDist.trim() && !/^[0-9a-fA-F]{24}$/.test(rawDist)) {
+      setDistrict(rawDist);
+    } else {
+      const distId = meData?.district_id || user?.district_id || (typeof rawDist === "string" && /^[0-9a-fA-F]{24}$/.test(rawDist) ? rawDist : "");
+      if (distId) {
+        getDistrictsCached().then(list => {
+          const found = list.find(d => (d._id || d.id) === distId);
+          if (found) {
+            setDistrict(found.name);
+          }
+        });
+      }
+    }
+  }, [meData, user]);
 
   return (
     <View style={{ backgroundColor: COLORS.card, borderRadius: 16, padding: SPACING.lg, ...SHADOWS.lg }}>
@@ -270,7 +319,7 @@ const UserProfileCard = ({ meData, user, stats }) => {
           )}
           <View style={{ flexDirection: "row", gap: 6, marginTop: 5, flexWrap: "wrap" }}>
             <Pill label={roleMeta.label} color={roleMeta.color} bg={roleMeta.bg} />
-            {/* {!!district && <Pill label={`📍 ${district}`} color="#059669" bg="#D1FAE5" />} */}
+            {!!district && <Pill label={`📍 ${district}`} color="#059669" bg="#D1FAE5" />}
           </View>
         </View>
       </View>
@@ -464,12 +513,69 @@ const InspectorComplaintItem = ({ complaint, index, total, onPress }) => {
   const title  = meta.title;
   const desc   = complaint.description || "No description provided";
   
-  const compId = complaint.complaint_id || complaint.complaintId || complaint._id || "#CIV-NEW";
+  const compId = complaint.complaint_id || (complaint.complaintId && !/^[0-9a-fA-F]{24}$/.test(complaint.complaintId) ? complaint.complaintId : "") || (complaint._id && !/^[0-9a-fA-F]{24}$/.test(complaint._id) ? complaint._id : "") || "#CIV-NEW";
   const priority = complaint.priority || "MEDIUM";
   const citizenName = complaint.citizenName || complaint.citizen_name || complaint.citizen?.name || (complaint.user_id?.name || "Not Available");
   const createdDate = complaint.created_at ? new Date(complaint.created_at).toLocaleDateString() : "—";
-  const wardName = complaint.wardName || complaint.ward_name || complaint.ward || getWardDisplayLabel(complaint) || "Not Available";
-  const districtName = complaint.districtName || complaint.district_name || complaint.district || "Not Available";
+  
+  const [districtName, setDistrictName] = useState("Not Available");
+  const [wardName, setWardName] = useState("Not Available");
+
+  useEffect(() => {
+    const rawDist = complaint?.district;
+    const nameVal = complaint?.districtName || complaint?.district_name || complaint?.district?.name;
+    if (typeof nameVal === "string" && nameVal.trim() && !/^[0-9a-fA-F]{24}$/.test(nameVal)) {
+      setDistrictName(nameVal);
+    } else if (typeof rawDist === "string" && rawDist.trim() && !/^[0-9a-fA-F]{24}$/.test(rawDist)) {
+      setDistrictName(rawDist);
+    } else {
+      const distId = complaint?.district_id || (typeof rawDist === "string" && /^[0-9a-fA-F]{24}$/.test(rawDist) ? rawDist : "");
+      if (distId) {
+        getDistrictsCached().then(list => {
+          const found = list.find(d => (d._id || d.id) === distId);
+          if (found) {
+            setDistrictName(found.name);
+            resolveWard(distId);
+          } else {
+            setDistrictName("Not Available");
+          }
+        });
+      } else {
+        setDistrictName("Not Available");
+      }
+    }
+
+    const resolveWard = (distId) => {
+      const rawWard = complaint?.ward;
+      const wNameVal = complaint?.wardName || complaint?.ward_name || complaint?.ward?.ward_name || complaint?.ward?.name;
+      if (typeof wNameVal === "string" && wNameVal.trim() && !/^[0-9a-fA-F]{24}$/.test(wNameVal)) {
+        setWardName(wNameVal);
+      } else if (rawWard && typeof rawWard === "object") {
+        if (typeof rawWard.ward_name === "string" && rawWard.ward_name.trim()) setWardName(rawWard.ward_name);
+        else if (typeof rawWard.name === "string" && rawWard.name.trim()) setWardName(rawWard.name);
+        else if (rawWard.ward_number != null) setWardName(`Ward #${rawWard.ward_number}`);
+      } else {
+        const wardId = complaint?.ward_id || (typeof rawWard === "string" && /^[0-9a-fA-F]{24}$/.test(rawWard) ? rawWard : "");
+        if (wardId && distId) {
+          getWardsCached(distId).then(list => {
+            const found = list.find(w => (w._id || w.id || w.ward_id) === wardId);
+            if (found) {
+              setWardName(found.ward_number ? `${String(found.ward_number).padStart(2, "0")} - ${found.ward_name}` : found.ward_name);
+            } else {
+              setWardName("Not Available");
+            }
+          });
+        } else {
+          setWardName("Not Available");
+        }
+      }
+    };
+
+    const distId = complaint?.district_id || (typeof rawDist === "string" && /^[0-9a-fA-F]{24}$/.test(rawDist) ? rawDist : "");
+    if (distId) {
+      resolveWard(distId);
+    }
+  }, [complaint]);
   const address = complaint.address || "No address provided";
   const landmarkVal = complaint.landmark || "Not Available";
   const hasImages = (complaint.images && complaint.images.length > 0) || (complaint.image_urls && complaint.image_urls.length > 0);

@@ -1,8 +1,50 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { Text, TouchableOpacity, View } from "react-native";
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { COLORS, FONT_SIZES, SPACING } from "../../constants/theme";
 import { getComplaintStatusMeta } from "../../utils/status";
+import authService from "../../services/authService";
+
+let districtsCache = null;
+let districtsPromise = null;
+
+const getDistrictsCached = () => {
+  if (districtsCache) return Promise.resolve(districtsCache);
+  if (!districtsPromise) {
+    districtsPromise = authService.getDistricts()
+      .then(res => {
+        districtsCache = Array.isArray(res) ? res : res?.data || [];
+        return districtsCache;
+      })
+      .catch(err => {
+        console.warn("Failed to load districts cache in ComplaintCard:", err);
+        districtsPromise = null; // retry
+        return [];
+      });
+  }
+  return districtsPromise;
+};
+
+const wardsCache = {};
+const wardsPromises = {};
+
+const getWardsCached = (districtId) => {
+  if (!districtId) return Promise.resolve([]);
+  if (wardsCache[districtId]) return Promise.resolve(wardsCache[districtId]);
+  if (!wardsPromises[districtId]) {
+    wardsPromises[districtId] = authService.getWardsByDistrict(districtId)
+      .then(res => {
+        wardsCache[districtId] = Array.isArray(res) ? res : res?.data || [];
+        return wardsCache[districtId];
+      })
+      .catch(err => {
+        console.warn(`Failed to load wards cache for district ${districtId} in ComplaintCard:`, err);
+        wardsPromises[districtId] = null; // retry
+        return [];
+      });
+  }
+  return wardsPromises[districtId];
+};
 
 // ─── STATUS CONFIG ────────────────────────────────────────────────────────────
 
@@ -40,19 +82,6 @@ const formatDate = (dateStr) => {
   } catch { return null; }
 };
 
-const getWardDisplayLabel = (complaint) => {
-  const wardValue = complaint?.ward_id || complaint?.ward_name || complaint?.ward;
-
-  if (typeof wardValue === "string" && wardValue.trim()) return wardValue;
-  if (wardValue && typeof wardValue === "object") {
-    if (typeof wardValue.ward_name === "string" && wardValue.ward_name.trim()) return wardValue.ward_name;
-    if (typeof wardValue.name === "string" && wardValue.name.trim()) return wardValue.name;
-    if (wardValue.ward_number != null) return `Ward #${wardValue.ward_number}`;
-  }
-
-  return "Ward not provided";
-};
-
 // ─── COMPONENT ────────────────────────────────────────────────────────────────
 
 export const ComplaintCard = ({ complaint, onPress }) => {
@@ -62,11 +91,69 @@ export const ComplaintCard = ({ complaint, onPress }) => {
   const title     = formatType(complaint?.complaint_type || complaint?.title || "Complaint");
   
   const address   = complaint?.address || "Address not provided";
-  const id        = complaint?.complaint_id || complaint?._id || "";
-  const date      = formatDate(complaint?.created_at || complaint?.createdAt);
-  const ward      = getWardDisplayLabel(complaint);
-  const citizen   = complaint?.user_id?.name || complaint?.citizen_name || "Citizen";
+  const id        = complaint?.complaint_id || (complaint?._id && !/^[0-9a-fA-F]{24}$/.test(complaint._id) ? complaint._id : "");
+  const citizen   = complaint?.citizenName || complaint?.citizen_name || complaint?.citizen?.name || "Citizen";
+  const date      = formatDate(complaint?.created_at);
   const priority  = complaint?.priority || "MEDIUM";
+
+  const [district, setDistrict] = useState("Not Available");
+  const [ward, setWard] = useState("Not Available");
+
+  useEffect(() => {
+    const rawDist = complaint?.district;
+    const nameVal = complaint?.districtName || complaint?.district_name || complaint?.district?.name;
+    if (typeof nameVal === "string" && nameVal.trim() && !/^[0-9a-fA-F]{24}$/.test(nameVal)) {
+      setDistrict(nameVal);
+    } else if (typeof rawDist === "string" && rawDist.trim() && !/^[0-9a-fA-F]{24}$/.test(rawDist)) {
+      setDistrict(rawDist);
+    } else {
+      const distId = complaint?.district_id || (typeof rawDist === "string" && /^[0-9a-fA-F]{24}$/.test(rawDist) ? rawDist : "");
+      if (distId) {
+        getDistrictsCached().then(list => {
+          const found = list.find(d => (d._id || d.id) === distId);
+          if (found) {
+            setDistrict(found.name);
+            resolveWard(distId);
+          } else {
+            setDistrict("Not Available");
+          }
+        });
+      } else {
+        setDistrict("Not Available");
+      }
+    }
+
+    const resolveWard = (distId) => {
+      const rawWard = complaint?.ward;
+      const wNameVal = complaint?.wardName || complaint?.ward_name || complaint?.ward?.ward_name || complaint?.ward?.name;
+      if (typeof wNameVal === "string" && wNameVal.trim() && !/^[0-9a-fA-F]{24}$/.test(wNameVal)) {
+        setWard(wNameVal);
+      } else if (rawWard && typeof rawWard === "object") {
+        if (typeof rawWard.ward_name === "string" && rawWard.ward_name.trim()) setWard(rawWard.ward_name);
+        else if (typeof rawWard.name === "string" && rawWard.name.trim()) setWard(rawWard.name);
+        else if (rawWard.ward_number != null) setWard(`Ward #${rawWard.ward_number}`);
+      } else {
+        const wardId = complaint?.ward_id || (typeof rawWard === "string" && /^[0-9a-fA-F]{24}$/.test(rawWard) ? rawWard : "");
+        if (wardId && distId) {
+          getWardsCached(distId).then(list => {
+            const found = list.find(w => (w._id || w.id || w.ward_id) === wardId);
+            if (found) {
+              setWard(found.ward_number ? `${String(found.ward_number).padStart(2, "0")} - ${found.ward_name}` : found.ward_name);
+            } else {
+              setWard("Not Available");
+            }
+          });
+        } else {
+          setWard("Not Available");
+        }
+      }
+    };
+
+    const distId = complaint?.district_id || (typeof rawDist === "string" && /^[0-9a-fA-F]{24}$/.test(rawDist) ? rawDist : "");
+    if (distId) {
+      resolveWard(distId);
+    }
+  }, [complaint]);
 
   return (
     <TouchableOpacity
@@ -143,6 +230,10 @@ export const ComplaintCard = ({ complaint, onPress }) => {
             <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
               <Icon name="calendar-outline" size={14} color="#64748B" />
               <Text style={{ color: "#64748B", fontSize: FONT_SIZES.xs }}>{date}</Text>
+            </View>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+              <Icon name="map-outline" size={14} color="#64748B" />
+              <Text style={{ color: "#64748B", fontSize: FONT_SIZES.xs }}>{district}</Text>
             </View>
             <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
               <Icon name="map-marker-outline" size={14} color="#64748B" />

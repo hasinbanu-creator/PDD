@@ -127,7 +127,7 @@ async def verify_registration_otp(payload: VerifyOTPSchema):
             email=payload.email,
             otp=payload.otp
         )
-        
+        user = await UserRepository.find_by_id(result.get("user_id"))
         return ResponseHandler.success(
             message="OTP verified successfully. Account activated.",
             data={
@@ -135,10 +135,18 @@ async def verify_registration_otp(payload: VerifyOTPSchema):
                 "access_token": result.get("tokens", {}).get("access_token"),
                 "refresh_token": result.get("tokens", {}).get("refresh_token"),
                 "token_type": "bearer",
-                "expires_in": result.get("tokens", {}).get("expires_in")
+                "expires_in": result.get("tokens", {}).get("expires_in"),
+                "role": user.get("role"),
+                "district": user.get("district"),
+                "user": {
+                    "id": str(user.get("_id")),
+                    "email": user.get("email"),
+                    "name": user.get("name"),
+                    "role": user.get("role"),
+                    "district": user.get("district")
+                }
             }
         )
-    
     except (InvalidOTPException, OTPExpiredException, OTPAttemptsExceededException) as e:
         return ResponseHandler.error(
             message=e.message,
@@ -234,7 +242,7 @@ async def verify_login_otp(payload: VerifyOTPSchema):
             email=payload.email,
             otp=payload.otp
         )
-        
+        user = await UserRepository.find_by_id(result.get("user_id"))
         return ResponseHandler.success(
             message="Login successful",
             data={
@@ -244,10 +252,16 @@ async def verify_login_otp(payload: VerifyOTPSchema):
                 "token_type": "bearer",
                 "expires_in": result.get("tokens", {}).get("expires_in"),
                 "role": result.get("role"),
-                "district": result.get("district")
+                "district": result.get("district"),
+                "user": {
+                    "id": str(user.get("_id")),
+                    "email": user.get("email"),
+                    "name": user.get("name"),
+                    "role": user.get("role"),
+                    "district": user.get("district")
+                }
             }
         )
-    
     except (InvalidOTPException, OTPExpiredException, OTPAttemptsExceededException) as e:
         return ResponseHandler.error(
             message=e.message,

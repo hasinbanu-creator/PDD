@@ -1,8 +1,8 @@
 import React, { useState } from "react";
-import { View, Text, StyleSheet, Dimensions, Image } from "react-native";
+import { View, Text, StyleSheet, Dimensions, Image, TouchableOpacity } from "react-native";
+import { LinearGradient } from 'react-native-linear-gradient';
 import { COLORS, FONT_SIZES, SPACING, BORDER_RADIUS } from "../../constants/theme";
 import Screen from "../../components/Screen";
-import Button from "../../components/Button";
 
 const { width } = Dimensions.get("window");
 
@@ -41,6 +41,22 @@ const OnboardingScreen = ({ navigation }) => {
 
   return (
     <Screen style={styles.container}>
+      {/* Premium Top Bar with Skip Link */}
+      <View style={styles.header}>
+        <View style={{ flex: 1 }} />
+        {currentIndex < slides.length - 1 ? (
+          <TouchableOpacity 
+            onPress={handleSkip} 
+            activeOpacity={0.7} 
+            style={styles.skipContainer}
+          >
+            <Text style={styles.skipText}>Skip</Text>
+          </TouchableOpacity>
+        ) : (
+          <View style={styles.skipPlaceholder} />
+        )}
+      </View>
+
       <View style={styles.slideContainer}>
         <View style={styles.imageContainer}>
           <Image 
@@ -54,6 +70,7 @@ const OnboardingScreen = ({ navigation }) => {
       </View>
       
       <View style={styles.footer}>
+        {/* Modern Pagination Dots */}
         <View style={styles.pagination}>
           {slides.map((_, index) => (
             <View
@@ -66,19 +83,24 @@ const OnboardingScreen = ({ navigation }) => {
           ))}
         </View>
         
+        {/* Full-width premium action button */}
         <View style={styles.actions}>
-          <Button 
-            title="Skip" 
-            variant="text" 
-            onPress={handleSkip} 
-            style={styles.skipButton} 
-            textStyle={{ color: COLORS.textGray }}
-          />
-          <Button 
-            title={currentIndex === slides.length - 1 ? "Get Started" : "Next"} 
-            onPress={handleNext} 
-            style={styles.nextButton}
-          />
+          <TouchableOpacity
+            activeOpacity={0.82}
+            onPress={handleNext}
+            style={styles.nextButtonContainer}
+          >
+            <LinearGradient
+              colors={["#2563EB", "#1D4ED8"]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={styles.nextButton}
+            >
+              <Text style={styles.nextButtonText}>
+                {currentIndex === slides.length - 1 ? "Get Started" : "Next"}
+              </Text>
+            </LinearGradient>
+          </TouchableOpacity>
         </View>
       </View>
     </Screen>
@@ -88,18 +110,39 @@ const OnboardingScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.card,
-    padding: SPACING.xl,
+    backgroundColor: "#FFFFFF",
+    paddingHorizontal: SPACING.xl,
     justifyContent: "space-between",
+  },
+  header: {
+    height: 56,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginTop: 8,
+  },
+  skipContainer: {
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.xs,
+  },
+  skipText: {
+    color: COLORS.textLight,
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  skipPlaceholder: {
+    height: 30,
+    width: 50,
   },
   slideContainer: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
+    paddingBottom: 40,
   },
   imageContainer: {
-    width: width * 0.7,
-    height: width * 0.7,
+    width: width * 0.65,
+    height: width * 0.65,
     alignItems: "center",
     justifyContent: "center",
     marginBottom: SPACING.xxl,
@@ -109,48 +152,61 @@ const styles = StyleSheet.create({
     height: "100%",
   },
   title: {
-    fontSize: FONT_SIZES.xxl,
-    fontWeight: "700",
+    fontSize: 24,
+    fontWeight: "800",
     color: COLORS.textDark,
     textAlign: "center",
-    marginBottom: SPACING.lg,
+    marginBottom: SPACING.md,
+    letterSpacing: -0.5,
   },
   description: {
-    fontSize: FONT_SIZES.base,
+    fontSize: 15,
     color: COLORS.textLight,
     textAlign: "center",
-    lineHeight: 24,
-    paddingHorizontal: SPACING.xl,
+    lineHeight: 22,
+    paddingHorizontal: SPACING.lg,
   },
   footer: {
-    paddingBottom: SPACING.xl,
+    paddingBottom: SPACING.xl + 10,
   },
   pagination: {
     flexDirection: "row",
     justifyContent: "center",
-    marginBottom: SPACING.xl,
+    marginBottom: SPACING.xl + 10,
   },
   dot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: COLORS.border,
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: "#E5E7EB",
     marginHorizontal: 4,
   },
   activeDot: {
-    backgroundColor: COLORS.primary,
-    width: 24,
+    backgroundColor: "#2563EB",
+    width: 16,
   },
   actions: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
+    width: "100%",
   },
-  skipButton: {
-    flex: 1,
+  nextButtonContainer: {
+    width: "100%",
+    shadowColor: "#2563EB",
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.2,
+    shadowRadius: 12,
+    elevation: 4,
   },
   nextButton: {
-    flex: 1,
+    borderRadius: 28,
+    height: 56,
+    width: "100%",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  nextButtonText: {
+    color: "#fff",
+    fontSize: 15,
+    fontWeight: "700",
   },
 });
 

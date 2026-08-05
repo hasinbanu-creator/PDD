@@ -76,8 +76,8 @@ export default function SettingsPage() {
         name: user.name || user.full_name || "",
         mobile_number: user.mobile_number || "",
         address: user.address || "",
-        district: user.district || user.district_id || "",
-        ward: user.ward || user.ward_id || "",
+        district: user.district_id || (user.district && /^[0-9a-fA-F]{24}$/.test(user.district) ? user.district : ""),
+        ward: user.ward_id || (user.ward && /^[0-9a-fA-F]{24}$/.test(user.ward) ? user.ward : ""),
       });
     }
   }, [user]);
@@ -101,8 +101,12 @@ export default function SettingsPage() {
         ward: formData.ward,
       };
       
-      const updatedUser = await authService.updateProfile(payload);
-      setUser({ ...user, ...updatedUser });
+      await authService.updateProfile(payload);
+      const profile = await authService.getProfile();
+      setUser(profile);
+      if (typeof window !== "undefined") {
+        localStorage.setItem("user", JSON.stringify(profile));
+      }
       setSuccessMsg("Profile updated successfully!");
     } catch (err: any) {
       setErrorMsg(err.message || "Failed to update profile");

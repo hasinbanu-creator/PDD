@@ -338,6 +338,24 @@ export const CreateComplaintScreen = ({ route, navigation }) => {
   const [selectedImages, setSelectedImages] = useState([]);
   const [uploadingImages, setUploadingImages] = useState(false);
   const [successData, setSuccessData]   = useState(null);
+  const [districts, setDistricts]       = useState([]);
+
+  useEffect(() => {
+    const loadDistricts = async () => {
+      try {
+        const res = await authService.getDistricts();
+        const list = Array.isArray(res) ? res : res?.data || [];
+        setDistricts(list);
+      } catch (err) {
+        console.error("Failed to load districts", err);
+      }
+    };
+    loadDistricts();
+  }, []);
+
+  const selectedDistrictName = districts.find(
+    (d) => d._id === (user?.district_id ?? user?.district) || d.name === (user?.district_id ?? user?.district)
+  )?.name ?? user?.district_name ?? (user?.district && !/^[0-9a-fA-F]{24}$/.test(user.district) ? user.district : "");
 
   useEffect(() => { setForm(EMPTY_FORM); }, []);
 
@@ -608,6 +626,7 @@ export const CreateComplaintScreen = ({ route, navigation }) => {
       navigation.navigate("ComplaintPreview", {
         form: nextForm,
         ward: wardItems.find((w) => w.value === form.ward_id),
+        districtName: selectedDistrictName,
         selectedType,
         selectedPri,
       });
@@ -696,7 +715,7 @@ export const CreateComplaintScreen = ({ route, navigation }) => {
               label="District"
               icon="map-outline"
               placeholder="District"
-              value={user?.district_name ?? user?.district ?? ""}
+              value={selectedDistrictName}
               editable={false}
             />
 

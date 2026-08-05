@@ -35,17 +35,24 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const bootstrapAsync = async () => {
       try {
         if (typeof window !== "undefined") {
-          const token = localStorage.getItem("authToken");
+          const token = localStorage.getItem("accessToken");
+          const savedUser = localStorage.getItem("user");
           if (token) {
             setUserToken(token);
-            try {
-              const profile = await authService.getProfile();
-              setUser(profile);
-            } catch (err) {
-              console.warn("Restoring profile failed, clearing tokens", err);
-              localStorage.removeItem("authToken");
-              localStorage.removeItem("refreshToken");
-              setUserToken(null);
+            if (savedUser) {
+              setUser(JSON.parse(savedUser));
+            } else {
+              try {
+                const profile = await authService.getProfile();
+                setUser(profile);
+                localStorage.setItem("user", JSON.stringify(profile));
+              } catch (err) {
+                console.warn("Restoring profile failed, clearing tokens", err);
+                localStorage.removeItem("accessToken");
+                localStorage.removeItem("refreshToken");
+                localStorage.removeItem("user");
+                setUserToken(null);
+              }
             }
           }
         }
@@ -87,8 +94,25 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setErrorState(null);
       const session = await authService.verifyLogin(email, otp);
       setUserToken(session.access_token);
-      const profile = await authService.getProfile();
-      setUser(profile);
+      
+      let userProfile = null;
+      try {
+        userProfile = await authService.getProfile();
+      } catch (profileErr) {
+        console.warn("Failed to fetch clean profile, using session user", profileErr);
+        userProfile = session.user || {
+          id: session.user_id,
+          email: email,
+          name: "User",
+          role: session.role || "CITIZEN",
+          district: session.district
+        };
+      }
+      
+      setUser(userProfile);
+      if (typeof window !== "undefined") {
+        localStorage.setItem("user", JSON.stringify(userProfile));
+      }
       setIsSignout(false);
       return session;
     } catch (err) {
@@ -103,8 +127,25 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setErrorState(null);
       const session = await authService.verifyRegister(email, otp);
       setUserToken(session.access_token);
-      const profile = await authService.getProfile();
-      setUser(profile);
+      
+      let userProfile = null;
+      try {
+        userProfile = await authService.getProfile();
+      } catch (profileErr) {
+        console.warn("Failed to fetch clean profile, using session user", profileErr);
+        userProfile = session.user || {
+          id: session.user_id,
+          email: email,
+          name: "User",
+          role: session.role || "CITIZEN",
+          district: session.district
+        };
+      }
+      
+      setUser(userProfile);
+      if (typeof window !== "undefined") {
+        localStorage.setItem("user", JSON.stringify(userProfile));
+      }
       setIsSignout(false);
       return session;
     } catch (err) {

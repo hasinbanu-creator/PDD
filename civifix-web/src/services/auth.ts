@@ -1,9 +1,11 @@
 import api, { unwrapResponse } from "@/lib/api";
 import { ENDPOINTS } from "@/constants/endpoints";
-
 export interface UserSession {
   access_token: string;
   refresh_token?: string;
+  user_id?: string;
+  role?: string;
+  district?: string;
   user?: any;
 }
 
@@ -26,9 +28,12 @@ export interface Complaint {
 const storeSession = (session: UserSession) => {
   if (!session?.access_token) return;
   if (typeof window !== "undefined") {
-    localStorage.setItem("authToken", session.access_token);
+    localStorage.setItem("accessToken", session.access_token);
     if (session.refresh_token) {
       localStorage.setItem("refreshToken", session.refresh_token);
+    }
+    if (session.user) {
+      localStorage.setItem("user", JSON.stringify(session.user));
     }
   }
 };
@@ -139,7 +144,7 @@ export const authService = {
       console.warn("Logout API failed, clearing local storage", error);
     }
     if (typeof window !== "undefined") {
-      localStorage.removeItem("authToken");
+      localStorage.removeItem("accessToken");
       localStorage.removeItem("refreshToken");
       localStorage.removeItem("user");
     }
@@ -200,14 +205,14 @@ export const authService = {
 
   getToken: (): string | null => {
     if (typeof window !== "undefined") {
-      return localStorage.getItem("authToken");
+      return localStorage.getItem("accessToken");
     }
     return null;
   },
 
   isAuthenticated: (): boolean => {
     if (typeof window !== "undefined") {
-      const token = localStorage.getItem("authToken");
+      const token = localStorage.getItem("accessToken");
       return !!token;
     }
     return false;

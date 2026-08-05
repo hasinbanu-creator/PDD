@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useMemo } from "react";
+import api from "@/lib/api";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/auth-context";
 import authService from "@/services/auth";
@@ -66,7 +67,32 @@ export default function CreateComplaintPage() {
   const [selectedImages, setSelectedImages] = useState<File[]>([]);
   const [createdComplaint, setCreatedComplaint] = useState<any>(null);
   const [step, setStep] = useState(1);
-  const { data: wardsData, isLoading: wardsLoading, isError: wardsError, refetch: refetchWards } = useWards(user?.district_id || user?.district);
+  const [districts, setDistricts] = useState<any[]>([]);
+
+  useEffect(() => {
+    api.get("/admin/districts?active_only=false").then((res: any) => {
+      const data = Array.isArray(res) ? res : res?.data || [];
+      setDistricts(data);
+    }).catch(err => console.error("Failed to load districts", err));
+  }, []);
+
+  const resolvedDistrictId = useMemo(() => {
+    if (user?.district_id) return user.district_id;
+    const dist = user?.district;
+    if (dist && /^[0-9a-fA-F]{24}$/.test(dist)) return dist;
+    const found = districts.find(d => d.name === dist);
+    return found?._id || found?.id || "";
+  }, [user, districts]);
+
+  const districtName = useMemo(() => {
+    if (user?.district_name) return user.district_name;
+    const dist = user?.district;
+    if (dist && !/^[0-9a-fA-F]{24}$/.test(dist)) return dist;
+    const found = districts.find(d => (d._id || d.id) === (user?.district_id || user?.district));
+    return found?.name || user?.district_name || user?.district || "";
+  }, [user, districts]);
+
+  const { data: wardsData, isLoading: wardsLoading, isError: wardsError, refetch: refetchWards } = useWards(resolvedDistrictId);
   const wards = useMemo(() => {
     const rawWards = Array.isArray(wardsData) ? wardsData : wardsData?.data || [];
     return [...rawWards].sort((a: any, b: any) => {
@@ -277,10 +303,10 @@ export default function CreateComplaintPage() {
       formData.append("wardId", form.ward_id);
       formData.append("wardName", wardName);
       formData.append("ward_name", wardName);
-      formData.append("district_id", user?.district_id || "");
-      formData.append("districtId", user?.district_id || "");
-      formData.append("district_name", user?.district || "");
-      formData.append("districtName", user?.district || "");
+      formData.append("district_id", resolvedDistrictId || "");
+      formData.append("districtId", resolvedDistrictId || "");
+      formData.append("district_name", districtName || "");
+      formData.append("districtName", districtName || "");
       formData.append("complaint_type", form.complaint_type);
       formData.append("description", form.description);
       formData.append("priority", form.priority);
@@ -541,7 +567,7 @@ export default function CreateComplaintPage() {
                   <label className="block text-xs font-bold text-muted-foreground tracking-wider mb-2 uppercase">District</label>
                   <input
                     type="text"
-                    value={user?.district_name || user?.district || ""}
+                    value={districtName}
                     readOnly
                     className="w-full bg-muted/20 border-2 border-border rounded-2xl px-5 py-4 text-sm font-bold text-muted-foreground outline-none cursor-not-allowed"
                   />
@@ -703,6 +729,7 @@ export default function CreateComplaintPage() {
                 <div className="space-y-2 text-sm font-medium">
                     <div className="flex justify-between"><span className="text-muted-foreground">Type:</span> <span className="text-foreground">{COMPLAINT_TYPES.find(t=>t.value===form.complaint_type)?.label}</span></div>
                     <div className="flex justify-between"><span className="text-muted-foreground">Priority:</span> <span className="text-foreground">{form.priority}</span></div>
+                    <div className="flex justify-between"><span className="text-muted-foreground">District:</span> <span className="text-foreground truncate ml-4">{districtName}</span></div>
                     <div className="flex justify-between"><span className="text-muted-foreground">Ward:</span> <span className="text-foreground truncate ml-4">{wards.find((w:any)=>(w._id || w.id)===form.ward_id)?.ward_name}</span></div>
                    {selectedImages.length > 0 && (
                      <div className="flex justify-between"><span className="text-muted-foreground">Attachments:</span> <span className="text-foreground">{selectedImages.length} photo(s)</span></div>

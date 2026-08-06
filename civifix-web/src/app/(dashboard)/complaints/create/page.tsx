@@ -73,6 +73,7 @@ export default function CreateComplaintPage() {
   const [verifying, setVerifying] = useState(false);
   const [aiVerifiedPayload, setAiVerifiedPayload] = useState<any>(null);
   const [verificationPopup, setVerificationPopup] = useState<string | null>(null);
+  const [aiVerificationError, setAiVerificationError] = useState<string | null>(null);
 
   const [duplicateMatch, setDuplicateMatch] = useState<any>(null);
   const [duplicatePopup, setDuplicatePopup] = useState(false);
@@ -97,6 +98,7 @@ export default function CreateComplaintPage() {
   const verifyImage = async (file: File) => {
     setVerifying(true);
     setVerificationPopup("loading");
+    setAiVerificationError(null);
     try {
       const formData = new FormData();
       formData.append("file", file);
@@ -107,6 +109,7 @@ export default function CreateComplaintPage() {
       setAiVerifiedPayload(result);
       
       if (!result) {
+        setAiVerificationError("No verification data received from server.");
         setVerificationPopup("unavailable");
         return;
       }
@@ -131,8 +134,20 @@ export default function CreateComplaintPage() {
         setVerificationPopup("success");
       }
       
-    } catch (err) {
+    } catch (err: any) {
       console.error("AI image verification error:", err);
+      let errMsg = "Unable to verify the uploaded image at the moment. Please try again later.";
+      if (err?.response?.data) {
+        const data = err.response.data;
+        if (data.error) {
+          errMsg = data.error;
+        } else if (data.detail) {
+          errMsg = typeof data.detail === "string" ? data.detail : JSON.stringify(data.detail);
+        }
+      } else if (err?.message) {
+        errMsg = err.message;
+      }
+      setAiVerificationError(errMsg);
       setVerificationPopup("unavailable");
     } finally {
       setVerifying(false);
@@ -440,52 +455,65 @@ export default function CreateComplaintPage() {
 
   if (showSuccess && createdComplaint) {
     const complaintId = createdComplaint.complaint_id || createdComplaint.id || "N/A";
-    const status = createdComplaint.status || "OPEN";
     
+    // Extract AI details
+    const aiPriorityObj = createdComplaint.ai_priority || createdComplaint.ai?.priority_prediction;
+    const rawPriority = aiPriorityObj?.priority || createdComplaint.final_priority || createdComplaint.priority || "Medium";
+    const confidence = aiPriorityObj?.confidence || 0;
+    const reason = aiPriorityObj?.reason || "Priority predicted by AI.";
+    
+    const emojiPriority = String(rawPriority).toUpperCase() === "HIGH" ? "🔴 High" :
+                          String(rawPriority).toUpperCase() === "MEDIUM" ? "🟡 Medium" : "🟢 Low";
+                          
     return (
       <div className="flex-1 bg-background flex items-center justify-center p-6 animate-in fade-in zoom-in duration-500 min-h-[calc(100vh-100px)]">
         <div className="bg-card rounded-3xl p-8 max-w-md w-full text-center shadow-xl shadow-success/10 border border-success/20">
-          <div className="w-24 h-24 bg-success/10 text-success rounded-full flex items-center justify-center mx-auto mb-6">
-            <CheckCircle2 className="w-12 h-12" />
+          <div className="w-20 h-20 bg-success/10 text-success rounded-full flex items-center justify-center mx-auto mb-5">
+            <CheckCircle2 className="w-10 h-10" />
           </div>
-          <h2 className="text-2xl font-black text-foreground mb-2">Complaint Submitted!</h2>
+          <h2 className="text-2xl font-black text-foreground mb-1">Complaint Submitted Successfully</h2>
+          <p className="text-xs font-semibold text-muted-foreground mb-6">Your report has been logged in the system.</p>
           
-          <div className="bg-muted/30 rounded-2xl p-4 mb-6 text-left border border-border">
-            <div className="flex justify-between items-center mb-3 pb-3 border-b border-border/50">
-              <span className="text-xs font-bold text-muted-foreground">Complaint ID</span>
-              <span className="text-sm font-extrabold text-foreground">{complaintId}</span>
+          <div className="bg-muted/30 rounded-2xl p-5 mb-6 text-left border border-border space-y-4">
+            <div className="flex justify-between items-center pb-3 border-b border-border/50">
+              <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Complaint ID</span>
+              <span className="text-sm font-black text-foreground font-mono">{complaintId}</span>
             </div>
-            <div className="flex justify-between items-center mb-3 pb-3 border-b border-border/50">
-              <span className="text-xs font-bold text-muted-foreground">Status</span>
-              <span className="text-xs font-black text-accent bg-accent/10 px-3 py-1 rounded-full">{status}</span>
-            </div>
-            {(() => {
-              const rawPriority = (createdComplaint.ai?.priority_prediction?.priority || createdComplaint.ai_priority?.priority || createdComplaint.final_priority || createdComplaint.priority || "Medium");
-              const emojiPriority = String(rawPriority).toUpperCase() === "HIGH" ? "🔴 High" :
-                                    String(rawPriority).toUpperCase() === "MEDIUM" ? "🟡 Medium" : "🟢 Low";
-              return (
-                <div className="flex justify-between items-center mb-3 pb-3 border-b border-border/50">
-                  <span className="text-xs font-bold text-muted-foreground">AI Priority</span>
-                  <span className="text-sm font-extrabold text-foreground">{emojiPriority}</span>
-                </div>
-              );
-            })()}
-            <div className="flex justify-between items-center">
-              <span className="text-xs font-bold text-muted-foreground">Est. Resolution</span>
-              <span className="text-sm font-bold text-foreground">48 hours</span>
+            
+            <div className="space-y-3">
+              <span className="text-xs font-black text-muted-foreground uppercase tracking-widest block">AI Analysis</span>
+              
+              <div className="flex items-center gap-2 text-sm font-extrabold text-success">
+                <span>✅ Image Verified</span>
+              </div>
+              
+              <div className="space-y-1">
+                <span className="text-xs font-bold text-muted-foreground block">Priority</span>
+                <span className="text-sm font-black text-foreground">{emojiPriority}</span>
+              </div>
+              
+              <div className="space-y-1">
+                <span className="text-xs font-bold text-muted-foreground block">Reason</span>
+                <p className="text-sm font-medium text-foreground leading-relaxed">{reason}</p>
+              </div>
+              
+              <div className="space-y-1">
+                <span className="text-xs font-bold text-muted-foreground block">Confidence</span>
+                <span className="text-sm font-extrabold text-foreground">{confidence}%</span>
+              </div>
             </div>
           </div>
 
           <div className="flex gap-4 mt-8">
             <button
               onClick={() => router.push("/dashboard")}
-              className="flex-1 py-3.5 px-4 bg-muted hover:bg-muted/80 text-foreground font-bold rounded-2xl transition-colors"
+              className="flex-1 py-3.5 px-4 bg-muted hover:bg-muted/80 text-foreground font-bold rounded-2xl transition-colors text-sm"
             >
               Done
             </button>
             <button
               onClick={() => router.push(`/complaints/${createdComplaint._id || createdComplaint.id}`)}
-              className="flex-1 py-3.5 px-4 bg-primary hover:bg-primary/90 text-primary-foreground font-bold rounded-2xl transition-colors shadow-md shadow-primary/20"
+              className="flex-1 py-3.5 px-4 bg-primary hover:bg-primary/90 text-primary-foreground font-bold rounded-2xl transition-colors shadow-md shadow-primary/20 text-sm"
             >
               View Complaint
             </button>
@@ -535,7 +563,7 @@ export default function CreateComplaintPage() {
                 </div>
                 <div>
                   <h2 className="text-lg font-bold text-foreground">What&apos;s the issue?</h2>
-                  <p className="text-xs font-semibold text-muted-foreground">Type, description and priority</p>
+                  <p className="text-xs font-semibold text-muted-foreground">Type & description</p>
                 </div>
               </div>
 
@@ -570,28 +598,7 @@ export default function CreateComplaintPage() {
                   {errors.description && <p className="text-destructive text-xs font-bold mt-1.5 ml-1">{errors.description}</p>}
                 </div>
 
-                <div>
-                  <label className="block text-xs font-bold text-muted-foreground tracking-wider mb-3 uppercase">Priority</label>
-                  <div className="flex gap-3">
-                    {PRIORITIES.map(p => {
-                      const isSelected = form.priority === p.value;
-                      const Icon = p.icon;
-                      return (
-                        <button
-                          key={p.value}
-                          type="button"
-                          onClick={() => updateField("priority", p.value)}
-                          className={`flex-1 flex flex-col items-center gap-2 py-4 border-2 rounded-2xl transition-all duration-200 ${
-                            isSelected ? `${p.bg} ${p.border} ${p.color} ring-4 ring-${p.color.split('-')[1]}/10` : 'border-border bg-card text-muted-foreground hover:bg-muted/50'
-                          }`}
-                        >
-                          <Icon className="w-6 h-6" />
-                          <span className="text-xs font-extrabold">{p.label}</span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
+
 
                 <div>
                   <label className="block text-xs font-bold text-muted-foreground tracking-wider mb-2 uppercase">Upload Photos (Optional)</label>
@@ -836,7 +843,6 @@ export default function CreateComplaintPage() {
                 <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-3">Summary</p>
                 <div className="space-y-2 text-sm font-medium">
                     <div className="flex justify-between"><span className="text-muted-foreground">Type:</span> <span className="text-foreground">{COMPLAINT_TYPES.find(t=>t.value===form.complaint_type)?.label}</span></div>
-                    <div className="flex justify-between"><span className="text-muted-foreground">Priority:</span> <span className="text-foreground">{form.priority}</span></div>
                     <div className="flex justify-between"><span className="text-muted-foreground">District:</span> <span className="text-foreground truncate ml-4">{districtName}</span></div>
                     <div className="flex justify-between"><span className="text-muted-foreground">Ward:</span> <span className="text-foreground truncate ml-4">{wards.find((w:any)=>(w._id || w.id)===form.ward_id)?.ward_name}</span></div>
                    {selectedImages.length > 0 && (
@@ -1066,7 +1072,7 @@ export default function CreateComplaintPage() {
                 </div>
                 <h3 className="text-2xl font-black text-foreground mb-2">⚠ AI Verification Unavailable</h3>
                 <p className="text-sm text-muted-foreground font-medium mb-6">
-                  Unable to verify the uploaded image at the moment. Please try again later.
+                  {aiVerificationError || "Unable to verify the uploaded image at the moment. Please try again later."}
                 </p>
                 <button
                   type="button"

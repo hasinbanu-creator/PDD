@@ -150,16 +150,16 @@ function StatusBadge({ status }) {
   );
 }
 
-function PriorityBadge({ priority, aiPriority, finalPriority: passedFinal }) {
-  const finalPriority = passedFinal || aiPriority?.priority || priority || "Medium";
+function PriorityBadge({ priority, aiPriority }) {
+  const finalPriority = aiPriority?.priority || priority || "Unknown";
   const rawPriority = String(finalPriority).toLowerCase();
   
   const isHigh = rawPriority === "high";
   const isMed = rawPriority === "medium";
   const isLow = rawPriority === "low";
   
-  const label = isHigh ? "🔴 High" : isMed ? "🟡 Medium" : isLow ? "🟢 Low" : finalPriority;
-  const cfg = PRIORITY_CONFIG[rawPriority] || PRIORITY_CONFIG.medium;
+  const label = isHigh ? "🔴 High" : isMed ? "🟡 Medium" : isLow ? "🟢 Low" : "⚪ Unknown";
+  const cfg = PRIORITY_CONFIG[rawPriority] || { color: "#6B7280", bg: "#F3F4F6" };
   return (
     <View style={[styles.badge, { backgroundColor: cfg.bg, borderColor: "transparent" }]}>
       <Icon name={cfg.icon} size={13} color={cfg.color} />
@@ -668,7 +668,7 @@ export const ComplaintDetailScreen = ({ route, navigation }) => {
             </View>
             <View style={styles.heroBottom}>
               <StatusBadge status={complaint?.status} />
-              <PriorityBadge priority={complaint?.priority} aiPriority={complaint?.ai?.priority_prediction || complaint?.ai_priority} finalPriority={complaint?.final_priority} />
+              <PriorityBadge priority={complaint?.priority} aiPriority={complaint?.ai_priority} />
               {complaint?.created_at && (
                 <Text style={styles.heroDate}>{formatDate(complaint.created_at)}</Text>
               )}
@@ -685,19 +685,28 @@ export const ComplaintDetailScreen = ({ route, navigation }) => {
             <InfoRow icon="map-marker-outline"    label="Ward"        value={resolvedWardName} />
             <InfoRow icon="home-outline"          label="Address"     value={complaint?.address || "Not Available"} />
             <InfoRow icon="home-map-marker"       label="Landmark"    value={complaint?.landmark || "Not Available"} />
-            <InfoRow icon="account-group-outline"  label="Supported By" value={`${complaint?.support_count || 0} Citizens`} />
+            {!isInspector && <InfoRow icon="account-group-outline"  label="Supported By" value={`${complaint?.support_count || 0} Citizens`} />}
             <InfoRow icon="identifier"            label="Complaint ID" value={getCleanId(complaint)} />
             <InfoRow icon="crosshairs-gps"        label="Coordinates"
               value={complaint?.latitude && complaint?.longitude
                 ? `${complaint.latitude}, ${complaint.longitude}` : null} />
 
             {(() => {
-              const pred = complaint?.ai?.priority_prediction || complaint?.ai_priority;
-              if (!pred) return null;
-
-              const rawPriority = (pred.priority || "Medium").toUpperCase();
+              const pred = complaint?.ai_priority;
+              
+              const rawPriority = pred?.priority 
+                ? String(pred.priority).toUpperCase() 
+                : "UNKNOWN";
+              
               const emojiPriority = rawPriority === "HIGH" ? "🔴 High" :
-                                    rawPriority === "MEDIUM" ? "🟡 Medium" : "🟢 Low";
+                                    rawPriority === "MEDIUM" ? "🟡 Medium" :
+                                    rawPriority === "LOW" ? "🟢 Low" : "⚪ Unknown";
+              
+              const confidenceText = pred && pred.confidence !== undefined 
+                ? `${pred.confidence}%` 
+                : "--";
+              
+              const reasonText = pred?.reason || "AI analysis unavailable.";
 
               return (
                 <View style={{ borderTopWidth: 1, borderTopColor: "#E5E7EB", paddingTop: SPACING.md, marginTop: SPACING.md }}>
@@ -708,18 +717,14 @@ export const ComplaintDetailScreen = ({ route, navigation }) => {
                       <Text style={{ fontWeight: "bold", width: 100, color: "#64748B", fontSize: FONT_SIZES.sm }}>AI Priority</Text>
                       <Text style={{ fontWeight: "800", color: "#1F2937", fontSize: FONT_SIZES.sm }}>{emojiPriority}</Text>
                     </View>
-                    {isInspector && pred.confidence !== undefined && (
-                      <View style={{ flexDirection: "row", alignItems: "center" }}>
-                        <Text style={{ fontWeight: "bold", width: 100, color: "#64748B", fontSize: FONT_SIZES.sm }}>Confidence</Text>
-                        <Text style={{ fontWeight: "600", color: "#1F2937", fontSize: FONT_SIZES.sm }}>{pred.confidence}%</Text>
-                      </View>
-                    )}
-                    {pred.reason && (
-                      <View style={{ flexDirection: "row", alignItems: "flex-start", marginTop: 2 }}>
-                        <Text style={{ fontWeight: "bold", width: 100, color: "#64748B", fontSize: FONT_SIZES.sm }}>Reason</Text>
-                        <Text style={{ fontWeight: "600", color: "#1F2937", fontSize: FONT_SIZES.sm, flex: 1 }}>{pred.reason}</Text>
-                      </View>
-                    )}
+                    <View style={{ flexDirection: "row", alignItems: "center" }}>
+                      <Text style={{ fontWeight: "bold", width: 100, color: "#64748B", fontSize: FONT_SIZES.sm }}>Confidence</Text>
+                      <Text style={{ fontWeight: "600", color: "#1F2937", fontSize: FONT_SIZES.sm }}>{confidenceText}</Text>
+                    </View>
+                    <View style={{ flexDirection: "row", alignItems: "flex-start", marginTop: 2 }}>
+                      <Text style={{ fontWeight: "bold", width: 100, color: "#64748B", fontSize: FONT_SIZES.sm }}>Reason</Text>
+                      <Text style={{ fontWeight: "600", color: "#1F2937", fontSize: FONT_SIZES.sm, flex: 1 }}>{reasonText}</Text>
+                    </View>
                   </View>
                 </View>
               );
@@ -831,73 +836,6 @@ export const ComplaintDetailScreen = ({ route, navigation }) => {
           {isInspector && complaint && (
             <View style={styles.card}>
               <SectionTitle title="Inspector Actions" icon="shield-check" />
-              
-              {/* Priority Override Panel */}
-              <View style={{ borderBottomWidth: 1, borderBottomColor: "#F3F4F6", paddingBottom: SPACING.md, marginBottom: SPACING.md }}>
-                <Text style={{ fontSize: FONT_SIZES.sm, fontWeight: "700", color: COLORS.textDark, marginBottom: 8 }}>Override Priority:</Text>
-                <View style={{ flexDirection: "row", gap: 10, marginBottom: 12 }}>
-                  {["Low", "Medium", "High"].map((level) => {
-                    const currentFinal = complaint.final_priority || complaint.ai?.priority_prediction?.priority || complaint.priority || "Medium";
-                    const isSelected = String(currentFinal).toLowerCase() === level.toLowerCase();
-                    return (
-                      <TouchableOpacity
-                        key={level}
-                        disabled={loading}
-                        onPress={() => handlePriorityOverride(level)}
-                        style={{
-                          flex: 1,
-                          paddingVertical: 8,
-                          borderRadius: 8,
-                          alignItems: "center",
-                          justifyContent: "center",
-                          borderWidth: 1,
-                          borderColor: isSelected
-                            ? level === "High"
-                              ? "#EF4444"
-                              : level === "Medium"
-                              ? "#F59E0B"
-                              : "#10B981"
-                            : "#E5E7EB",
-                          backgroundColor: isSelected
-                            ? level === "High"
-                              ? "#FEF2F2"
-                              : level === "Medium"
-                              ? "#FFFBEB"
-                              : "#ECFDF5"
-                            : "#FFFFFF",
-                        }}
-                      >
-                        <Text
-                          style={{
-                            fontSize: FONT_SIZES.xs,
-                            fontWeight: "800",
-                            color: isSelected
-                              ? level === "High"
-                                ? "#EF4444"
-                                : level === "Medium"
-                                ? "#D97706"
-                                : "#059669"
-                              : "#4B5563",
-                          }}
-                        >
-                          {level}
-                        </Text>
-                      </TouchableOpacity>
-                    );
-                  })}
-                </View>
-                
-                {complaint.priority_updated_by && (
-                  <View style={{ backgroundColor: "#F9FAFB", padding: 8, borderRadius: 8, borderWidth: 1, borderColor: "#E5E7EB", marginTop: 4 }}>
-                    <Text style={{ fontSize: 11, fontWeight: "600", color: "#4B5563" }}>
-                      Priority updated by: <Text style={{ fontWeight: "800", color: "#1F2937" }}>{complaint.priority_updated_by}</Text>
-                    </Text>
-                    <Text style={{ fontSize: 10, color: "#9CA3AF", marginTop: 2 }}>
-                      At: {new Date(complaint.priority_updated_at).toLocaleString()}
-                    </Text>
-                  </View>
-                )}
-              </View>
               {["new", "open", "pending"].includes(normalizedStatus.toLowerCase()) && (
                 <View style={{ flexDirection: "row", gap: SPACING.md }}>
                   <TouchableOpacity style={[styles.actionBtn, { flex: 1, backgroundColor: "#059669" }]} onPress={handleAccept} disabled={submitting}>

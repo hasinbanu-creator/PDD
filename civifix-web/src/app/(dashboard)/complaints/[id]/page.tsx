@@ -76,6 +76,7 @@ const PRIORITY_CONFIG: Record<string, { color: string, bg: string, label: string
   MEDIUM: { color: "text-accent", bg: "bg-accent/10", label: "Medium" },
   HIGH: { color: "text-destructive", bg: "bg-destructive/10", label: "High" },
   CRITICAL: { color: "text-destructive", bg: "bg-destructive/20", label: "Critical" },
+  UNKNOWN: { color: "text-slate-500", bg: "bg-slate-100", label: "Unknown" },
 };
 
 const TYPE_META: Record<string, { icon: any, color: string, bg: string, title: string }> = {
@@ -330,8 +331,10 @@ export default function ComplaintDetailsPage() {
 
   const typeMeta = TYPE_META[complaint.complaint_type] || TYPE_META.OTHER;
   const statusCfg = STATUS_CONFIG[complaint.status] || STATUS_CONFIG.PENDING;
-  const rawFinalPriority = (complaint.final_priority || complaint.priority || "MEDIUM").toUpperCase();
-  const priorityCfg = PRIORITY_CONFIG[rawFinalPriority] || PRIORITY_CONFIG.MEDIUM;
+  const rawFinalPriority = complaint.ai_priority?.priority 
+    ? String(complaint.ai_priority.priority).toUpperCase()
+    : (complaint.priority ? String(complaint.priority).toUpperCase() : "UNKNOWN");
+  const priorityCfg = PRIORITY_CONFIG[rawFinalPriority] || PRIORITY_CONFIG.UNKNOWN;
   const StatusIcon = statusCfg.icon;
   const TypeIcon = typeMeta.icon;
 
@@ -381,7 +384,8 @@ export default function ComplaintDetailsPage() {
             <div className={`flex items-center gap-2 px-4 py-2 rounded-xl border border-slate-200/60 ${priorityCfg.bg}`}>
               <span className={`text-sm font-bold ${priorityCfg.color}`}>
                 {rawFinalPriority === "HIGH" ? "🔴 High" :
-                 rawFinalPriority === "MEDIUM" ? "🟡 Medium" : "🟢 Low"} Priority
+                 rawFinalPriority === "MEDIUM" ? "🟡 Medium" :
+                 rawFinalPriority === "LOW" ? "🟢 Low" : "⚪ Unknown"} Priority
               </span>
             </div>
             <div className="ml-auto text-sm font-bold text-muted-foreground flex items-center gap-2 bg-muted/50 px-4 py-2 rounded-xl border border-border/50">
@@ -430,10 +434,12 @@ export default function ComplaintDetailsPage() {
                   <span className="font-bold text-muted-foreground w-28 shrink-0">Landmark :</span>
                   <span className="font-semibold text-foreground">{complaint.landmark || "Not Available"}</span>
                 </div>
-                <div className="flex gap-2">
-                  <span className="font-bold text-muted-foreground w-28 shrink-0">Supported By :</span>
-                  <span className="font-extrabold text-primary">{complaint.support_count || 0} Citizens</span>
-                </div>
+                {user?.role !== "INSPECTOR" && (
+                  <div className="flex gap-2">
+                    <span className="font-bold text-muted-foreground w-28 shrink-0">Supported By :</span>
+                    <span className="font-extrabold text-primary">{complaint.support_count || 0} Citizens</span>
+                  </div>
+                )}
                 <div className="flex gap-2">
                   <span className="font-bold text-muted-foreground w-28 shrink-0">Complaint ID :</span>
                   <span className="font-semibold text-foreground">
@@ -451,13 +457,21 @@ export default function ComplaintDetailsPage() {
           />
 
           {(() => {
-            const pred = complaint.ai?.priority_prediction || complaint.ai_priority;
-            if (!pred) return null;
+            const pred = complaint.ai_priority;
             
-            const rawPriority = (pred.priority || "Medium").toUpperCase();
+            const rawPriority = pred?.priority 
+              ? String(pred.priority).toUpperCase() 
+              : "UNKNOWN";
+            
             const emojiPriority = rawPriority === "HIGH" ? "🔴 High" :
-                                  rawPriority === "MEDIUM" ? "🟡 Medium" : "🟢 Low";
-            const isInspector = user?.role === "INSPECTOR";
+                                  rawPriority === "MEDIUM" ? "🟡 Medium" :
+                                  rawPriority === "LOW" ? "🟢 Low" : "⚪ Unknown";
+            
+            const confidenceText = pred && pred.confidence !== undefined 
+              ? `${pred.confidence}%` 
+              : "--";
+            
+            const reasonText = pred?.reason || "AI analysis unavailable.";
 
             return (
               <div className="flex gap-4 py-4 border-b border-slate-200/60 last:border-none">
@@ -471,18 +485,14 @@ export default function ComplaintDetailsPage() {
                       <span className="font-bold text-muted-foreground w-28 shrink-0">AI Priority :</span>
                       <span className="font-semibold text-foreground">{emojiPriority}</span>
                     </div>
-                    {isInspector && pred.confidence !== undefined && (
-                      <div className="flex gap-2">
-                        <span className="font-bold text-muted-foreground w-28 shrink-0">Confidence :</span>
-                        <span className="font-semibold text-foreground">{pred.confidence}%</span>
-                      </div>
-                    )}
-                    {pred.reason && (
-                      <div className="flex gap-2">
-                        <span className="font-bold text-muted-foreground w-28 shrink-0">Reason :</span>
-                        <span className="font-semibold text-foreground">{pred.reason}</span>
-                      </div>
-                    )}
+                    <div className="flex gap-2">
+                      <span className="font-bold text-muted-foreground w-28 shrink-0">Confidence :</span>
+                      <span className="font-semibold text-foreground">{confidenceText}</span>
+                    </div>
+                    <div className="flex gap-2">
+                      <span className="font-bold text-muted-foreground w-28 shrink-0">Reason :</span>
+                      <span className="font-semibold text-foreground">{reasonText}</span>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -693,49 +703,7 @@ export default function ComplaintDetailsPage() {
         {/* Inspector Actions — simplified workflow */}
         {user?.role === "INSPECTOR" && (
           <>
-            {/* Priority Override Section for Inspectors */}
-            <div className="bg-white rounded-[2rem] p-6 shadow-sm border border-slate-200 mb-6">
-              <div className="flex items-center gap-3 mb-6 pb-4 border-b border-slate-100">
-                <div className="w-10 h-10 rounded-xl bg-purple-500/10 flex items-center justify-center">
-                  <Sparkles className="w-5 h-5 text-purple-600" />
-                </div>
-                <h3 className="text-lg font-black text-slate-800">Priority Override</h3>
-              </div>
-              <div className="flex flex-col gap-4">
-                <div className="flex gap-2 items-center">
-                  <span className="text-sm font-semibold text-slate-600 mr-2">Override Priority:</span>
-                  {["Low", "Medium", "High"].map((level) => {
-                    const currentFinal = complaint.final_priority || complaint.ai?.priority_prediction?.priority || complaint.priority || "Medium";
-                    const isSelected = String(currentFinal).toLowerCase() === level.toLowerCase();
-                    return (
-                      <button
-                        key={level}
-                        disabled={updating}
-                        onClick={() => handlePriorityOverride(level)}
-                        className={`px-4 py-2 rounded-xl text-sm font-bold transition-all border ${
-                          isSelected
-                            ? level === "High"
-                              ? "bg-red-500 text-white border-red-500 shadow-md shadow-red-500/20 animate-none"
-                              : level === "Medium"
-                              ? "bg-amber-500 text-white border-amber-500 shadow-md shadow-amber-500/20 animate-none"
-                              : "bg-emerald-600 text-white border-emerald-600 shadow-md shadow-emerald-600/20 animate-none"
-                            : "bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100"
-                        }`}
-                      >
-                        {level}
-                      </button>
-                    );
-                  })}
-                </div>
-                
-                {complaint.priority_updated_by && (
-                  <div className="text-xs text-slate-500 bg-slate-50 rounded-xl p-3 border border-slate-150">
-                    <p className="font-semibold text-slate-600">Priority updated by: <span className="font-bold text-slate-800">{complaint.priority_updated_by}</span></p>
-                    <p className="mt-0.5 text-slate-400">At: {new Date(complaint.priority_updated_at).toLocaleString()}</p>
-                  </div>
-                )}
-              </div>
-            </div>
+
             {/* OPEN: Start Work + Reject */}
             {complaint.status === "OPEN" && (
               <div className="bg-white rounded-[2rem] p-6 shadow-sm border border-slate-200 mb-6">

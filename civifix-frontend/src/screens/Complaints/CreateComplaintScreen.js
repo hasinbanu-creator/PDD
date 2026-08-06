@@ -155,57 +155,47 @@ const SuccessModal = ({ visible, complaint, onView, onDone }) => {
             <View style={ss.pulseRing} />
           </View>
 
-          <Text style={ss.successTitle}>Complaint Submitted!</Text>
-          <Text style={ss.successSub}>
-            Your complaint has been registered. Our team will review and resolve it within{" "}
-            <Text style={ss.successHighlight}>48 hours</Text>.
-          </Text>
+          <Text style={ss.successTitle}>Complaint Submitted Successfully</Text>
+
+          <View style={ss.aiAnalysisContainer}>
+            <View style={ss.aiHeaderRow}>
+              <Text style={ss.aiSectionTitle}>AI Analysis</Text>
+              <Text style={ss.verifiedBadge}>✅ Image Verified</Text>
+            </View>
+            
+            {(() => {
+              const aiPriorityObj = complaint?.ai_priority || complaint?.ai?.priority_prediction;
+              const rawPriority = aiPriorityObj?.priority || complaint?.final_priority || complaint?.priority || "Medium";
+              const confidence = aiPriorityObj?.confidence || 0;
+              const reason = aiPriorityObj?.reason || "Priority predicted by AI.";
+              
+              const emojiPriority = String(rawPriority).toUpperCase() === "HIGH" ? "🔴 High" :
+                                    String(rawPriority).toUpperCase() === "MEDIUM" ? "🟡 Medium" : "🟢 Low";
+              
+              return (
+                <View style={ss.aiDetails}>
+                  <View style={ss.aiFieldBlock}>
+                    <Text style={ss.aiFieldLabel}>Priority</Text>
+                    <Text style={ss.aiFieldValue}>{emojiPriority}</Text>
+                  </View>
+                  
+                  <View style={ss.aiFieldBlock}>
+                    <Text style={ss.aiFieldLabel}>Reason</Text>
+                    <Text style={ss.aiFieldValue}>{reason}</Text>
+                  </View>
+                  
+                  <View style={ss.aiFieldBlock}>
+                    <Text style={ss.aiFieldLabel}>Confidence</Text>
+                    <Text style={ss.aiFieldValue}>{confidence}%</Text>
+                  </View>
+                </View>
+              );
+            })()}
+          </View>
 
           <View style={ss.idPill}>
             <Icon name="identifier" size={14} color={PRIMARY} />
-            <Text style={ss.idText}>{complaintId}</Text>
-          </View>
-
-          {(() => {
-            const rawPriority = (complaint?.ai?.priority_prediction?.priority || complaint?.ai_priority?.priority || complaint?.final_priority || complaint?.priority || "Medium");
-            const emojiPriority = String(rawPriority).toUpperCase() === "HIGH" ? "🔴 High" :
-                                  String(rawPriority).toUpperCase() === "MEDIUM" ? "🟡 Medium" : "🟢 Low";
-            return (
-              <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", marginTop: 8, gap: 6 }}>
-                <Text style={{ fontSize: 13, fontWeight: "bold", color: "#64748B" }}>AI Priority:</Text>
-                <Text style={{ fontSize: 13, fontWeight: "800", color: "#1F2937" }}>{emojiPriority}</Text>
-              </View>
-            );
-          })()}
-
-          <View style={ss.timelineStrip}>
-            {[
-              { icon: "check-circle",           label: "Submitted",   color: "#059669", done: true  },
-              { icon: "account-search-outline", label: "Review",      color: PRIMARY,   done: false },
-              { icon: "progress-wrench",        label: "In Progress", color: "#D97706", done: false },
-              { icon: "flag-checkered",         label: "Resolved",    color: "#059669", done: false },
-            ].map((step, i, arr) => (
-              <React.Fragment key={step.label}>
-                <View style={ss.timelineStep}>
-                  <View style={[ss.timelineDot, step.done ? { backgroundColor: step.color } : ss.timelineDotInactive]}>
-                    <Icon name={step.icon} size={13} color={step.done ? "#fff" : GRAY_400} />
-                  </View>
-                  <Text style={[ss.timelineLabel, step.done && { color: step.color, fontWeight: "700" }]}>
-                    {step.label}
-                  </Text>
-                </View>
-                {i < arr.length - 1 && (
-                  <View style={[ss.timelineConnector, step.done && { backgroundColor: step.color }]} />
-                )}
-              </React.Fragment>
-            ))}
-          </View>
-
-          <View style={ss.timeBadge}>
-            <Icon name="clock-fast" size={16} color="#D97706" />
-            <Text style={ss.timeBadgeText}>
-              Expected resolution within <Text style={{ fontWeight: "800" }}>48 hours</Text>
-            </Text>
+            <Text style={ss.idText}>Complaint ID: {complaintId}</Text>
           </View>
 
           <View style={ss.actionRow}>
@@ -355,10 +345,12 @@ export const CreateComplaintScreen = ({ route, navigation }) => {
   const [verifying, setVerifying] = useState(false);
   const [aiVerifiedPayload, setAiVerifiedPayload] = useState(null);
   const [verificationPopup, setVerificationPopup] = useState(null);
+  const [aiVerificationError, setAiVerificationError] = useState(null);
 
   const verifyImage = async (imageUri) => {
     setVerifying(true);
     setVerificationPopup("loading");
+    setAiVerificationError(null);
     try {
       console.log("[CreateComplaintScreen] Sending image for verification:", imageUri);
       const result = await authService.verifyImage(imageUri);
@@ -367,6 +359,7 @@ export const CreateComplaintScreen = ({ route, navigation }) => {
       setAiVerifiedPayload(result);
       
       if (!result) {
+        setAiVerificationError("No verification data received from server.");
         setVerificationPopup("unavailable");
         return;
       }
@@ -392,6 +385,18 @@ export const CreateComplaintScreen = ({ route, navigation }) => {
       }
     } catch (err) {
       console.error("[CreateComplaintScreen] Image verification failed:", err);
+      let errMsg = "Unable to verify the uploaded image at the moment. Please try again later.";
+      if (err?.response?.data) {
+        const data = err.response.data;
+        if (data.error) {
+          errMsg = data.error;
+        } else if (data.detail) {
+          errMsg = typeof data.detail === "string" ? data.detail : JSON.stringify(data.detail);
+        }
+      } else if (err?.message) {
+        errMsg = err.message;
+      }
+      setAiVerificationError(errMsg);
       setVerificationPopup("unavailable");
     } finally {
       setVerifying(false);
@@ -755,7 +760,7 @@ export const CreateComplaintScreen = ({ route, navigation }) => {
         >
           {/* ── Section 1: What's the issue ── */}
           <FormCard>
-            <SectionHeader icon="alert-circle-outline" title="What's the issue?" subtitle="Type, description and priority" />
+            <SectionHeader icon="alert-circle-outline" title="What's the issue?" subtitle="Type & description" />
 
             <Dropdown
               label="Complaint Type"
@@ -776,8 +781,6 @@ export const CreateComplaintScreen = ({ route, navigation }) => {
               numberOfLines={4}
               error={errors.description}
             />
-
-            <PrioritySelector value={form.priority} onChange={(v) => updateField("priority", v)} />
           </FormCard>
 
           {/* ── Section 2: Where is it ── */}
@@ -937,11 +940,6 @@ export const CreateComplaintScreen = ({ route, navigation }) => {
                   {form.ward_id ? `  ·  ${wardItems.find((w) => w.value === form.ward_id)?.label ?? "Ward"}` : ""}
                 </Text>
               </View>
-              {selectedPri && (
-                <View style={[styles.summaryPriBadge, { backgroundColor: selectedPri.bg }]}>
-                  <Text style={[styles.summaryPriText, { color: selectedPri.color }]}>{form.priority}</Text>
-                </View>
-              )}
             </View>
           )}
 
@@ -1146,7 +1144,7 @@ export const CreateComplaintScreen = ({ route, navigation }) => {
                 </View>
                 <Text style={{ fontSize: 18, fontWeight: "900", color: "#1F2937", marginBottom: 6, textAlign: "center" }}>⚠ AI Verification Unavailable</Text>
                 <Text style={{ fontSize: 13, color: "#6B7280", textAlign: "center", marginBottom: 20 }}>
-                  Unable to verify the uploaded image at the moment. Please try again later.
+                  {aiVerificationError || "Unable to verify the uploaded image at the moment. Please try again later."}
                 </Text>
                 <TouchableOpacity
                   style={{ width: "100%", paddingVertical: 12, borderRadius: 10, backgroundColor: PRIMARY, alignItems: "center" }}
@@ -1366,14 +1364,56 @@ const ss = StyleSheet.create({
   successHighlight:   { color: PRIMARY, fontWeight: "800" },
   idPill:             { flexDirection: "row", alignItems: "center", gap: SPACING.sm, backgroundColor: PRIMARY_LIGHT, borderRadius: 20, paddingHorizontal: SPACING.md, paddingVertical: SPACING.xs, borderWidth: 1, borderColor: "#BFDBFE", marginBottom: SPACING.xl },
   idText:             { color: PRIMARY, fontSize: 12, fontWeight: "700" },
-  timelineStrip:      { flexDirection: "row", alignItems: "center", width: "100%", marginBottom: SPACING.lg },
-  timelineStep:       { alignItems: "center", gap: SPACING.xs },
-  timelineDot:        { width: 28, height: 28, borderRadius: 14, alignItems: "center", justifyContent: "center" },
-  timelineDotInactive:{ backgroundColor: GRAY_100 },
-  timelineLabel:      { fontSize: 9, color: GRAY_400, fontWeight: "600", textAlign: "center" },
-  timelineConnector:  { flex: 1, height: 2, backgroundColor: GRAY_200, marginBottom: SPACING.lg },
-  timeBadge:          { flexDirection: "row", alignItems: "center", gap: SPACING.sm, backgroundColor: "#FFFBEB", borderRadius: 12, paddingVertical: SPACING.md, paddingHorizontal: SPACING.md, borderWidth: 1, borderColor: "#FDE68A", width: "100%", marginBottom: SPACING.xl },
-  timeBadgeText:      { color: "#92400E", fontSize: 13 },
+  aiAnalysisContainer: {
+    backgroundColor: GRAY_50,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: GRAY_200,
+    padding: SPACING.md,
+    width: "100%",
+    marginBottom: SPACING.lg,
+    alignSelf: "stretch",
+  },
+  aiHeaderRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    borderBottomWidth: 1,
+    borderBottomColor: GRAY_200,
+    paddingBottom: SPACING.sm,
+    marginBottom: SPACING.sm,
+  },
+  aiSectionTitle: {
+    fontSize: 12,
+    fontWeight: "800",
+    color: GRAY_600,
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+  },
+  verifiedBadge: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: "#059669",
+  },
+  aiDetails: {
+    gap: SPACING.sm,
+  },
+  aiFieldBlock: {
+    gap: 2,
+  },
+  aiFieldLabel: {
+    fontSize: 10,
+    fontWeight: "700",
+    color: GRAY_400,
+    textTransform: "uppercase",
+    letterSpacing: 0.2,
+  },
+  aiFieldValue: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: GRAY_800,
+    lineHeight: 18,
+  },
   actionRow:          { flexDirection: "row", gap: SPACING.md, width: "100%" },
   btnSecondary:       { flex: 1, paddingVertical: SPACING.md, borderRadius: 12, borderWidth: 1.5, borderColor: GRAY_200, alignItems: "center", justifyContent: "center" },
   btnSecondaryText:   { color: GRAY_600, fontSize: 14, fontWeight: "700" },

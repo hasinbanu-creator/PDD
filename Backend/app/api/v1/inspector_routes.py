@@ -89,17 +89,20 @@ async def get_inspector_dashboard(current_user: Dict[str, Any] = Depends(get_cur
             {"ward_id": ward_id, "status": {"$nin": ["RESOLVED", "CLOSED", "REJECTED"]}}
         ).to_list(length=50)
 
-        priority_map = {"CRITICAL": 0, "HIGH": 0, "MEDIUM": 1, "LOW": 2}
+        priority_map = {"CRITICAL": 0, "HIGH": 0, "MEDIUM": 1, "LOW": 2, "UNKNOWN": 3}
         def get_sort_prio(c):
-            fp = c.get("final_priority")
-            if fp:
-                return priority_map.get(str(fp).upper(), 1)
-            p = c.get("priority", "MEDIUM")
-            return priority_map.get(str(p).upper(), 1)
+            ai_p = c.get("ai_priority", {})
+            if ai_p and isinstance(ai_p, dict) and "priority" in ai_p:
+                p = ai_p.get("priority")
+            else:
+                p = c.get("priority", "MEDIUM")
+            p_upper = str(p).upper() if p else "MEDIUM"
+            if p_upper == "UNKNOWN":
+                return 3
+            return priority_map.get(p_upper, 2)
 
         recent.sort(key=lambda c: (
             get_sort_prio(c),
-            -c.get("support_count", 0),
             -c.get("created_at").timestamp() if c.get("created_at") else 0
         ))
         recent = recent[:5]
@@ -217,17 +220,20 @@ async def get_ward_complaints(
         # Fetch matching complaints to sort in python
         all_matches = await db.complaints.find(query).to_list(length=1000)
         
-        priority_map = {"CRITICAL": 0, "HIGH": 0, "MEDIUM": 1, "LOW": 2}
+        priority_map = {"CRITICAL": 0, "HIGH": 0, "MEDIUM": 1, "LOW": 2, "UNKNOWN": 3}
         def get_sort_prio(c):
-            fp = c.get("final_priority")
-            if fp:
-                return priority_map.get(str(fp).upper(), 1)
-            p = c.get("priority", "MEDIUM")
-            return priority_map.get(str(p).upper(), 1)
+            ai_p = c.get("ai_priority", {})
+            if ai_p and isinstance(ai_p, dict) and "priority" in ai_p:
+                p = ai_p.get("priority")
+            else:
+                p = c.get("priority", "MEDIUM")
+            p_upper = str(p).upper() if p else "MEDIUM"
+            if p_upper == "UNKNOWN":
+                return 3
+            return priority_map.get(p_upper, 2)
 
         all_matches.sort(key=lambda c: (
             get_sort_prio(c),
-            -c.get("support_count", 0),
             -c.get("created_at").timestamp() if c.get("created_at") else 0
         ))
 

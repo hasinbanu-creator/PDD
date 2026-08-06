@@ -38,7 +38,29 @@ async def verify_complaint_image(image_bytes: bytes, mime_type: str) -> Dict[str
     # Log step 1: Image received, size, MIME type
     image_size = len(image_bytes)
     logger.info(f"[AI Image Verification] Image received. Size: {image_size} bytes, MIME type: {mime_type}")
-
+    # Check if the image is solid/blank or has no identifiable features using PIL
+    try:
+        from PIL import Image, ImageStat
+        import io
+        
+        img = Image.open(io.BytesIO(image_bytes))
+        gray_img = img.convert("L")
+        stat = ImageStat.Stat(gray_img)
+        
+        # If standard deviation of pixel values is less than 2.0, the image is featureless/blank
+        if stat.stddev[0] < 2.0:
+            logger.info(f"[AI Image Verification] Image detected as solid/blank/featureless (StdDev = {stat.stddev[0]:.2f}). Skipping Gemini API call.")
+            return {
+                "contains_civic_issue": False,
+                "predicted_category": "OTHER",
+                "confidence": 1.0,
+                "reason": "The uploaded image is blank, solid color, or has no identifiable visual features.",
+                "should_allow_submission": False,
+                "is_low_quality": True,
+                "api_status": "LOW_QUALITY"
+            }
+    except Exception as pil_err:
+        logger.warning(f"[AI Image Verification] PIL/ImageStat blank check failed (proceeding to Gemini): {pil_err}")
     try:
         import os
         from google import genai

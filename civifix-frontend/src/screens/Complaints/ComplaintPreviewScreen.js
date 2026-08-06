@@ -156,9 +156,6 @@ const ComplaintPreviewScreen = ({ route, navigation }) => {
               </View>
               <Text style={styles.title}>{selectedType?.label}</Text>
             </View>
-            <View style={[styles.priorityBadge, { backgroundColor: selectedPri?.bg }]}>
-              <Text style={[styles.priorityText, { color: selectedPri?.color }]}>{form.priority}</Text>
-            </View>
           </View>
           <Text style={styles.description}>{form.description}</Text>
         </View>

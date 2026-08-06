@@ -180,17 +180,20 @@ class DashboardService:
             complaints = await complaints_collection.find(query)\
                 .to_list(length=100)
 
-            priority_map = {"CRITICAL": 0, "HIGH": 0, "MEDIUM": 1, "LOW": 2}
+            priority_map = {"CRITICAL": 0, "HIGH": 0, "MEDIUM": 1, "LOW": 2, "UNKNOWN": 3}
             def get_sort_prio(c):
-                fp = c.get("final_priority")
-                if fp:
-                    return priority_map.get(str(fp).upper(), 1)
-                p = c.get("priority", "MEDIUM")
-                return priority_map.get(str(p).upper(), 1)
+                ai_p = c.get("ai_priority", {})
+                if ai_p and isinstance(ai_p, dict) and "priority" in ai_p:
+                    p = ai_p.get("priority")
+                else:
+                    p = c.get("priority", "MEDIUM")
+                p_upper = str(p).upper() if p else "MEDIUM"
+                if p_upper == "UNKNOWN":
+                    return 3
+                return priority_map.get(p_upper, 2)
 
             complaints.sort(key=lambda c: (
                 get_sort_prio(c),
-                -c.get("support_count", 0),
                 -c.get("created_at").timestamp() if c.get("created_at") else 0
             ))
             complaints = complaints[:10]

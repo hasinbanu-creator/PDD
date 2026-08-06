@@ -40,15 +40,16 @@ async def verify_complaint_image(image_bytes: bytes, mime_type: str) -> Dict[str
     logger.info(f"[AI Image Verification] Image received. Size: {image_size} bytes, MIME type: {mime_type}")
 
     try:
-        client = get_gemini_client()
+        import os
+        from google import genai
+        api_key = getattr(settings, "GEMINI_API_KEY", None)
+        if not api_key:
+            api_key = os.getenv("GEMINI_API_KEY")
+        client = genai.Client(api_key=api_key)
     except Exception as init_err:
         tb = traceback.format_exc()
         logger.error(f"[AI Image Verification] Failed to initialize Gemini client:\n{tb}")
         return {**fallback, "api_status": "FAILED", "error_details": f"Failed to initialize Gemini client: {str(init_err)}"}
-
-    if not client:
-        logger.warning("[AI Image Verification] Gemini client is not available. Skipping AI verification.")
-        return fallback
 
     try:
         # Prepare the image part
@@ -67,26 +68,43 @@ async def verify_complaint_image(image_bytes: bytes, mime_type: str) -> Dict[str
             "4. Assess if the image is low quality: set is_low_quality to true if the image is too blurry, dark, low resolution, or unclear for verification, otherwise false."
         )
 
-        model_name = 'gemini-3.5-flash'
-        logger.info(f"[AI Image Verification] Preparing Gemini request. Model: {model_name}, Prompt length: {len(prompt)}")
+        models_to_try = [
+            'gemini-3.5-flash',
+            'gemini-3.6-flash',
+            'gemini-flash-latest',
+            'gemini-3.5-flash-lite',
+            'gemini-3.1-flash-lite'
+        ]
+        response = None
+        last_err = None
         
-        loop = asyncio.get_running_loop()
-        
-        def call_gemini():
-            return client.models.generate_content(
-                model=model_name,
-                contents=[image_part, prompt],
-                config=types.GenerateContentConfig(
-                    response_mime_type="application/json",
-                    response_schema=ImageVerificationResult,
-                ),
-            )
-
-        logger.info("[AI Image Verification] Sending request to Gemini...")
-        response = await asyncio.wait_for(
-            loop.run_in_executor(None, call_gemini),
-            timeout=30.0
-        )
+        for model_name in models_to_try:
+            try:
+                logger.info(f"[AI Image Verification] Preparing Gemini request. Model: {model_name}, Prompt length: {len(prompt)}")
+                logger.info(f"[AI Image Verification] Sending async request to Gemini using model {model_name}...")
+                
+                response = await asyncio.wait_for(
+                    client.aio.models.generate_content(
+                        model=model_name,
+                        contents=[image_part, prompt],
+                        config=types.GenerateContentConfig(
+                            response_mime_type="application/json",
+                            response_schema=ImageVerificationResult,
+                        ),
+                    ),
+                    timeout=30.0
+                )
+                logger.info(f"[AI Image Verification] Gemini request succeeded with model: {model_name}")
+                break
+            except Exception as model_err:
+                last_err = model_err
+                tb = traceback.format_exc()
+                logger.warning(f"[AI Image Verification] Model {model_name} failed. Traceback:\n{tb}")
+                
+        if response is None:
+            if last_err:
+                raise last_err
+            raise Exception("All Gemini models failed to generate content.")
         
         # Parse output
         result_text = response.text

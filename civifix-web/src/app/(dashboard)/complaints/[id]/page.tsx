@@ -40,11 +40,16 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/context/auth-context";
 import api from "@/lib/api";
-
-const getCleanDistrict = (c: any) => {
+const getCleanDistrict = (c: any, districts?: any[]) => {
   if (!c) return "Not Available";
   const val = c.districtName || c.district_name || c.district?.name || c.district;
-  if (typeof val === "string" && val.trim() && !/^[0-9a-fA-F]{24}$/.test(val)) return val;
+  if (typeof val === "string" && val.trim()) {
+    if (/^[0-9a-fA-F]{24}$/.test(val) && districts) {
+      const match = districts.find(d => (d._id || d.id) === val);
+      return match ? match.name : "Not Available";
+    }
+    return val;
+  }
   return "Not Available";
 };
 
@@ -133,10 +138,8 @@ const getFinalImageUri = (img: string) => {
     finalUri = `${base}${path}`;
   }
   return finalUri;
-};
-
-export default function ComplaintDetailsPage() {
-  const { user } = useAuth();
+};export default function ComplaintDetailsPage() {
+  const { user, districtsList } = useAuth();
   const isPrivileged = user?.role === "INSPECTOR" || user?.role === "WORKER" || user?.role === "SUPER_ADMIN" || user?.role === "DISTRICT_ADMIN";
   const isInspectorOrWorker = user?.role === "INSPECTOR" || user?.role === "WORKER";
 
@@ -420,9 +423,8 @@ export default function ComplaintDetailsPage() {
                 </div>
                 <div className="flex gap-2">
                   <span className="font-bold text-muted-foreground w-28 shrink-0">District :</span>
-                  <span className="font-semibold text-foreground">{getCleanDistrict(complaint)}</span>
-                </div>
-                <div className="flex gap-2">
+                  <span className="font-semibold text-foreground">{getCleanDistrict(complaint, districtsList)}</span>
+                </div>                <div className="flex gap-2">
                   <span className="font-bold text-muted-foreground w-28 shrink-0">Ward :</span>
                   <span className="font-semibold text-foreground">{getCleanWard(complaint)}</span>
                 </div>

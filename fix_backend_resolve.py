@@ -137,4 +137,3 @@ content = content.replace(resolve_old, resolve_new)
 
 with open("Backend/app/api/v1/inspector_routes.py", "w") as f:
     f.write(content)
-

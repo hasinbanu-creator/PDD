@@ -362,6 +362,11 @@ export const authService = {
     const res = await api.put(`/inspector/complaints/${complaintId}/resolve`);
     return unwrapResponse(res);
   },
+
+  getDistricts: async (): Promise<any[]> => {
+    const res = await api.get("/admin/districts?active_only=false");
+    return unwrapResponse(res);
+  },
 };
 
 export default authService;

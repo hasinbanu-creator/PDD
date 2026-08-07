@@ -11,6 +11,7 @@ interface AuthContextType {
   userToken: string | null;
   user: UserProfile | null;
   error: string | null;
+  districtsList: any[];
   signIn: (email: string) => Promise<any>;
   signUp: (userData: any) => Promise<any>;
   verifyLogin: (email: string, otp: string) => Promise<UserSession>;
@@ -30,6 +31,33 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isSignout, setIsSignout] = useState<boolean>(false);
   const [error, setErrorState] = useState<string | null>(null);
+  const [districtsList, setDistrictsList] = useState<any[]>([]);
+
+  useEffect(() => {
+    authService.getDistricts()
+      .then(list => setDistrictsList(list))
+      .catch(err => console.warn("Failed to prefetch districts:", err));
+  }, []);
+
+  useEffect(() => {
+    if (user && districtsList.length > 0) {
+      const distVal = user.district;
+      if (distVal && typeof distVal === "string" && distVal.length === 24) {
+        const match = districtsList.find(d => (d._id || d.id) === distVal);
+        if (match && (!user.district_name || /^[0-9a-fA-F]{24}$/.test(user.district_name))) {
+          const updatedUser = {
+            ...user,
+            district_name: match.name,
+            districtName: match.name
+          };
+          setUser(updatedUser);
+          if (typeof window !== "undefined") {
+            localStorage.setItem("user", JSON.stringify(updatedUser));
+          }
+        }
+      }
+    }
+  }, [districtsList, user]);
 
   useEffect(() => {
     const bootstrapAsync = async () => {
@@ -185,6 +213,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         isLoading,
         isSignout,
         error,
+        districtsList,
         signIn,
         signUp,
         verifyLogin,

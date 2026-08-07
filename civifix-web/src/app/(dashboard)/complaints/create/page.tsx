@@ -177,13 +177,12 @@ export default function CreateComplaintPage() {
     const found = districts.find(d => d.name === dist);
     return found?._id || found?.id || "";
   }, [user, districts]);
-
   const districtName = useMemo(() => {
-    if (user?.district_name) return user.district_name;
+    if (user?.district_name && !/^[0-9a-fA-F]{24}$/.test(user.district_name)) return user.district_name;
     const dist = user?.district;
     if (dist && !/^[0-9a-fA-F]{24}$/.test(dist)) return dist;
     const found = districts.find(d => (d._id || d.id) === (user?.district_id || user?.district));
-    return found?.name || user?.district_name || user?.district || "";
+    return found?.name || "";
   }, [user, districts]);
 
   const { data: wardsData, isLoading: wardsLoading, isError: wardsError, refetch: refetchWards } = useWards(resolvedDistrictId);

@@ -2,7 +2,7 @@ import { Platform } from "react-native";
 import Config from "react-native-config";
 import DeviceInfo from "react-native-device-info";
 
-const DEFAULT_API_URL = "http://10.0.2.2:8000/api/v1";
+const DEFAULT_API_URL = "https://cv.onenism.org/api/v1";
 
 const isLocalhostLike = (url) => {
   if (!url) return true;
@@ -43,7 +43,7 @@ const normalizeApiUrl = (url) => {
 
 const resolveApiUrl = () => {
   const configuredUrl = normalizeApiUrl(getConfiguredApiUrl());
-  
+
   if (Platform.OS === "android" && DeviceInfo.isEmulatorSync()) {
     return configuredUrl.replace(/localhost|127\.0\.0\.1|192\.168\.\d+\.\d+/, "10.0.2.2");
   }
@@ -112,7 +112,7 @@ export const ENDPOINTS = {
   ADMIN_COMPLAINTS: "/admin/complaints",
   ADMIN_ASSIGN_COMPLAINT: (id) => `/admin/complaints/${id}/assign`,
   ADMIN_EXPORT_COMPLAINTS: "/admin/complaints/export",
-  
+
   ADMIN_USERS: "/admin/users",
   ADMIN_EDIT_USER: (id) => `/admin/users/${id}`,
   ADMIN_SUSPEND_USER: (id) => `/admin/users/${id}/suspend`,

@@ -28,9 +28,15 @@ import {
 type ComplaintStatus = "OPEN" | "WORKING" | "APPROVAL" | "CLOSED" | "REJECTED" | "IN_PROGRESS" | "RESOLVED";
 type ComplaintType = "ROAD_DAMAGE" | "POTHOLE" | "GARBAGE" | "STREETLIGHT" | "WATER_SUPPLY" | "DRAINAGE" | "SANITATION" | "TREE_CUTTING" | "CONSTRUCTION" | "OTHER";
 
-const getCleanDistrict = (c: any) => {
+const getCleanDistrict = (c: any, districts?: any[]) => {
   const val = c.districtName || c.district_name || c.district?.name || c.district;
-  if (typeof val === "string" && val.trim() && !/^[0-9a-fA-F]{24}$/.test(val)) return val;
+  if (typeof val === "string" && val.trim()) {
+    if (/^[0-9a-fA-F]{24}$/.test(val) && districts) {
+      const match = districts.find(d => (d._id || d.id) === val);
+      return match ? match.name : "Not Available";
+    }
+    return val;
+  }
   return "Not Available";
 };
 
@@ -529,7 +535,7 @@ export default function ComplaintsListPage() {
                             </td>
                             <td className="p-4 text-xs font-medium text-foreground">
                               <div className="space-y-1">
-                                <div><span className="text-muted-foreground font-bold">District:</span> {getCleanDistrict(complaint)}</div>
+                                <div><span className="text-muted-foreground font-bold">District:</span> {getCleanDistrict(complaint, districts)}</div>
                                 <div><span className="text-muted-foreground font-bold">Ward:</span> {getCleanWard(complaint)}</div>
                                 <div><span className="text-muted-foreground font-bold">Supported By:</span> {complaint.support_count || 0} Citizens</div>
                                 <div className="truncate max-w-[220px]" title={complaint.address}><span className="text-muted-foreground font-bold">Address:</span> {complaint.address || "Not Available"}</div>
@@ -607,7 +613,7 @@ export default function ComplaintsListPage() {
                             <div className="mb-4 space-y-1.5">
                               <div className="text-xs space-y-1 bg-muted/40 p-3 rounded-xl border border-border/50 mb-3">
                                 <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-1">Location</p>
-                                <div><span className="font-bold text-muted-foreground">District:</span> <span className="font-semibold text-foreground">{getCleanDistrict(complaint)}</span></div>
+                                <div><span className="font-bold text-muted-foreground">District:</span> <span className="font-semibold text-foreground">{getCleanDistrict(complaint, districts)}</span></div>
                                 <div><span className="font-bold text-muted-foreground">Ward:</span> <span className="font-semibold text-foreground">{getCleanWard(complaint)}</span></div>
                                 <div className="line-clamp-2" title={complaint.address}><span className="font-bold text-muted-foreground">Address:</span> <span className="font-semibold text-foreground">{complaint.address || "Not Available"}</span></div>
                                 <div className="line-clamp-1" title={complaint.landmark}><span className="font-bold text-muted-foreground">Landmark:</span> <span className="font-semibold text-foreground">{complaint.landmark || "Not Available"}</span></div>
@@ -631,7 +637,7 @@ export default function ComplaintsListPage() {
                               </p>
                               <div className="text-xs space-y-1 bg-muted/40 p-3 rounded-xl border border-border/50">
                                 <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-1">Location</p>
-                                <div><span className="font-bold text-muted-foreground">District:</span> <span className="font-semibold text-foreground">{getCleanDistrict(complaint)}</span></div>
+                                <div><span className="font-bold text-muted-foreground">District:</span> <span className="font-semibold text-foreground">{getCleanDistrict(complaint, districts)}</span></div>
                                 <div><span className="font-bold text-muted-foreground">Ward:</span> <span className="font-semibold text-foreground">{getCleanWard(complaint)}</span></div>
                                 <div className="line-clamp-2" title={complaint.address}><span className="font-bold text-muted-foreground">Address:</span> <span className="font-semibold text-foreground">{complaint.address || "Not Available"}</span></div>
                                 <div className="line-clamp-1" title={complaint.landmark}><span className="font-bold text-muted-foreground">Landmark:</span> <span className="font-semibold text-foreground">{complaint.landmark || "Not Available"}</span></div>

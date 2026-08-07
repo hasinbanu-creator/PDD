@@ -33,9 +33,15 @@ import api from "@/lib/api";
 type ComplaintStatus = "OPEN" | "PENDING" | "WORKING" | "IN_PROGRESS" | "APPROVAL" | "CLOSED" | "RESOLVED" | "REJECTED";
 type ComplaintType = "ROAD_DAMAGE" | "POTHOLE" | "GARBAGE" | "STREETLIGHT" | "WATER_SUPPLY" | "DRAINAGE" | "SANITATION" | "TREE_CUTTING" | "CONSTRUCTION" | "OTHER";
 
-const getCleanDistrict = (c: any) => {
+const getCleanDistrict = (c: any, districts?: any[]) => {
   const val = c.districtName || c.district_name || c.district?.name || c.district;
-  if (typeof val === "string" && val.trim() && !/^[0-9a-fA-F]{24}$/.test(val)) return val;
+  if (typeof val === "string" && val.trim()) {
+    if (/^[0-9a-fA-F]{24}$/.test(val) && districts) {
+      const match = districts.find(d => (d._id || d.id) === val);
+      return match ? match.name : "Not Available";
+    }
+    return val;
+  }
   return "Not Available";
 };
 
@@ -116,7 +122,7 @@ function MetricCard({ icon: Icon, value, label, colorClass, bgClass }: any) {
 }
 
 function ComplaintItem({ complaint, index, total }: any) {
-  const { user } = useAuth();
+  const { user, districtsList } = useAuth();
   const isInspector = user?.role === "INSPECTOR" || user?.role === "WORKER";
 
   const type = (complaint.complaint_type as ComplaintType) || "OTHER";
@@ -126,7 +132,7 @@ function ComplaintItem({ complaint, index, total }: any) {
   const desc = complaint.description || "No description provided";
   const Icon = meta.icon;
 
-  const districtName = getCleanDistrict(complaint);
+  const districtName = getCleanDistrict(complaint, districtsList);
   const wardName = getCleanWard(complaint);
   const citizenName = complaint.citizenName || complaint.citizen_name || complaint.citizen?.name || "Not Available";
 
@@ -449,7 +455,7 @@ function InspectorDashboard() {
         const idMatch = (c.complaint_id || c.complaintId || c._id || "").toLowerCase().includes(q);
         const typeMatch = (c.complaint_type || "").toLowerCase().includes(q);
         const nameMatch = (c.citizen?.name || "").toLowerCase().includes(q);
-        const districtName = getCleanDistrict(c).toLowerCase();
+        const districtName = getCleanDistrict(c, districtsList).toLowerCase();
         const wardName = getCleanWard(c).toLowerCase();
         const addressText = (c.address || "").toLowerCase();
         const landmarkText = (c.landmark || "").toLowerCase();
@@ -655,7 +661,7 @@ function InspectorDashboard() {
                           <div className="text-[13px] space-y-0.5 min-w-[280px] max-w-[380px] text-slate-600">
                             <p className="whitespace-normal break-words">
                               <span className="font-bold text-slate-500">District:</span>
-                              <span className="font-semibold text-slate-700 ml-1">{getCleanDistrict(c)}</span>
+                              <span className="font-semibold text-slate-700 ml-1">{getCleanDistrict(c, districtsList)}</span>
                             </p>
                             <p className="whitespace-normal break-words">
                               <span className="font-bold text-slate-500">Ward:</span>

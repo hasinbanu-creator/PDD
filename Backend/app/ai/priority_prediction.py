@@ -59,18 +59,24 @@ async def predict_complaint_priority(
         f"- Provide confidence score (0 to 100) and a brief reason explaining the choice."
     )
 
-    max_retries = 2  # Try once, then retry once
+    models_to_try = [
+        'gemini-3.5-flash',
+        'gemini-3.6-flash',
+        'gemini-flash-latest',
+        'gemini-3.5-flash-lite',
+        'gemini-3.1-flash-lite'
+    ]
     last_error_details = {}
 
-    for attempt in range(1, max_retries + 1):
+    for model_name in models_to_try:
         try:
-            logger.info(f"Sending request to Gemini for priority prediction (attempt {attempt}/2)...")
+            logger.info(f"Sending request to Gemini for priority prediction using model {model_name}...")
             
             loop = asyncio.get_running_loop()
             
             def call_gemini():
                 return client.models.generate_content(
-                    model='gemini-3.5-flash',
+                    model=model_name,
                     contents=prompt,
                     config=types.GenerateContentConfig(
                         response_mime_type="application/json",
@@ -80,11 +86,11 @@ async def predict_complaint_priority(
 
             response = await asyncio.wait_for(
                 loop.run_in_executor(None, call_gemini),
-                timeout=30.0
+                timeout=15.0
             )
             
             result_text = response.text
-            logger.info(f"Gemini priority response text: {result_text}")
+            logger.info(f"Gemini priority response text from {model_name}: {result_text}")
             
             parsed = PriorityPredictionResult.parse_raw(result_text)
             
@@ -106,14 +112,14 @@ async def predict_complaint_priority(
             }
 
         except asyncio.TimeoutError as timeout_err:
-            logger.error(f"Timeout reached during Gemini priority prediction (attempt {attempt}/2).")
+            logger.error(f"Timeout reached during Gemini priority prediction with model {model_name}.")
             last_error_details = {"api_status": "TIMEOUT", "error_details": str(timeout_err)}
         except APIError as api_err:
-            logger.error(f"Gemini API error during priority prediction (attempt {attempt}/2): {str(api_err)}")
+            logger.error(f"Gemini API error during priority prediction with model {model_name}: {str(api_err)}")
             last_error_details = {"api_status": "API_ERROR", "api_error_details": str(api_err)}
         except Exception as e:
-            logger.error(f"Unexpected exception during Gemini priority prediction (attempt {attempt}/2): {str(e)}")
+            logger.error(f"Unexpected exception during Gemini priority prediction with model {model_name}: {str(e)}")
             last_error_details = {"api_status": "FAILED", "error_details": str(e)}
 
-    # If both attempts failed, return fallback
+    # If all models failed, return fallback
     return {**fallback, **last_error_details}

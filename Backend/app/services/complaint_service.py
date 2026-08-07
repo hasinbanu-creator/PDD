@@ -51,6 +51,27 @@ class ComplaintService:
         self.ward_repo = ward_repo
         self.user_repo = user_repo
 
+    async def _print_403_checkpoint(self, function_name: str, line_number: int, user_id: str, user_role: str, reason: str):
+        email = "Unknown"
+        role = user_role
+        try:
+            user_doc = await self.complaint_repo.db.users.find_one({"_id": self._normalize_id(user_id)})
+            if user_doc:
+                email = user_doc.get("email", "Unknown")
+                role = user_doc.get("role", user_role)
+        except Exception:
+            pass
+            
+        print("=" * 80)
+        print("403 CHECKPOINT")
+        print("FILE:", __file__)
+        print("FUNCTION:", function_name)
+        print("LINE:", line_number)
+        print("USER:", email)
+        print("ROLE:", role)
+        print("REASON:", reason)
+        print("=" * 80)
+
     async def create_complaint(
         self,
         complaint_data: ComplaintCreateSchema,
@@ -59,8 +80,10 @@ class ComplaintService:
     ) -> dict:
         """Create new complaint with comprehensive validations"""
         try:
-            logger.info("Complaint creation started.")
+            logger.info(f"[COMPLAINT SERVICE] create_complaint called for user_id='{user_id}', user_role='{user_role}'")
             if user_role != Roles.CITIZEN:
+                logger.error(f"[COMPLAINT SERVICE] Authorization check failed: user_role '{user_role}' is not '{Roles.CITIZEN}'")
+                await self._print_403_checkpoint("create_complaint", 65, user_id, user_role, f"User role '{user_role}' is not CITIZEN")
                 raise UnauthorizedError("Only citizens can create complaints")
 
             if not ComplaintValidator.validate_gps_coordinates(
@@ -258,6 +281,7 @@ class ComplaintService:
         """Assign worker to complaint"""
         try:
             if user_role != Roles.INSPECTOR:
+                await self._print_403_checkpoint("assign_worker", 262, inspector_id, user_role, "User role is not INSPECTOR")
                 raise UnauthorizedError("Only inspectors can assign workers")
 
             complaint = await self.complaint_repo.get_by_id(complaint_id)
@@ -265,6 +289,7 @@ class ComplaintService:
                 raise ResourceNotFoundError("Complaint not found")
 
             if str(complaint.get("inspector_id")) != inspector_id:
+                await self._print_403_checkpoint("assign_worker", 269, inspector_id, user_role, "Inspector ID does not match complaint inspector_id")
                 raise UnauthorizedError("You are not assigned to this complaint")
 
             if self.user_repo:
@@ -322,6 +347,7 @@ class ComplaintService:
         """Worker submits work completion"""
         try:
             if user_role != Roles.WORKER:
+                await self._print_403_checkpoint("submit_resolution", 326, worker_id, user_role, "User role is not WORKER")
                 raise UnauthorizedError("Only workers can submit work")
 
             complaint = await self.complaint_repo.get_by_id(complaint_id)
@@ -329,6 +355,7 @@ class ComplaintService:
                 raise ResourceNotFoundError("Complaint not found")
 
             if str(complaint.get("worker_id")) != worker_id:
+                await self._print_403_checkpoint("submit_resolution", 333, worker_id, user_role, "Worker ID does not match complaint worker_id")
                 raise UnauthorizedError("You are not assigned to this complaint")
 
             if complaint.get("status") != ComplaintStatus.WORKING:
@@ -379,6 +406,7 @@ class ComplaintService:
         """Inspector approves work completion"""
         try:
             if user_role != Roles.INSPECTOR:
+                await self._print_403_checkpoint("approve_complaint", 383, inspector_id, user_role, "User role is not INSPECTOR")
                 raise UnauthorizedError("Only inspectors can approve complaints")
 
             complaint = await self.complaint_repo.get_by_id(complaint_id)
@@ -386,6 +414,7 @@ class ComplaintService:
                 raise ResourceNotFoundError("Complaint not found")
 
             if str(complaint.get("inspector_id")) != inspector_id:
+                await self._print_403_checkpoint("approve_complaint", 390, inspector_id, user_role, "Inspector ID does not match complaint inspector_id")
                 raise UnauthorizedError("You are not assigned to this complaint")
 
             if complaint.get("status") != ComplaintStatus.APPROVAL:
@@ -441,6 +470,7 @@ class ComplaintService:
         """Inspector rejects work and sends back to worker"""
         try:
             if user_role != Roles.INSPECTOR:
+                await self._print_403_checkpoint("reject_complaint", 445, inspector_id, user_role, "User role is not INSPECTOR")
                 raise UnauthorizedError("Only inspectors can reject complaints")
 
             complaint = await self.complaint_repo.get_by_id(complaint_id)
@@ -448,6 +478,7 @@ class ComplaintService:
                 raise ResourceNotFoundError("Complaint not found")
 
             if str(complaint.get("inspector_id")) != inspector_id:
+                await self._print_403_checkpoint("reject_complaint", 452, inspector_id, user_role, "Inspector ID does not match complaint inspector_id")
                 raise UnauthorizedError("You are not assigned to this complaint")
 
             if complaint.get("status") != ComplaintStatus.APPROVAL:

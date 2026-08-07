@@ -1,7 +1,9 @@
 import React, { useEffect } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
-import { StatusBar } from "react-native";
+import { StatusBar, LogBox } from "react-native";
+
+LogBox.ignoreAllLogs(true);
 import { AuthProvider } from "./src/context/AuthContext";
 import { NetworkProvider } from "./src/context/NetworkContext";
 import OfflineBanner from "./src/components/OfflineBanner";

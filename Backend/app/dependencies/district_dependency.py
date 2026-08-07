@@ -19,6 +19,15 @@ async def check_district_access(
     
     # Other roles can only access their own district
     if user_district != target_district:
+        print("=" * 80)
+        print("403 CHECKPOINT")
+        print("FILE:", __file__)
+        print("FUNCTION: check_district_access")
+        print("LINE: 22")
+        print("USER:", current_user.get("email"))
+        print("ROLE:", user_role)
+        print("REASON: User district", user_district, "!= target district", target_district)
+        print("=" * 80)
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Cannot access resources from another district"
@@ -41,6 +50,15 @@ def require_same_district(*district_fields: str):
             return current_user
         
         if user_district != target_district:
+            print("=" * 80)
+            print("403 CHECKPOINT")
+            print("FILE:", __file__)
+            print("FUNCTION: require_same_district.district_checker")
+            print("LINE: 44")
+            print("USER:", current_user.get("email"))
+            print("ROLE:", user_role)
+            print("REASON: User district", user_district, "!= target district", target_district)
+            print("=" * 80)
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Cannot access resources from another district"

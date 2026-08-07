@@ -62,12 +62,7 @@ async def verify_complaint_image(image_bytes: bytes, mime_type: str) -> Dict[str
     except Exception as pil_err:
         logger.warning(f"[AI Image Verification] PIL/ImageStat blank check failed (proceeding to Gemini): {pil_err}")
     try:
-        import os
-        from google import genai
-        api_key = getattr(settings, "GEMINI_API_KEY", None)
-        if not api_key:
-            api_key = os.getenv("GEMINI_API_KEY")
-        client = genai.Client(api_key=api_key)
+        client = get_gemini_client()
     except Exception as init_err:
         tb = traceback.format_exc()
         logger.error(f"[AI Image Verification] Failed to initialize Gemini client:\n{tb}")
@@ -114,7 +109,7 @@ async def verify_complaint_image(image_bytes: bytes, mime_type: str) -> Dict[str
                             response_schema=ImageVerificationResult,
                         ),
                     ),
-                    timeout=30.0
+                    timeout=15.0
                 )
                 logger.info(f"[AI Image Verification] Gemini request succeeded with model: {model_name}")
                 break

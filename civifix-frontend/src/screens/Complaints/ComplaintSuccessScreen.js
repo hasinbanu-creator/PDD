@@ -19,7 +19,7 @@ const ComplaintSuccessScreen = ({ route, navigation }) => {
 
     // Prevent going back to form/preview
     const backHandler = BackHandler.addEventListener("hardwareBackPress", () => {
-      navigation.navigate("Dashboard");
+      navigation.navigate("DashboardHome");
       return true;
     });
 
@@ -71,7 +71,7 @@ const ComplaintSuccessScreen = ({ route, navigation }) => {
 
         <TouchableOpacity 
           style={styles.outlineBtn} 
-          onPress={() => navigation.navigate("Dashboard")}
+          onPress={() => navigation.navigate("DashboardHome")}
         >
           <Text style={styles.outlineBtnText}>Back to Dashboard</Text>
         </TouchableOpacity>

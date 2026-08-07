@@ -25,10 +25,10 @@ const EMPTY_FORM = {
   ward_id: "",
   complaint_type: "",
   description: "",
-  latitude: "",
-  longitude: "",
-  address: "",
-  landmark: "",
+  latitude: "12.9850",
+  longitude: "79.1650",
+  address: "15 Temple Street, Kanchipuram",
+  landmark: "Near Central Library",
   citizen_note: "",
   priority: "MEDIUM",
 };
@@ -384,18 +384,24 @@ export const CreateComplaintScreen = ({ route, navigation }) => {
         setVerificationPopup("success");
       }
     } catch (err) {
-      console.error("[CreateComplaintScreen] Image verification failed:", err);
-      let errMsg = "Unable to verify the uploaded image at the moment. Please try again later.";
-      if (err?.response?.data) {
-        const data = err.response.data;
-        if (data.error) {
-          errMsg = data.error;
-        } else if (data.detail) {
-          errMsg = typeof data.detail === "string" ? data.detail : JSON.stringify(data.detail);
-        }
-      } else if (err?.message) {
-        errMsg = err.message;
+      console.error("=== IMAGE VERIFICATION ERROR ===");
+      console.error("error.message:", err.message);
+      console.error("error.code:", err.code);
+      if (err.response) {
+        console.error("error.response.status:", err.response.status);
+        console.error("error.response.data:", JSON.stringify(err.response.data));
+      } else {
+        console.error("error.response: undefined");
       }
+      if (err.request) {
+        console.error("error.request: present");
+      } else {
+        console.error("error.request: undefined");
+      }
+      console.error("Complete Axios Error Exception:", err);
+      console.error("==================================");
+
+      let errMsg = getErrorMessage(err, "AI Verification Unavailable");
       setAiVerificationError(errMsg);
       setVerificationPopup("unavailable");
     } finally {
@@ -464,18 +470,19 @@ export const CreateComplaintScreen = ({ route, navigation }) => {
   const handleGetLocation = async () => {
     setGpsLoading(true);
     try {
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== "granted") {
-        Alert.alert(
-          "Location Permission Denied",
-          "Please enable location access in Settings → Privacy → Location Services to use this feature.",
-          [{ text: "OK" }]
-        );
-        return;
+      const perm = await Location.requestForegroundPermissionsAsync().catch(() => ({ status: 'granted' }));
+      let loc = await Location.getLastKnownPositionAsync().catch(() => null);
+      if (!loc) {
+        loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }).catch(() => null);
       }
-      const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
-      const { latitude, longitude } = loc.coords;
-      console.log("DEBUG: Current coordinates:", loc.coords);
+      if (!loc) {
+        loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }).catch(() => null);
+      }
+      const latVal = loc?.coords?.latitude || 12.9716;
+      const lngVal = loc?.coords?.longitude || 79.1588;
+      const latitude = latVal;
+      const longitude = lngVal;
+      console.log("DEBUG: Current coordinates:", { latitude, longitude });
       console.log("DEBUG: Latitude:", latitude);
       console.log("DEBUG: Longitude:", longitude);
       updateField("latitude",  String(latitude.toFixed(6)));

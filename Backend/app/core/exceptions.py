@@ -39,6 +39,15 @@ class AuthorizationException(CivifixException):
         message: str = "Insufficient permissions",
         error_code: str = "INSUFFICIENT_PERMISSIONS"
     ):
+        print("=" * 80)
+        print("403 CHECKPOINT")
+        print("FILE:", __file__)
+        print("FUNCTION: AuthorizationException.__init__")
+        print("LINE: 37")
+        print("USER: None")
+        print("ROLE: None")
+        print("REASON: AuthorizationException raised:", message)
+        print("=" * 80)
         super().__init__(
             message=message,
             status_code=status.HTTP_403_FORBIDDEN,
@@ -157,6 +166,15 @@ class ResourceNotFoundError(CivifixException):
 class UnauthorizedError(CivifixException):
     """Raised when action is unauthorized"""
     def __init__(self, message: str = "Unauthorized action"):
+        print("=" * 80)
+        print("403 CHECKPOINT")
+        print("FILE:", __file__)
+        print("FUNCTION: UnauthorizedError.__init__")
+        print("LINE: 159")
+        print("USER: None")
+        print("ROLE: None")
+        print("REASON: UnauthorizedError raised:", message)
+        print("=" * 80)
         super().__init__(
             message=message,
             status_code=status.HTTP_403_FORBIDDEN,
@@ -167,6 +185,15 @@ class UnauthorizedError(CivifixException):
 class DistrictAccessException(CivifixException):
     """Raised when accessing another district's resources"""
     def __init__(self, message: str = "Cannot access resources from another district"):
+        print("=" * 80)
+        print("403 CHECKPOINT")
+        print("FILE:", __file__)
+        print("FUNCTION: DistrictAccessException.__init__")
+        print("LINE: 169")
+        print("USER: None")
+        print("ROLE: None")
+        print("REASON: DistrictAccessException raised:", message)
+        print("=" * 80)
         super().__init__(
             message=message,
             status_code=status.HTTP_403_FORBIDDEN,
@@ -202,6 +229,14 @@ async def civifix_exception_handler(
     exc: CivifixException
 ):
     """Handler for CivifixException"""
+    import logging
+    import traceback
+    logger_exc = logging.getLogger(__name__)
+    
+    if exc.status_code == 403:
+        tb = "".join(traceback.format_stack())
+        logger_exc.error(f"[EXCEPTION DIAGNOSTICS] CivifixException 403 Raised! message='{exc.message}', error_code='{exc.error_code}'\nStack Trace:\n{tb}")
+        
     content = {
         "success": False,
         "message": exc.message,

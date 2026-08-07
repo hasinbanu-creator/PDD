@@ -434,12 +434,7 @@ export default function ComplaintDetailsPage() {
                   <span className="font-bold text-muted-foreground w-28 shrink-0">Landmark :</span>
                   <span className="font-semibold text-foreground">{complaint.landmark || "Not Available"}</span>
                 </div>
-                {user?.role !== "INSPECTOR" && (
-                  <div className="flex gap-2">
-                    <span className="font-bold text-muted-foreground w-28 shrink-0">Supported By :</span>
-                    <span className="font-extrabold text-primary">{complaint.support_count || 0} Citizens</span>
-                  </div>
-                )}
+
                 <div className="flex gap-2">
                   <span className="font-bold text-muted-foreground w-28 shrink-0">Complaint ID :</span>
                   <span className="font-semibold text-foreground">

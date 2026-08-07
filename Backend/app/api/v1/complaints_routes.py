@@ -6,6 +6,7 @@ import os
 import uuid
 import aiofiles
 from datetime import datetime
+import asyncio
 
 from app.core.response import SuccessResponse
 from app.dependencies.auth_dependency import get_current_user
@@ -43,26 +44,58 @@ def get_complaint_service(db=Depends(get_database)):
     tags=["Complaints"]
 )
 async def verify_complaint_image_endpoint(
-    file: UploadFile = File(...),
+    file: Optional[UploadFile] = File(None),
+    image: Optional[UploadFile] = File(None),
     current_user: dict = Depends(get_current_user)
 ):
     """Verify uploaded image contains a valid civic issue and is not blurry"""
     import traceback
     from fastapi.responses import JSONResponse
+    from PIL import Image
+    import io
     
+    logger.info("Received verify-image request.")
     try:
-        content = await file.read()
-        content_length = len(content)
-        logger.info(f"[AI Image Verification Endpoint] Received file: '{file.filename}', Content Type: '{file.content_type}', Size: {content_length} bytes")
+        uploaded_file = file or image
+        if not uploaded_file:
+            logger.warn("Image verification failed: Missing file or image parameter.")
+            return JSONResponse(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                content={
+                    "success": False,
+                    "error": "Missing file or image upload parameter."
+                }
+            )
         
+        logger.info("Image received.")
+        content = await uploaded_file.read()
+        content_length = len(content)
+        logger.info(f"Image size: {content_length} bytes")
+        
+        try:
+            logger.info("Opening image with PIL to verify integrity...")
+            img_pil = Image.open(io.BytesIO(content))
+            img_pil.verify() # Verify file is not corrupt
+            logger.info("PIL image verification succeeded.")
+        except Exception as pil_err:
+            logger.error(f"PIL failed to verify image: {pil_err}")
+            return JSONResponse(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                content={
+                    "success": False,
+                    "error": f"Invalid image file: {str(pil_err)}"
+                }
+            )
+            
+        logger.info("Calling Gemini...")
         from app.ai.image_verification import verify_complaint_image
-        result = await verify_complaint_image(content, file.content_type)
+        result = await verify_complaint_image(content, uploaded_file.content_type)
+        logger.info("Gemini response received.")
         
         if result.get("api_status") in ["TIMEOUT", "API_ERROR", "FAILED"]:
             error_msg = result.get("error_details") or result.get("api_error_details") or "AI Verification Unavailable"
             logger.error(f"[AI Image Verification Endpoint] Gemini verification failed. Status: {result.get('api_status')}, Error: {error_msg}")
             
-            # Map appropriate status code. e.g. 503 if API error/timeout, 500 otherwise.
             status_code = status.HTTP_503_SERVICE_UNAVAILABLE if result.get("api_status") in ["TIMEOUT", "API_ERROR"] else status.HTTP_500_INTERNAL_SERVER_ERROR
             return JSONResponse(
                 status_code=status_code,
@@ -74,7 +107,6 @@ async def verify_complaint_image_endpoint(
             
         is_verified = result.get("contains_civic_issue", False) and not result.get("is_low_quality", False)
         
-        # Convert confidence to percentage if float
         raw_conf = result.get("confidence", 1.0)
         if isinstance(raw_conf, (int, float)):
             if raw_conf <= 1.0:
@@ -85,6 +117,7 @@ async def verify_complaint_image_endpoint(
             confidence_val = 100
 
         logger.info(f"[AI Image Verification Endpoint] Image verified successfully. contains_civic_issue: {result.get('contains_civic_issue')}, is_low_quality: {result.get('is_low_quality')}")
+        logger.info("Returning response.")
         
         return {
             "success": True,
@@ -136,10 +169,16 @@ async def create_complaint(
 ):
     """Create a new complaint (CITIZEN only)"""
     try:
-        logger.info("Complaint endpoint reached")
+        logger.info("=========================================")
+        logger.info("FastAPI: CREATE COMPLAINT REQUEST RECEIVED")
+        logger.info(f"ward_id: {ward_id}, complaint_type: {complaint_type}, description: {description}")
+        logger.info(f"latitude: {latitude}, longitude: {longitude}, address: {address}, landmark: {landmark}")
+        logger.info(f"districtId: {districtId}, districtName: {districtName}, wardId: {wardId}, wardName: {wardName}")
+        logger.info(f"ai_verification: {ai_verification}, force_create: {force_create}, duplicate_detection: {duplicate_detection}")
         
         user_id = current_user["user_id"]
-        logger.info(f"Complaint creation requested by user: {user_id}")
+        user_role = current_user.get("role", "CITIZEN")
+        logger.info(f"User ID: {user_id}, User role: {user_role}")
         
         image_urls = []
         ai_verification_result = None
@@ -160,6 +199,16 @@ async def create_complaint(
                 logger.info(f"Loaded client-side duplicate_detection payload: {parsed_duplicate_detection}")
             except Exception as parse_err:
                 logger.error(f"Failed to parse client duplicate_detection: {str(parse_err)}")
+        # Resolve target ward id and target district id
+        target_ward_id = wardId or ward_id
+        target_district_id = districtId
+        
+        # Resolve district and ward names to pass to Gemini
+        district_name_resolved = districtName or "Not Available"
+        ward_name_resolved = wardName or "Not Available"
+        
+        image_content = None
+        image_mime = None
         if images:
             upload_dir = os.path.join("uploads", user_id, "images")
             os.makedirs(upload_dir, exist_ok=True)
@@ -171,35 +220,15 @@ async def create_complaint(
                 file_path = os.path.join(upload_dir, new_filename)
                 
                 content = await file.read()
-                
-                # Perform AI verification on the first valid image
-                if idx == 0 and not ai_verification_result:
-                    try:
-                        from app.ai.image_verification import verify_complaint_image
-                        from app.core.exceptions import ImageVerificationException
-                        
-                        ai_verification_result = await verify_complaint_image(content, file.content_type)
-                        
-                        if ai_verification_result and not ai_verification_result.get("should_allow_submission", True):
-                            raise ImageVerificationException(
-                                message="Image verification failed: image does not contain a civic issue.",
-                                errors=ai_verification_result
-                            )
-                    except ImageVerificationException:
-                        raise
-                    except Exception as ai_err:
-                        logger.error(f"Error calling AI image verification: {str(ai_err)}")
+                if idx == 0:
+                    image_content = content
+                    image_mime = file.content_type
                 
                 async with aiofiles.open(file_path, 'wb') as out_file:
                     await out_file.write(content)
                 # Store exactly as requested: <user_id>/images/complaint_<uuid>.jpg
                 image_urls.append(f"{user_id}/images/{new_filename}")
 
-        # Resolve district and ward names to pass to Gemini
-        district_name_resolved = districtName or "Not Available"
-        ward_name_resolved = wardName or "Not Available"
-        
-        target_ward_id = wardId or ward_id
         if (not districtName or not wardName) and target_ward_id:
             try:
                 from app.repositories.ward_repository import WardRepository
@@ -216,27 +245,191 @@ async def create_complaint(
                         if dist_doc:
                             district_name_resolved = dist_doc.get("name") or "Not Available"
             except Exception as lookup_err:
-                logger.error(f"Failed to lookup names for priority prediction: {lookup_err}")
+                logger.error(f"Failed to lookup names: {lookup_err}")
 
-        # Run Priority Prediction
-        ai_priority_result = None
-        try:
-            from app.ai.priority_prediction import predict_complaint_priority
-            ai_priority_result = await predict_complaint_priority(
-                category=complaint_type,
-                description=description,
-                district=district_name_resolved,
-                ward=ward_name_resolved
-            )
-        except Exception as pred_err:
-            logger.error(f"Error invoking priority prediction: {pred_err}")
+        if not target_district_id and target_ward_id:
+            try:
+                from app.repositories.ward_repository import WardRepository
+                w_repo = WardRepository(service.complaint_repo.db)
+                ward_doc = await w_repo.get_by_id(target_ward_id)
+                if ward_doc:
+                    target_district_id = str(ward_doc.get("district_id"))
+            except Exception:
+                pass
+        if not target_district_id:
+            target_district_id = current_user.get("district_id")
+
+        # Define independent coroutine tasks for concurrent execution
+        import time
+        
+        async def task_image_verification():
+            nonlocal ai_verification_result
+            if ai_verification_result:
+                return None
+            if not image_content:
+                return None
+            
+            logger.info("Starting Image Verification...")
+            start_time = time.time()
+            try:
+                from app.ai.image_verification import verify_complaint_image
+                from app.core.exceptions import ImageVerificationException
+                
+                res = await verify_complaint_image(image_content, image_mime)
+                elapsed = time.time() - start_time
+                logger.info(f"Completed Image Verification ({elapsed:.1f}s)")
+                
+                if res and res.get("api_status") == "SUCCESS":
+                    if not res.get("should_allow_submission", True):
+                        return ImageVerificationException(
+                            message="Image verification failed: image does not contain a civic issue.",
+                            errors=res
+                        )
+                    return res
+                else:
+                    logger.warning(f"Image verification failed/timed out: {res.get('error_details') if res else 'unknown error'}. Continuing complaint creation.")
+                    return None
+            except Exception as ai_err:
+                logger.error(f"Error in image verification task: {str(ai_err)}. Continuing.")
+                return None
+
+        async def task_priority_prediction():
+            logger.info("Starting Priority Prediction...")
+            start_time = time.time()
+            try:
+                from app.ai.priority_prediction import predict_complaint_priority
+                res = await predict_complaint_priority(
+                    category=complaint_type,
+                    description=description,
+                    district=district_name_resolved,
+                    ward=ward_name_resolved
+                )
+                elapsed = time.time() - start_time
+                logger.info(f"Completed Priority Prediction ({elapsed:.1f}s)")
+                return res
+            except Exception as pred_err:
+                logger.error(f"Error in priority prediction task: {pred_err}")
+                return {
+                    "priority": "Medium",
+                    "confidence": 0,
+                    "reason": "AI prediction unavailable.",
+                    "api_status": "FAILED"
+                }
+
+        async def task_duplicate_detection():
+            if force_create or not target_ward_id or not target_district_id:
+                return None
+            
+            logger.info("Starting Duplicate Detection...")
+            start_time = time.time()
+            try:
+                from bson import ObjectId
+                def make_id(val):
+                    try:
+                        return ObjectId(val)
+                    except:
+                        return val
+                
+                active_statuses = ["PENDING", "OPEN", "ASSIGNED", "IN_PROGRESS", "WORKING", "UNDER_REVIEW", "ACCEPTED", "FIELD_VISIT"]
+                query = {
+                    "district_id": {"$in": [target_district_id, make_id(target_district_id)]},
+                    "ward_id": {"$in": [target_ward_id, make_id(target_ward_id)]},
+                    "status": {"$in": active_statuses}
+                }
+                
+                existing_docs = await service.complaint_repo.db.complaints.find(query).to_list(length=100)
+                if not existing_docs:
+                    elapsed = time.time() - start_time
+                    logger.info(f"Completed Duplicate Detection - no existing complaints found ({elapsed:.1f}s)")
+                    return None
+                
+                from app.ai.duplicate_detection import detect_duplicate_complaint
+                new_comp_payload = {
+                    "category": complaint_type,
+                    "description": description,
+                    "district": district_name_resolved,
+                    "ward": ward_name_resolved
+                }
+                
+                res = await detect_duplicate_complaint(new_comp_payload, existing_docs)
+                elapsed = time.time() - start_time
+                logger.info(f"Completed Duplicate Detection ({elapsed:.1f}s)")
+                
+                if res and res.get("duplicate") is True:
+                    matched_id = res.get("matched_complaint_id")
+                    matched_doc = None
+                    for c in existing_docs:
+                        if str(c.get("_id")) == str(matched_id) or c.get("complaint_id") == str(matched_id):
+                            matched_doc = c
+                            break
+                    
+                    if not matched_doc and matched_id:
+                        try:
+                            matched_doc = await service.complaint_repo.db.complaints.find_one({
+                                "$or": [
+                                    {"_id": ObjectId(matched_id) if len(str(matched_id)) == 24 else matched_id},
+                                    {"complaint_id": matched_id}
+                                ]
+                            })
+                        except Exception:
+                            pass
+                    
+                    if matched_doc:
+                        return {
+                            "duplicate_result": res,
+                            "matched_doc": matched_doc
+                        }
+                return None
+            except Exception as ai_dup_err:
+                logger.error(f"Error in duplicate detection task: {str(ai_dup_err)}")
+                return None
+
+        # Perform parallel execution
+        overall_start = time.time()
+        
+        iv_start = time.time()
+        pp_start = time.time()
+        dd_start = time.time()
+        
+        image_res, priority_res, duplicate_res = await asyncio.gather(
+            task_image_verification(),
+            task_priority_prediction(),
+            task_duplicate_detection(),
+            return_exceptions=True
+        )
+        
+        iv_duration = time.time() - iv_start
+        pp_duration = time.time() - pp_start
+        dd_duration = time.time() - dd_start
+        total_duration = time.time() - overall_start
+        
+        logger.info(
+            f"AI Task Execution Summary:\n"
+            f"Image Verification: {iv_duration:.1f} sec\n"
+            f"Duplicate Detection: {dd_duration:.1f} sec\n"
+            f"Priority Prediction: {pp_duration:.1f} sec\n"
+            f"Total Complaint Creation Time: {total_duration:.1f} sec"
+        )
+        
+        # Handle results and exceptions
+        if isinstance(image_res, Exception):
+            if type(image_res).__name__ == "ImageVerificationException":
+                raise image_res
+            logger.error(f"Image verification task failed with unexpected exception: {image_res}")
+        elif image_res:
+            ai_verification_result = image_res
+            
+        if isinstance(priority_res, Exception):
+            logger.error(f"Priority prediction task failed with unexpected exception: {priority_res}")
             ai_priority_result = {
                 "priority": "Medium",
                 "confidence": 0,
                 "reason": "AI prediction unavailable.",
                 "api_status": "FAILED"
             }
-
+        else:
+            ai_priority_result = priority_res
+            
         # Override complaint priority with predicted priority
         pred_p = ai_priority_result.get("priority", "Medium") if ai_priority_result else "Medium"
         compat_priority = pred_p.upper()
@@ -265,99 +458,32 @@ async def create_complaint(
                 "verified_at": ai_verification_result.get("verified_at") or datetime.utcnow().isoformat()
             }
 
-        # Resolve target district id and ward id
-        target_ward_id = wardId or ward_id
-        target_district_id = districtId
-        if not target_district_id and target_ward_id:
-            try:
-                from app.repositories.ward_repository import WardRepository
-                w_repo = WardRepository(service.complaint_repo.db)
-                ward_doc = await w_repo.get_by_id(target_ward_id)
-                if ward_doc:
-                    target_district_id = str(ward_doc.get("district_id"))
-            except Exception:
-                pass
-        if not target_district_id:
-            target_district_id = current_user.get("district_id")
-
-        # Run duplicate detection if not forced and target parameters are resolved
-        existing_complaints = []
-        if not force_create and target_ward_id and target_district_id:
-            try:
-                from bson import ObjectId
-                def make_id(val):
-                    try:
-                        return ObjectId(val)
-                    except:
-                        return val
-                
-                query = {
-                    "district_id": {"$in": [target_district_id, make_id(target_district_id)]},
-                    "ward_id": {"$in": [target_ward_id, make_id(target_ward_id)]},
-                    "status": {"$nin": ["RESOLVED", "CLOSED", "REJECTED"]}
+        # Handle duplicate detection match outcome
+        if not isinstance(duplicate_res, Exception) and duplicate_res:
+            dup_result = duplicate_res["duplicate_result"]
+            matched_doc = duplicate_res["matched_doc"]
+            
+            formatted_existing = {
+                "id": str(matched_doc["_id"]),
+                "complaint_id": matched_doc.get("complaint_id"),
+                "complaint_type": matched_doc.get("complaint_type"),
+                "status": matched_doc.get("status"),
+                "support_count": matched_doc.get("support_count", 0),
+                "description": matched_doc.get("description")
+            }
+            
+            logger.info("Before return (duplicate check): Returning duplicate_check response.")
+            return {
+                "status": "duplicate_check",
+                "message": "Similar complaint found",
+                "data": {
+                    "duplicate": True,
+                    "matched_complaint_id": matched_doc.get("complaint_id") or str(matched_doc["_id"]),
+                    "similarity": dup_result.get("similarity", 95),
+                    "reason": dup_result.get("reason", "Possible duplicate complaint."),
+                    "existing_complaint": formatted_existing
                 }
-                
-                existing_docs = await service.complaint_repo.db.complaints.find(query).to_list(length=100)
-                for doc in existing_docs:
-                    existing_complaints.append(doc)
-            except Exception as query_err:
-                logger.error(f"Failed to query existing complaints for duplicate checking: {query_err}")
-
-        if not force_create and existing_complaints:
-            try:
-                from app.ai.duplicate_detection import detect_duplicate_complaint
-                new_comp_payload = {
-                    "category": complaint_type,
-                    "description": description,
-                    "district": district_name_resolved,
-                    "ward": ward_name_resolved
-                }
-                duplicate_result = await detect_duplicate_complaint(new_comp_payload, existing_complaints)
-                
-                if duplicate_result and duplicate_result.get("duplicate") is True:
-                    # Find matching complaint in database
-                    matched_id = duplicate_result.get("matched_complaint_id")
-                    matched_doc = None
-                    for c in existing_complaints:
-                        if str(c.get("_id")) == str(matched_id) or c.get("complaint_id") == str(matched_id):
-                            matched_doc = c
-                            break
-                    
-                    if not matched_doc and matched_id:
-                        from bson import ObjectId
-                        try:
-                            matched_doc = await service.complaint_repo.db.complaints.find_one({
-                                "$or": [
-                                    {"_id": ObjectId(matched_id) if len(str(matched_id)) == 24 else matched_id},
-                                    {"complaint_id": matched_id}
-                                ]
-                            })
-                        except Exception:
-                            pass
-                    
-                    if matched_doc:
-                        formatted_existing = {
-                            "id": str(matched_doc["_id"]),
-                            "complaint_id": matched_doc.get("complaint_id"),
-                            "complaint_type": matched_doc.get("complaint_type"),
-                            "status": matched_doc.get("status"),
-                            "support_count": matched_doc.get("support_count", 0),
-                            "description": matched_doc.get("description")
-                        }
-                        
-                        return {
-                            "status": "duplicate_check",
-                            "message": "Similar complaint found",
-                            "data": {
-                                "duplicate": True,
-                                "matched_complaint_id": matched_doc.get("complaint_id") or str(matched_doc["_id"]),
-                                "similarity": duplicate_result.get("similarity", 95),
-                                "reason": duplicate_result.get("reason", "Possible duplicate complaint."),
-                                "existing_complaint": formatted_existing
-                            }
-                        }
-            except Exception as ai_dup_err:
-                logger.error(f"Error in duplicate checking flow: {str(ai_dup_err)}")
+            }
 
         if parsed_duplicate_detection:
             ai_block["duplicate_detection"] = {
@@ -389,25 +515,41 @@ async def create_complaint(
         )
         logger.info(f"Complaint payload: {complaint_data.dict()}")
         
+        logger.info(f"Entering ComplaintService.create_complaint() with user_id={user_id}, role={user_role}")
         result = await service.create_complaint(
             complaint_data,
             user_id,
             current_user.get("role", "CITIZEN")
         )
         logger.info(f"Complaint successfully created and inserted into MongoDB: {result.get('_id')}")
+        logger.info("Before return (success): Returning success response.")
         return SuccessResponse.create(
             data=result,
             message="Complaint created successfully",
             status_code=status.HTTP_201_CREATED
         )
     except CivifixException as e:
-        logger.error(f"Complaint creation error: {str(e)}")
-        raise HTTPException(status_code=e.status_code, detail=str(e))
-    except Exception as e:
+        logger.error(f"Before exception (CivifixException): {str(e)}")
         import traceback
-        logger.error(f"Unexpected error: {str(e)}")
-        logger.error(traceback.format_exc())
-        raise HTTPException(status_code=500, detail=str(e))
+        trace_str = traceback.format_exc()
+        logger.error(trace_str)
+        return {
+            "success": False,
+            "message": "Complaint creation failed",
+            "error": str(e),
+            "trace": trace_str
+        }
+    except Exception as e:
+        logger.error(f"Before exception: {str(e)}")
+        import traceback
+        trace_str = traceback.format_exc()
+        logger.error(trace_str)
+        return {
+            "success": False,
+            "message": "Complaint creation failed",
+            "error": str(e),
+            "trace": trace_str
+        }
 
 
 @router.post(

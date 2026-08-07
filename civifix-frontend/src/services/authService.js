@@ -1,7 +1,7 @@
-import api from "./api";
-import { unwrapResponse } from "./api";
+import api, { unwrapResponse, nativeFetchFormData } from "./api";
 import { API_URL, ENDPOINTS } from "../constants/endpoints";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { Platform } from "react-native";
 
 const storeSession = async (session) => {
   if (!session?.access_token) return;
@@ -90,10 +90,14 @@ export const authService = {
   },
 
   createComplaint: async (complaintData) => {
+    if (complaintData instanceof FormData) {
+      const response = await nativeFetchFormData(ENDPOINTS.CREATE_COMPLAINT, "POST", complaintData);
+      return unwrapResponse(response);
+    }
     const response = await api.post(ENDPOINTS.CREATE_COMPLAINT, complaintData, {
+      timeout: 180000,
       headers: {
         Accept: "application/json",
-        "Content-Type": "multipart/form-data",
       },
     });
     return unwrapResponse(response);
@@ -255,19 +259,44 @@ export const authService = {
   },
 
   verifyImage: async (imageUri) => {
-    const formData = new FormData();
-    formData.append("file", {
-      uri: imageUri,
-      name: `photo-${Date.now()}.jpg`,
-      type: "image/jpeg"
-    });
-    const response = await api.post("/complaints/verify-image", formData, {
-      headers: {
-        "Content-Type": "multipart/form-data",
-        Accept: "application/json",
+    let fileUri = imageUri;
+    if (Platform.OS === 'android' && fileUri) {
+      if (fileUri.startsWith('file:/') && !fileUri.startsWith('file:///')) {
+        if (fileUri.startsWith('file://')) {
+          fileUri = fileUri.replace('file://', 'file:///');
+        } else {
+          fileUri = fileUri.replace('file:/', 'file:///');
+        }
+      } else if (!fileUri.startsWith('file://') && !fileUri.startsWith('content://')) {
+        fileUri = 'file://' + fileUri;
       }
+    }
+
+    const formData = new FormData();
+    formData.append("image", {
+      uri: fileUri,
+      name: "complaint.jpg",
+      type: "image/jpeg",
     });
-    return unwrapResponse(response);
+    formData.append("file", {
+      uri: fileUri,
+      name: "complaint.jpg",
+      type: "image/jpeg",
+    });
+
+    try {
+      const response = await nativeFetchFormData(ENDPOINTS.VERIFY_IMAGE, "POST", formData);
+      return unwrapResponse(response);
+    } catch (error) {
+      console.error("=== [verifyImage DIAGNOSTICS] FAILURE ===");
+      console.error("error.code:", error.code);
+      console.error("error.message:", error.message);
+      if (error.response) {
+        console.error("error.response.status:", error.response.status);
+        console.error("error.response.data:", JSON.stringify(error.response.data));
+      }
+      throw error;
+    }
   },
 
   supportComplaint: async (complaintId) => {
@@ -287,6 +316,10 @@ export const authService = {
   },
 
   inspectorResolveComplaint: async (complaintId, payload) => {
+    if (payload instanceof FormData) {
+      const response = await nativeFetchFormData(`/inspector/complaints/${complaintId}/resolve`, "PUT", payload);
+      return unwrapResponse(response);
+    }
     const response = await api.put(`/inspector/complaints/${complaintId}/resolve`, payload, {
       headers: {
         Accept: "application/json",

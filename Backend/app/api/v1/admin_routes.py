@@ -228,8 +228,16 @@ async def edit_user(
         if not user:
             return ResponseHandler.error("User not found", status.HTTP_404_NOT_FOUND)
             
-        if current_user.get("role") == "DISTRICT_ADMIN":
             if user.get("district") != current_user.get("district"):
+                print("=" * 80)
+                print("403 CHECKPOINT")
+                print("FILE:", __file__)
+                print("FUNCTION: edit_user")
+                print("LINE: 233")
+                print("USER:", current_user.get("email"))
+                print("ROLE:", current_user.get("role"))
+                print("REASON: DISTRICT_ADMIN is trying to edit a user from a different district")
+                print("=" * 80)
                 return ResponseHandler.error("Forbidden: District mismatch", status.HTTP_403_FORBIDDEN)
                 
         update_data = {}
@@ -709,8 +717,16 @@ async def assign_complaint(
         if not complaint:
             return ResponseHandler.error("Complaint not found", status.HTTP_404_NOT_FOUND)
             
-        if current_user.get("role") == "DISTRICT_ADMIN":
             if complaint.get("district_id") != current_user.get("district"):
+                print("=" * 80)
+                print("403 CHECKPOINT")
+                print("FILE:", __file__)
+                print("FUNCTION: assign_complaint")
+                print("LINE: 714")
+                print("USER:", current_user.get("email"))
+                print("ROLE:", current_user.get("role"))
+                print("REASON: DISTRICT_ADMIN is trying to assign a complaint from a different district")
+                print("=" * 80)
                 return ResponseHandler.error("Forbidden: District mismatch", status.HTTP_403_FORBIDDEN)
                 
         inspector = await db.users.find_one({"_id": ObjectId(payload.inspector_id), "role": "INSPECTOR"})

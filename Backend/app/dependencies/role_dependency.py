@@ -22,6 +22,15 @@ def require_role(*allowed_roles: str):
         user_role = current_user.get("role")
 
         if str(user_role) not in normalized:
+            print("=" * 80)
+            print("403 CHECKPOINT")
+            print("FILE:", __file__)
+            print("FUNCTION: require_role.role_checker")
+            print("LINE: 25")
+            print("USER:", current_user.get("email"))
+            print("ROLE:", user_role)
+            print("REASON: User role not in allowed roles:", normalized)
+            print("=" * 80)
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail=f"This action requires one of these roles: {', '.join(normalized)}"
@@ -50,6 +59,15 @@ def require_permission(required_permission: str):
             )
             
             if not has_permission:
+                print("=" * 80)
+                print("403 CHECKPOINT")
+                print("FILE:", __file__)
+                print("FUNCTION: require_permission.permission_checker")
+                print("LINE: 53")
+                print("USER:", current_user.get("email"))
+                print("ROLE:", user_role)
+                print("REASON: User lack permission:", required_permission)
+                print("=" * 80)
                 raise HTTPException(
                     status_code=status.HTTP_403_FORBIDDEN,
                     detail=f"Permission '{required_permission}' required"

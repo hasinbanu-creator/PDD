@@ -17,7 +17,7 @@ import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import authService from "../../services/authService";
 import { getErrorMessage } from "../../services/api";
 import { AuthContext } from "../../context/AuthContext";
-import { SPACING } from "../../constants/theme";
+import { SPACING, FONT_SIZES, COLORS, BORDER_RADIUS, SHADOWS } from "../../constants/theme";
 
 let districtsCache = null;
 let districtsPromise = null;
@@ -685,7 +685,7 @@ export const ComplaintDetailScreen = ({ route, navigation }) => {
             <InfoRow icon="map-marker-outline"    label="Ward"        value={resolvedWardName} />
             <InfoRow icon="home-outline"          label="Address"     value={complaint?.address || "Not Available"} />
             <InfoRow icon="home-map-marker"       label="Landmark"    value={complaint?.landmark || "Not Available"} />
-            {!isInspector && <InfoRow icon="account-group-outline"  label="Supported By" value={`${complaint?.support_count || 0} Citizens`} />}
+
             <InfoRow icon="identifier"            label="Complaint ID" value={getCleanId(complaint)} />
             <InfoRow icon="crosshairs-gps"        label="Coordinates"
               value={complaint?.latitude && complaint?.longitude

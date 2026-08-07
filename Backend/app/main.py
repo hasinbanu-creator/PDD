@@ -66,6 +66,26 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
 
 app.add_middleware(SecurityHeadersMiddleware)
 
+@app.middleware("http")
+async def log_all_incoming_requests(request: Request, call_next):
+    if "/verify-image" in request.url.path or "verify-image" in request.url.path:
+        logger.info("==================================================")
+        logger.info(f"Incoming verify-image request: {request.method} {request.url}")
+        logger.info(f"Client: {request.client}")
+        logger.info(f"Headers: {dict(request.headers)}")
+        logger.info("==================================================")
+    try:
+        return await call_next(request)
+    except Exception as e:
+        logger.error(f"Global middleware caught crash: {e}", exc_info=True)
+        return JSONResponse(
+            status_code=500,
+            content={
+                "success": False,
+                "error": f"Unhandled server error: {str(e)}"
+            }
+        )
+
 # Mount uploads and assets directories
 BASE_DIR = Path(__file__).resolve().parent.parent
 UPLOADS_DIR = BASE_DIR / "uploads"
@@ -80,6 +100,11 @@ app.add_exception_handler(CivifixException, civifix_exception_handler)
 
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request: Request, exc: HTTPException):
+    if exc.status_code == 403:
+        import traceback
+        tb = "".join(traceback.format_stack())
+        logger.error(f"[EXCEPTION DIAGNOSTICS] HTTPException 403 Raised! detail='{exc.detail}'\nStack Trace:\n{tb}")
+        
     return JSONResponse(
         status_code=exc.status_code,
         content={

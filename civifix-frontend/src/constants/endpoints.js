@@ -2,14 +2,14 @@ import { Platform } from "react-native";
 import Config from "react-native-config";
 import DeviceInfo from "react-native-device-info";
 
-const DEFAULT_API_URL = "http://10.20.147.242:8000/api/v1";
+const DEFAULT_API_URL = "http://10.0.2.2:8000/api/v1";
 
 const isLocalhostLike = (url) => {
   if (!url) return true;
 
   try {
     const { hostname } = new URL(url);
-    return ["localhost", "127.0.0.1", "0.0.0.0", "::1"].includes(hostname);
+    return ["localhost", "127.0.0.1", "0.0.0.0", "10.0.2.2", "::1"].includes(hostname) || hostname.startsWith("192.168.");
   } catch {
     return false;
   }
@@ -43,15 +43,15 @@ const normalizeApiUrl = (url) => {
 
 const resolveApiUrl = () => {
   const configuredUrl = normalizeApiUrl(getConfiguredApiUrl());
+  
+  if (Platform.OS === "android" && DeviceInfo.isEmulatorSync()) {
+    return configuredUrl.replace(/localhost|127\.0\.0\.1|192\.168\.\d+\.\d+/, "10.0.2.2");
+  }
+
   const isLocalhost = isLocalhostLike(configuredUrl);
 
   if (!isLocalhost || Platform.OS === "web") {
     return configuredUrl;
-  }
-
-  // If we are on an Android emulator, we should use 10.0.2.2 for localhost
-  if (Platform.OS === "android" && DeviceInfo.isEmulatorSync()) {
-    return configuredUrl.replace(/localhost|127\.0\.0\.1/, "10.0.2.2");
   }
 
   // If we are on a physical device, we should try to use the metro host (LAN IP)
@@ -85,6 +85,7 @@ export const ENDPOINTS = {
   // Complaints endpoints
   GET_COMPLAINTS: "/complaints/my/dashboard",
   CREATE_COMPLAINT: "/complaints",
+  VERIFY_IMAGE: "/complaints/verify-image",
   GET_COMPLAINT: (id) => `/complaints/${id}`,
   SAVE_COMPLAINT_DRAFT: "/complaints/draft",
   SUBMIT_FEEDBACK: (id) => `/complaints/${id}/feedback`,

@@ -24,7 +24,15 @@ async def detect_duplicate_complaint(
     """
     fallback = {"duplicate": False}
     
+    # Filter to active statuses only
+    active_statuses = {"PENDING", "OPEN", "ASSIGNED", "IN_PROGRESS", "WORKING", "UNDER_REVIEW", "ACCEPTED", "FIELD_VISIT"}
+    existing_complaints = [
+        c for c in existing_complaints 
+        if str(c.get("status") or "").upper() in active_statuses
+    ]
+
     if not existing_complaints:
+        logger.info("[AI Duplicate Detection] No active complaints to compare. Skipping.")
         return fallback
 
     client = get_gemini_client()
@@ -59,13 +67,20 @@ async def detect_duplicate_complaint(
         "3. Set duplicate to true, matched_complaint_id, similarity (0-100), and reason if duplicate is found. Otherwise set duplicate to false."
     )
 
-    # Retry loop
-    for attempt in range(1, 3):
+    models_to_try = [
+        'gemini-3.5-flash',
+        'gemini-3.6-flash',
+        'gemini-flash-latest',
+        'gemini-3.5-flash-lite',
+        'gemini-3.1-flash-lite'
+    ]
+
+    for model_name in models_to_try:
         try:
             loop = asyncio.get_running_loop()
             def call_gemini():
                 return client.models.generate_content(
-                    model='gemini-3.5-flash',
+                    model=model_name,
                     contents=prompt,
                     config=types.GenerateContentConfig(
                         response_mime_type="application/json",
@@ -75,11 +90,11 @@ async def detect_duplicate_complaint(
             
             response = await asyncio.wait_for(
                 loop.run_in_executor(None, call_gemini),
-                timeout=20.0
+                timeout=15.0
             )
             
             result_text = response.text
-            logger.info(f"Gemini duplicate detection response: {result_text}")
+            logger.info(f"Gemini duplicate detection response from {model_name}: {result_text}")
             parsed = DuplicateCheckResult.parse_raw(result_text)
             
             return {
@@ -89,8 +104,7 @@ async def detect_duplicate_complaint(
                 "reason": parsed.reason if parsed.duplicate else None
             }
         except Exception as e:
-            logger.error(f"Attempt {attempt}/2 failed in duplicate detection: {str(e)}")
-            if attempt == 2:
-                logger.error("All duplicate detection attempts failed. Defaulting to unique complaint.")
-                return fallback
-            await asyncio.sleep(1.0)
+            logger.error(f"Duplicate detection failed with model {model_name}: {str(e)}")
+            
+    logger.error("All duplicate detection attempts and models failed. Defaulting to unique complaint.")
+    return fallback

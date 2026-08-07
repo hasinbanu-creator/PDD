@@ -1,10 +1,11 @@
 import { Platform, View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, ActivityIndicator, Dimensions, Alert, Modal } from 'react-native';
 import React, { useState, useContext, useEffect } from "react";
 import { AuthContext } from "../../context/AuthContext";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { COLORS, FONT_SIZES, SPACING, BORDER_RADIUS, SHADOWS } from "../../constants/theme";
 import MapView, { Marker } from "react-native-maps";
-import { API_URL } from "../../constants/endpoints";
+import { API_URL, ENDPOINTS } from "../../constants/endpoints";
 import authService from "../../services/authService";
 import { getErrorMessage } from "../../services/api";
 import { resolveImageUri } from "../../utils/imageUri";
@@ -68,6 +69,7 @@ const ComplaintPreviewScreen = ({ route, navigation }) => {
   };
 
   const handleSubmit = async (bypassDuplicateCheck = false) => {
+    console.log("=== handleSubmit CALLED ===", { bypassDuplicateCheck });
     try {
       setSubmitting(true);
 
@@ -94,7 +96,7 @@ const ComplaintPreviewScreen = ({ route, navigation }) => {
       if (form.landmark) formData.append("landmark", String(form.landmark));
       if (form.citizen_note) formData.append("citizen_note", String(form.citizen_note).trim());
       if (form.ai_verification) {
-        formData.append("ai_verification", form.ai_verification);
+        formData.append("ai_verification", typeof form.ai_verification === 'string' ? form.ai_verification : JSON.stringify(form.ai_verification));
       }
       if (bypassDuplicateCheck) {
         formData.append("force_create", "true");
@@ -106,8 +108,16 @@ const ComplaintPreviewScreen = ({ route, navigation }) => {
       if (Array.isArray(form.images)) {
         form.images.forEach((img, index) => {
           let fileUri = img.uri;
-          if (Platform.OS === 'android' && !fileUri.startsWith('file://') && !fileUri.startsWith('content://')) {
-            fileUri = 'file://' + fileUri;
+          if (Platform.OS === 'android' && fileUri) {
+            if (fileUri.startsWith('file:/') && !fileUri.startsWith('file:///')) {
+              if (fileUri.startsWith('file://')) {
+                fileUri = fileUri.replace('file://', 'file:///');
+              } else {
+                fileUri = fileUri.replace('file:/', 'file:///');
+              }
+            } else if (!fileUri.startsWith('file://') && !fileUri.startsWith('content://')) {
+              fileUri = 'file://' + fileUri;
+            }
           }
           let mimeType = img.type || 'image/jpeg';
           if (mimeType === 'image') mimeType = 'image/jpeg';
@@ -119,6 +129,38 @@ const ComplaintPreviewScreen = ({ route, navigation }) => {
         });
       }
 
+      // Log before sending
+      const token = await AsyncStorage.getItem("authToken");
+      console.log("=== SENDING COMPLAINT REQUEST ===");
+      const resolvedUrl = `${API_URL.endsWith('/') ? API_URL.slice(0, -1) : API_URL}${ENDPOINTS.CREATE_COMPLAINT}`;
+      console.log(`Request URL: ${resolvedUrl}`);
+      console.log("HTTP method: POST");
+      console.log(`Authorization: ${token ? 'Bearer ' + token.substring(0, 15) + '...' : 'none'}`);
+      
+      const headersCopy = {
+        Accept: "application/json",
+        Authorization: token ? `Bearer [MASKED]` : "none",
+      };
+      console.log("Headers:", JSON.stringify(headersCopy));
+
+      const fieldNames = formData._parts ? formData._parts.map(p => p[0]) : [];
+      console.log("FormData field names:", JSON.stringify(fieldNames));
+      console.log("Complaint payload:", JSON.stringify(form));
+
+      if (Array.isArray(form.images)) {
+        form.images.forEach((img, idx) => {
+          let fileUri = img.uri;
+          if (Platform.OS === 'android' && !fileUri.startsWith('file://') && !fileUri.startsWith('content://')) {
+            fileUri = 'file://' + fileUri;
+          }
+          let mimeType = img.type || 'image/jpeg';
+          if (mimeType === 'image') mimeType = 'image/jpeg';
+          console.log(`Image [${idx}] URI: ${fileUri}`);
+          console.log(`Image [${idx}] MIME type: ${mimeType}`);
+        });
+      }
+      console.log("=================================");
+
       const created = await authService.createComplaint(formData);
       
       if (created && created.status === "duplicate_check") {
@@ -127,9 +169,33 @@ const ComplaintPreviewScreen = ({ route, navigation }) => {
         setSubmitting(false);
         return;
       }
+
+      if (created && created.success === false) {
+        Alert.alert("Submission Failed", created.error || created.message || "Failed to create complaint.");
+        setSubmitting(false);
+        return;
+      }
       
-      navigation.replace("ComplaintSuccess", { complaint: created });
+      const finalComplaint = created?.data || created;
+      navigation.replace("ComplaintSuccess", { complaint: finalComplaint });
     } catch (err) {
+      console.error("=== COMPLAINT SUBMISSION ERROR ===");
+      console.error("error.message:", err.message);
+      console.error("error.code:", err.code);
+      if (err.response) {
+        console.error("error.response.status:", err.response.status);
+        console.error("error.response.data:", JSON.stringify(err.response.data));
+      } else {
+        console.error("error.response: undefined");
+      }
+      if (err.request) {
+        console.error("error.request: present");
+      } else {
+        console.error("error.request: undefined");
+      }
+      console.error("Complete Axios Error Exception:", err);
+      console.error("==================================");
+
       alert(getErrorMessage(err, "Unable to submit complaint."));
     } finally {
       setSubmitting(false);
@@ -174,7 +240,7 @@ const ComplaintPreviewScreen = ({ route, navigation }) => {
           <Text style={styles.wardText}>Ward: {ward?.label}</Text>
 
           {form.latitude && form.longitude && (
-            <View style={styles.mapContainer}>
+            <View style={styles.mapContainer} pointerEvents="none">
               <MapView
                 style={styles.map}
                 initialRegion={{
@@ -240,7 +306,7 @@ const ComplaintPreviewScreen = ({ route, navigation }) => {
         <TouchableOpacity style={styles.editBtn} onPress={() => navigation.goBack()} disabled={submitting}>
           <Text style={styles.editBtnText}>Edit</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.submitBtn} onPress={handleSubmit} disabled={submitting}>
+        <TouchableOpacity style={styles.submitBtn} onPress={() => handleSubmit(false)} disabled={submitting}>
           {submitting ? (
             <ActivityIndicator color="#fff" size="small" />
           ) : (

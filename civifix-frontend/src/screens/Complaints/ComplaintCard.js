@@ -249,10 +249,6 @@ export const ComplaintCard = ({ complaint, onPress }) => {
               <Icon name="map-marker-outline" size={14} color="#64748B" />
               <Text style={{ color: "#64748B", fontSize: FONT_SIZES.xs }}>{ward}</Text>
             </View>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-              <Icon name="account-group-outline" size={14} color={COLORS.primary} />
-              <Text style={{ color: COLORS.primary, fontSize: FONT_SIZES.xs, fontWeight: "700" }}>{complaint?.support_count || 0} Citizens</Text>
-            </View>
             <View style={{ flexDirection: "row", alignItems: "center", gap: 4, width: "100%", marginTop: 2 }}>
               <Icon name="map-marker-radius-outline" size={14} color="#64748B" />
               <Text numberOfLines={1} style={{ color: "#64748B", fontSize: FONT_SIZES.xs, flex: 1 }}>

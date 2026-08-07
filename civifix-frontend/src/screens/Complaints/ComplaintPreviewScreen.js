@@ -163,8 +163,11 @@ const ComplaintPreviewScreen = ({ route, navigation }) => {
 
       const created = await authService.createComplaint(formData);
       
-      if (created && created.status === "duplicate_check") {
-        setDuplicateMatch(created.data);
+      if (created && (created.status === "duplicate_check" || created.data?.duplicate)) {
+        setDuplicateMatch({
+          ...(created.data || created),
+          message: created.message || created.reason || created.data?.reason
+        });
         setDuplicatePopup(true);
         setSubmitting(false);
         return;
@@ -179,24 +182,18 @@ const ComplaintPreviewScreen = ({ route, navigation }) => {
       const finalComplaint = created?.data || created;
       navigation.replace("ComplaintSuccess", { complaint: finalComplaint });
     } catch (err) {
-      console.error("=== COMPLAINT SUBMISSION ERROR ===");
-      console.error("error.message:", err.message);
-      console.error("error.code:", err.code);
-      if (err.response) {
-        console.error("error.response.status:", err.response.status);
-        console.error("error.response.data:", JSON.stringify(err.response.data));
-      } else {
-        console.error("error.response: undefined");
+      console.error("Complaint creation error in PreviewScreen:", err);
+      const resData = err?.response?.data;
+      if (resData && (resData.status === "duplicate_check" || resData.data?.duplicate)) {
+        setDuplicateMatch({
+          ...(resData.data || resData),
+          message: resData.message || resData.reason || resData.data?.reason
+        });
+        setDuplicatePopup(true);
+        setSubmitting(false);
+        return;
       }
-      if (err.request) {
-        console.error("error.request: present");
-      } else {
-        console.error("error.request: undefined");
-      }
-      console.error("Complete Axios Error Exception:", err);
-      console.error("==================================");
-
-      alert(getErrorMessage(err, "Unable to submit complaint."));
+      Alert.alert("Submission Error", getErrorMessage(err, "Failed to submit complaint. Please check network connection."));
     } finally {
       setSubmitting(false);
     }
@@ -344,10 +341,6 @@ const ComplaintPreviewScreen = ({ route, navigation }) => {
                   <Text style={[styles.dupDetailValue, {textTransform: 'capitalize'}]}>
                     {String(duplicateMatch.existing_complaint?.status).toLowerCase()}
                   </Text>
-                </View>
-                <View style={styles.dupDetailRow}>
-                  <Text style={styles.dupDetailLabel}>Supported By:</Text>
-                  <Text style={styles.dupDetailValue}>{duplicateMatch.existing_complaint?.support_count || 0} Citizens</Text>
                 </View>
                 <View style={styles.dupDetailRow}>
                   <Text style={styles.dupDetailLabel}>Similarity:</Text>

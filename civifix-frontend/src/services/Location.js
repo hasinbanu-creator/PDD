@@ -1,17 +1,86 @@
 import Geolocation from 'react-native-geolocation-service';
 import { PermissionsAndroid, Platform } from 'react-native';
-export const Accuracy = { High: 'high' };
+
+export const Accuracy = { High: 'high', Balanced: 'balanced', Low: 'low' };
+
 export async function requestForegroundPermissionsAsync() {
-  if (Platform.OS === 'ios') return { status: await Geolocation.requestAuthorization('whenInUse') };
+  if (Platform.OS === 'ios') {
+    const auth = await Geolocation.requestAuthorization('whenInUse');
+    return { status: auth === 'granted' ? 'granted' : 'denied' };
+  }
   if (Platform.OS === 'android') {
-    const g = await PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION);
-    return { status: g === PermissionsAndroid.RESULTS.GRANTED ? 'granted' : 'denied' };
+    try {
+      const granted = await PermissionsAndroid.requestMultiple([
+        PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
+        PermissionsAndroid.PERMISSIONS.ACCESS_COARSE_LOCATION,
+      ]);
+      const fine = granted[PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION] === PermissionsAndroid.RESULTS.GRANTED;
+      const coarse = granted[PermissionsAndroid.PERMISSIONS.ACCESS_COARSE_LOCATION] === PermissionsAndroid.RESULTS.GRANTED;
+      if (fine || coarse) {
+        return { status: 'granted' };
+      }
+      return { status: 'denied' };
+    } catch (e) {
+      console.error("Permission request error:", e);
+      return { status: 'denied' };
+    }
   }
   return { status: 'denied' };
 }
-export function getCurrentPositionAsync(opts) {
-  return new Promise((res, rej) => Geolocation.getCurrentPosition(p => res({coords: {latitude: p.coords.latitude, longitude: p.coords.longitude}}), e => rej(e), {enableHighAccuracy: true}));
+
+export function getLastKnownPositionAsync() {
+  return new Promise((resolve) => {
+    Geolocation.getLastKnownPosition(
+      (position) => {
+        if (position && position.coords) {
+          resolve({ coords: { latitude: position.coords.latitude, longitude: position.coords.longitude } });
+        } else {
+          resolve(null);
+        }
+      },
+      (error) => {
+        console.log("DEBUG: getLastKnownPosition failed:", error);
+        resolve(null);
+      },
+      { timeout: 5000, maximumAge: 60000 }
+    );
+  });
 }
+
+export function getCurrentPositionAsync(opts = {}) {
+  return new Promise((resolve, reject) => {
+    // Try high accuracy first
+    Geolocation.getCurrentPosition(
+      (position) => {
+        if (position && position.coords) {
+          resolve({ coords: { latitude: position.coords.latitude, longitude: position.coords.longitude } });
+        } else {
+          reject({ code: 2, message: "Position unavailable" });
+        }
+      },
+      (highAccErr) => {
+        console.log("DEBUG: High accuracy geolocation failed, trying balanced accuracy:", highAccErr);
+        // Fallback to standard accuracy
+        Geolocation.getCurrentPosition(
+          (position) => {
+            if (position && position.coords) {
+              resolve({ coords: { latitude: position.coords.latitude, longitude: position.coords.longitude } });
+            } else {
+              reject(highAccErr || { code: 2, message: "Position unavailable" });
+            }
+          },
+          (standardAccErr) => {
+            console.log("DEBUG: Standard accuracy geolocation failed:", standardAccErr);
+            reject(standardAccErr || highAccErr);
+          },
+          { enableHighAccuracy: false, timeout: 15000, maximumAge: 10000 }
+        );
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 10000 }
+    );
+  });
+}
+
 export async function reverseGeocodeAsync({latitude, longitude}) {
   try {
     const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`, {

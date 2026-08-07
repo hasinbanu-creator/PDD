@@ -192,9 +192,6 @@ const ComplaintItem = ({ complaint, index, total, onPress }) => {
         <Text style={{ color: COLORS.textLight, fontSize: 9.5, fontWeight: "700", marginTop: 2 }}>
           {complaint.complaint_id || complaint._id || "#CIV-NEW"}
         </Text>
-        <Text style={{ color: COLORS.primary, fontSize: 9.5, fontWeight: "700", marginTop: 2 }}>
-          Supported by {complaint.support_count || 0} Citizens
-        </Text>
       </View>
       <View style={{ alignItems: "flex-end", gap: 4 }}>
         <View style={{ backgroundColor: status.bg, borderRadius: 999, paddingHorizontal: 8, paddingVertical: 4 }}>
@@ -620,7 +617,6 @@ const InspectorComplaintItem = ({ complaint, index, total, onPress }) => {
         <Text style={{ fontSize: 12, color: "#4B5563" }}><Text style={{ fontWeight: "bold" }}>Ward :</Text> {wardName}</Text>
         <Text style={{ fontSize: 12, color: "#4B5563" }}><Text style={{ fontWeight: "bold" }}>Address :</Text> {address}</Text>
         <Text style={{ fontSize: 12, color: "#4B5563" }}><Text style={{ fontWeight: "bold" }}>Landmark :</Text> {landmarkVal}</Text>
-        <Text style={{ fontSize: 12, color: COLORS.primary }}><Text style={{ fontWeight: "bold" }}>Supported By :</Text> {complaint.support_count || 0} Citizens</Text>
       </View>
       
       <View style={{ marginTop: 8, flexDirection: "row", alignItems: "center", justifyContent: "space-between", width: "100%" }}>

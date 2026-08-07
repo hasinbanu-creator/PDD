@@ -221,6 +221,7 @@ export default function CreateComplaintPage() {
   };
 
   const handleGetLocation = () => {
+    if (gpsLoading) return;
     setGpsLoading(true);
     if (!navigator.geolocation) {
       alert("Geolocation is not supported by your browser");
@@ -228,120 +229,141 @@ export default function CreateComplaintPage() {
       return;
     }
     
-    navigator.geolocation.getCurrentPosition(
-      async (position) => {
-        const lat = position.coords.latitude.toFixed(6);
-        const lon = position.coords.longitude.toFixed(6);
-        updateField("latitude", lat);
-        updateField("longitude", lon);
-        if (errors.location) setErrors((prev) => ({ ...prev, location: "" }));
-        
-        try {
-          const deduplicateAddress = (addressStr: string) => {
-            if (!addressStr) return "";
-            const rawParts = addressStr.split(",");
-            const cleanedParts: string[] = [];
-            const seenNormalized = new Set<string>();
+    const onLocationSuccess = async (position: GeolocationPosition) => {
+      const lat = position.coords.latitude.toFixed(6);
+      const lon = position.coords.longitude.toFixed(6);
+      updateField("latitude", lat);
+      updateField("longitude", lon);
+      if (errors.location) setErrors((prev) => ({ ...prev, location: "" }));
+      
+      try {
+        const deduplicateAddress = (addressStr: string) => {
+          if (!addressStr) return "";
+          const rawParts = addressStr.split(",");
+          const cleanedParts: string[] = [];
+          const seenNormalized = new Set<string>();
+          
+          for (const part of rawParts) {
+            const trimmed = part.trim();
+            if (!trimmed) continue;
+            if (trimmed.toLowerCase() === "india") continue;
             
-            for (const part of rawParts) {
-              const trimmed = part.trim();
-              if (!trimmed) continue;
-              
-              if (trimmed.toLowerCase() === "india") continue;
-              
-              let normalized = trimmed.toLowerCase();
-              normalized = normalized.replace(/\b(district|municipality|taluk|state|city|town|village|county)\b/g, "");
-              normalized = normalized.replace(/\s+/g, "").trim();
-              
-              if (!normalized) continue;
-              
-              let isDuplicate = false;
-              for (const seen of seenNormalized) {
-                if (seen.includes(normalized) || normalized.includes(seen) ||
-                    (normalized.substring(0, 5) === seen.substring(0, 5))) {
-                  isDuplicate = true;
-                  break;
-                }
-              }
-              
-              if (!isDuplicate) {
-                seenNormalized.add(normalized);
-                cleanedParts.push(trimmed);
+            let normalized = trimmed.toLowerCase();
+            normalized = normalized.replace(/\b(district|municipality|taluk|state|city|town|village|county)\b/g, "");
+            normalized = normalized.replace(/\s+/g, "").trim();
+            
+            if (!normalized) continue;
+            
+            let isDuplicate = false;
+            for (const seen of seenNormalized) {
+              if (seen.includes(normalized) || normalized.includes(seen) ||
+                  (normalized.substring(0, 5) === seen.substring(0, 5))) {
+                isDuplicate = true;
+                break;
               }
             }
             
-            if (cleanedParts.length >= 2) {
-              const last = cleanedParts[cleanedParts.length - 1];
-              const prev = cleanedParts[cleanedParts.length - 2];
-              const isPostalCode = /^\d{6}$/.test(last);
-              if (isPostalCode) {
-                cleanedParts.splice(cleanedParts.length - 2, 2, `${prev} ${last}`);
-              }
+            if (!isDuplicate) {
+              seenNormalized.add(normalized);
+              cleanedParts.push(trimmed);
             }
-            
-            return cleanedParts.join(", ");
-          };
-
-          const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`);
-          const data = await res.json();
-          if (data && data.address) {
-            const addr = data.address;
-            let formatted = "";
-            
-            if (data.display_name) {
-              formatted = deduplicateAddress(data.display_name);
-            }
-            
-            if (!formatted || formatted.split(",").length < 3) {
-              const parts = [];
-              const streetPart = [];
-              if (addr.house_number || addr.house || addr.flat || addr.apartment || addr.unit) {
-                streetPart.push(addr.house_number || addr.house || addr.flat || addr.apartment || addr.unit);
-              }
-              if (addr.building || addr.amenity || addr.landmark || addr.shop || addr.office) {
-                streetPart.push(addr.building || addr.amenity || addr.landmark || addr.shop || addr.office);
-              }
-              if (addr.road || addr.street || addr.pedestrian || addr.footway) {
-                streetPart.push(addr.road || addr.street || addr.pedestrian || addr.footway);
-              }
-              if (streetPart.length > 0) {
-                parts.push(streetPart.join(" "));
-              }
-              
-              const locality = addr.suburb || addr.neighbourhood || addr.village || addr.sublocality || addr.residential || addr.hamlet;
-              if (locality) parts.push(locality);
-              if (addr.ward) parts.push(addr.ward);
-              
-              const city = addr.city || addr.town || addr.municipality;
-              if (city) {
-                parts.push(city);
-              } else if (addr.county || addr.state_district) {
-                parts.push(addr.county || addr.state_district);
-              }
-              
-              const regionPart = [];
-              if (addr.state || addr.province) regionPart.push(addr.state || addr.province);
-              if (addr.postcode) regionPart.push(addr.postcode);
-              if (regionPart.length > 0) parts.push(regionPart.join(" "));
-              
-              formatted = deduplicateAddress(parts.join(", "));
-            }
-            
-            updateField("address", formatted || `${lat}, ${lon}`);
-          } else {
-             throw new Error("Invalid geocoding response");
           }
-        } catch (error) {
-          console.error("Failed to reverse geocode:", error);
-          updateField("address", `${lat}, ${lon}`);
+          
+          if (cleanedParts.length >= 2) {
+            const last = cleanedParts[cleanedParts.length - 1];
+            const prev = cleanedParts[cleanedParts.length - 2];
+            const isPostalCode = /^\d{6}$/.test(last);
+            if (isPostalCode) {
+              cleanedParts.splice(cleanedParts.length - 2, 2, `${prev} ${last}`);
+            }
+          }
+          
+          return cleanedParts.join(", ");
+        };
+
+        const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`);
+        const data = await res.json();
+        if (data && data.address) {
+          const addr = data.address;
+          let formatted = "";
+          
+          if (data.display_name) {
+            formatted = deduplicateAddress(data.display_name);
+          }
+          
+          if (!formatted || formatted.split(",").length < 3) {
+            const parts = [];
+            const streetPart = [];
+            if (addr.house_number || addr.house || addr.flat || addr.apartment || addr.unit) {
+              streetPart.push(addr.house_number || addr.house || addr.flat || addr.apartment || addr.unit);
+            }
+            if (addr.building || addr.amenity || addr.landmark || addr.shop || addr.office) {
+              streetPart.push(addr.building || addr.amenity || addr.landmark || addr.shop || addr.office);
+            }
+            if (addr.road || addr.street || addr.pedestrian || addr.footway) {
+              streetPart.push(addr.road || addr.street || addr.pedestrian || addr.footway);
+            }
+            if (streetPart.length > 0) {
+              parts.push(streetPart.join(" "));
+            }
+            
+            const locality = addr.suburb || addr.neighbourhood || addr.village || addr.sublocality || addr.residential || addr.hamlet;
+            if (locality) parts.push(locality);
+            if (addr.ward) parts.push(addr.ward);
+            
+            const city = addr.city || addr.town || addr.municipality;
+            if (city) {
+              parts.push(city);
+            } else if (addr.county || addr.state_district) {
+              parts.push(addr.county || addr.state_district);
+            }
+            
+            const regionPart = [];
+            if (addr.state || addr.province) regionPart.push(addr.state || addr.province);
+            if (addr.postcode) regionPart.push(addr.postcode);
+            if (regionPart.length > 0) parts.push(regionPart.join(" "));
+            
+            formatted = deduplicateAddress(parts.join(", "));
+          }
+          
+          updateField("address", formatted || `${lat}, ${lon}`);
+        } else {
+           throw new Error("Invalid geocoding response");
         }
-        setGpsLoading(false);
-      },
-      (error) => {
-        console.error(error);
-        alert("Unable to retrieve your location");
+      } catch (error) {
+        console.error("Failed to reverse geocode:", error);
+        updateField("address", `${lat}, ${lon}`);
+      } finally {
         setGpsLoading(false);
       }
+    };
+
+    const handleLocationError = (error: GeolocationPositionError) => {
+      console.warn("High accuracy location error:", error);
+      // Fallback to standard accuracy
+      navigator.geolocation.getCurrentPosition(
+        onLocationSuccess,
+        (finalError: GeolocationPositionError) => {
+          console.error("Final geolocation error:", finalError);
+          if (finalError.code === finalError.PERMISSION_DENIED) {
+            alert("Location permission denied. Please allow location access in your browser settings to proceed.");
+          } else if (finalError.code === finalError.POSITION_UNAVAILABLE) {
+            alert("Location unavailable. Please check if location services / GPS are enabled on your device.");
+          } else if (finalError.code === finalError.TIMEOUT) {
+            alert("Location request timed out. Please check your network and GPS connection.");
+          } else {
+            alert("Unable to retrieve your location. Please try again.");
+          }
+          setGpsLoading(false);
+        },
+        { enableHighAccuracy: false, timeout: 15000, maximumAge: 10000 }
+      );
+    };
+
+    navigator.geolocation.getCurrentPosition(
+      onLocationSuccess,
+      handleLocationError,
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 10000 }
     );
   };
 
@@ -432,8 +454,11 @@ export default function CreateComplaintPage() {
       });
 
       const result = await createComplaint.mutateAsync(formData as any);
-      if (result && result.status === "duplicate_check") {
-        setDuplicateMatch(result.data);
+      if (result && (result.status === "duplicate_check" || result.data?.duplicate)) {
+        setDuplicateMatch({
+          ...(result.data || result),
+          message: result.message || result.reason || result.data?.reason
+        });
         setDuplicatePopup(true);
         setLoading(false);
         return;
@@ -442,7 +467,16 @@ export default function CreateComplaintPage() {
       setShowSuccess(true);
     } catch (err: any) {
       console.error("Submission failed!", err);
-      console.error("Backend Response Data:", err?.response?.data);
+      const resData = err?.response?.data;
+      if (resData && (resData.status === "duplicate_check" || resData.data?.duplicate)) {
+        setDuplicateMatch({
+          ...(resData.data || resData),
+          message: resData.message || resData.reason || resData.data?.reason
+        });
+        setDuplicatePopup(true);
+        setLoading(false);
+        return;
+      }
       
       import("@/lib/api").then(({ getErrorMessage }) => {
          setServerError(getErrorMessage(err, "Failed to create complaint"));
@@ -1094,52 +1128,46 @@ export default function CreateComplaintPage() {
               <div className="w-16 h-16 bg-amber-500/10 text-amber-500 rounded-full flex items-center justify-center mx-auto mb-6">
                 <AlertTriangle className="w-10 h-10 text-amber-500" />
               </div>
-              <h3 className="text-2xl font-black text-foreground mb-2">⚠ Similar Complaint Found</h3>
-              <p className="text-sm text-muted-foreground font-medium mb-6">
-                A similar complaint already exists in your ward.
+              <h3 className="text-2xl font-black text-foreground mb-2">Duplicate Complaint Found</h3>
+              <p className="text-sm text-foreground font-semibold mb-6 px-2">
+                {duplicateMatch.message || duplicateMatch.reason || (duplicateMatch.is_same_citizen ? "You have already reported this complaint." : "This complaint has already been reported by another citizen.")}
               </p>
               
               <div className="bg-muted/30 border border-border rounded-2xl p-4 text-left mb-6 text-sm space-y-2">
                 <div className="flex justify-between py-1 border-b border-border/50">
                   <span className="font-bold text-muted-foreground">Complaint ID:</span>
-                  <span className="font-extrabold text-foreground">{duplicateMatch.matched_complaint_id}</span>
+                  <span className="font-extrabold text-foreground">{duplicateMatch.matched_complaint_id || duplicateMatch.existing_complaint?.complaint_id || duplicateMatch.existing_complaint?.id}</span>
                 </div>
                 <div className="flex justify-between py-1 border-b border-border/50">
-                  <span className="font-bold text-muted-foreground">Status:</span>
-                  <span className="font-extrabold text-foreground capitalize">{String(duplicateMatch.existing_complaint?.status).toLowerCase()}</span>
+                  <span className="font-bold text-muted-foreground">Current Status:</span>
+                  <span className="font-extrabold text-foreground capitalize">{String(duplicateMatch.existing_complaint?.status || "OPEN").toLowerCase()}</span>
                 </div>
-                <div className="flex justify-between py-1 border-b border-border/50">
-                  <span className="font-bold text-muted-foreground">Supported By:</span>
-                  <span className="font-extrabold text-foreground">{duplicateMatch.existing_complaint?.support_count || 0} Citizens</span>
-                </div>
-                <div className="flex justify-between py-1 border-b border-border/50">
-                  <span className="font-bold text-muted-foreground">Similarity:</span>
-                  <span className="font-extrabold text-amber-600">{duplicateMatch.similarity}%</span>
-                </div>
-                <div className="pt-2 text-xs font-semibold text-foreground italic">
-                  &ldquo;{duplicateMatch.reason}&rdquo;
-                </div>
+                {duplicateMatch.similarity !== undefined && (
+                  <div className="flex justify-between py-1">
+                    <span className="font-bold text-muted-foreground">Similarity Score:</span>
+                    <span className="font-extrabold text-amber-600">{duplicateMatch.similarity}%</span>
+                  </div>
+                )}
               </div>
 
               <div className="flex flex-col gap-3">
                 <button
                   type="button"
-                  disabled={supporting}
-                  onClick={handleSupportExisting}
-                  className="w-full py-3.5 bg-primary hover:bg-primary/90 disabled:opacity-55 text-primary-foreground font-black rounded-xl text-xs transition-colors shadow-md shadow-primary/10"
+                  onClick={() => {
+                    setDuplicatePopup(false);
+                    const targetId = duplicateMatch.existing_complaint?.id || duplicateMatch.matched_complaint_id;
+                    router.push(`/complaints/${targetId}`);
+                  }}
+                  className="w-full py-3.5 bg-primary hover:bg-primary/90 text-primary-foreground font-black rounded-xl text-xs transition-colors shadow-md shadow-primary/10"
                 >
-                  {supporting ? "Adding Support..." : "Support Existing Complaint"}
+                  View Existing Complaint
                 </button>
                 <button
                   type="button"
-                  disabled={supporting}
-                  onClick={() => {
-                    setDuplicatePopup(false);
-                    handleSubmit(null as any, true);
-                  }}
+                  onClick={() => setDuplicatePopup(false)}
                   className="w-full py-3 bg-muted hover:bg-muted/80 text-foreground font-bold rounded-xl text-xs transition-colors"
                 >
-                  Create New Complaint Anyway
+                  Got It
                 </button>
               </div>
             </div>

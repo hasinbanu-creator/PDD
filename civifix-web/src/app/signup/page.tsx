@@ -139,33 +139,57 @@ export default function SignupPage() {
   };
 
   const handleGetLocation = () => {
+    if (gpsLoading) return;
     setGpsLoading(true);
     if (!navigator.geolocation) {
       alert("Geolocation is not supported by your browser");
       setGpsLoading(false);
       return;
     }
-    navigator.geolocation.getCurrentPosition(
-      async (position) => {
-        const lat = position.coords.latitude.toFixed(6);
-        const lon = position.coords.longitude.toFixed(6);
-        try {
-          const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`);
-          const data = await res.json();
-          if (data && data.display_name) {
-            updateField("address", data.display_name);
-          } else {
-            updateField("address", `${lat}, ${lon}`);
-          }
-        } catch (error) {
+
+    const onLocationSuccess = async (position: GeolocationPosition) => {
+      const lat = position.coords.latitude.toFixed(6);
+      const lon = position.coords.longitude.toFixed(6);
+      try {
+        const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`);
+        const data = await res.json();
+        if (data && data.display_name) {
+          updateField("address", data.display_name);
+        } else {
           updateField("address", `${lat}, ${lon}`);
         }
-        setGpsLoading(false);
-      },
-      () => {
-        alert("Unable to retrieve your location");
+      } catch (error) {
+        updateField("address", `${lat}, ${lon}`);
+      } finally {
         setGpsLoading(false);
       }
+    };
+
+    const handleLocationError = (error: GeolocationPositionError) => {
+      console.warn("High accuracy location error in signup:", error);
+      navigator.geolocation.getCurrentPosition(
+        onLocationSuccess,
+        (finalError: GeolocationPositionError) => {
+          console.error("Final geolocation error in signup:", finalError);
+          if (finalError.code === finalError.PERMISSION_DENIED) {
+            alert("Location permission denied. Please allow location access in your browser settings to proceed.");
+          } else if (finalError.code === finalError.POSITION_UNAVAILABLE) {
+            alert("Location unavailable. Please check if location services / GPS are enabled on your device.");
+          } else if (finalError.code === finalError.TIMEOUT) {
+            alert("Location request timed out. Please check your network and GPS connection.");
+          } else {
+            alert("Unable to retrieve your location. Please try again.");
+          }
+          setGpsLoading(false);
+        },
+        { enableHighAccuracy: false, timeout: 15000, maximumAge: 10000 }
+      );
+    };
+
+    navigator.geolocation.getCurrentPosition(
+      onLocationSuccess,
+      handleLocationError,
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 10000 }
     );
   };
 

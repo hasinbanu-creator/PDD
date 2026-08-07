@@ -177,10 +177,6 @@ function ComplaintItem({ complaint, index, total }: any) {
         <div className="text-xs font-semibold text-foreground mt-0.5 break-all">
           {complaint.complaint_id || complaint.complaintId || complaint._id || "Not Available"}
         </div>
-        <div className="text-[10px] font-bold text-primary mt-3 flex items-center gap-1.5">
-          <Users className="w-3.5 h-3.5 shrink-0" />
-          <span>Supported by {complaint.support_count || 0} Citizens</span>
-        </div>
       </div>
       <div className="flex flex-col items-end gap-3 shrink-0">
         <span className={`px-3 py-1 rounded-full text-xs font-bold ${status.bg} ${status.color}`}>
@@ -666,10 +662,6 @@ function InspectorDashboard() {
                             <p className="whitespace-normal break-words">
                               <span className="font-bold text-slate-500">Ward:</span>
                               <span className="font-semibold text-slate-700 ml-1">{getCleanWard(c)}</span>
-                            </p>
-                            <p className="truncate">
-                              <span className="font-bold text-slate-500">Supported By:</span>
-                              <span className="font-extrabold text-teal-600 ml-1">{c.support_count || 0} Citizens</span>
                             </p>
                             <p className="truncate">
                               <span className="font-bold text-slate-500">Address:</span>

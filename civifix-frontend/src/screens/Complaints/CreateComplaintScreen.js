@@ -468,25 +468,41 @@ export const CreateComplaintScreen = ({ route, navigation }) => {
 
   // ── GPS — no manual fallback ──
   const handleGetLocation = async () => {
+    if (gpsLoading) return;
     setGpsLoading(true);
     try {
-      const perm = await Location.requestForegroundPermissionsAsync().catch(() => ({ status: 'granted' }));
+      const perm = await Location.requestForegroundPermissionsAsync();
+      if (perm.status !== 'granted') {
+        Alert.alert("Permission Denied", "Location permission denied. Please allow location access in your device settings to proceed.");
+        setGpsLoading(false);
+        return;
+      }
+
       let loc = await Location.getLastKnownPositionAsync().catch(() => null);
-      if (!loc) {
-        loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }).catch(() => null);
+      if (!loc || !loc.coords) {
+        loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High }).catch((err) => {
+          console.log("DEBUG: Location fetch error:", err);
+          return null;
+        });
       }
-      if (!loc) {
-        loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }).catch(() => null);
+
+      if (!loc || !loc.coords || !loc.coords.latitude || !loc.coords.longitude) {
+        Alert.alert(
+          "Location Unavailable",
+          "Could not retrieve your GPS location. Please ensure location services / GPS are enabled on your device and try again."
+        );
+        setGpsLoading(false);
+        return;
       }
-      const latVal = loc?.coords?.latitude || 12.9716;
-      const lngVal = loc?.coords?.longitude || 79.1588;
-      const latitude = latVal;
-      const longitude = lngVal;
-      console.log("DEBUG: Current coordinates:", { latitude, longitude });
-      console.log("DEBUG: Latitude:", latitude);
-      console.log("DEBUG: Longitude:", longitude);
+
+      const latitude = loc.coords.latitude;
+      const longitude = loc.coords.longitude;
+      console.log("DEBUG: Authenticated GPS coordinates:", { latitude, longitude });
+
       updateField("latitude",  String(latitude.toFixed(6)));
       updateField("longitude", String(longitude.toFixed(6)));
+      if (errors.location) setErrors((prev) => ({ ...prev, location: "" }));
+
       // Reverse geocode → autofill address
       let finalAddress = `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`;
       try {
@@ -499,18 +515,14 @@ export const CreateComplaintScreen = ({ route, navigation }) => {
           for (const part of rawParts) {
             const trimmed = part.trim();
             if (!trimmed) continue;
-            
-            // Exclude country
             if (trimmed.toLowerCase() === "india") continue;
             
             let normalized = trimmed.toLowerCase();
-            // Remove common administrative designations
             normalized = normalized.replace(/\b(district|municipality|taluk|state|city|town|village|county)\b/g, "");
             normalized = normalized.replace(/\s+/g, "").trim();
             
             if (!normalized) continue;
             
-            // Fuzzy deduplication
             let isDuplicate = false;
             for (const seen of seenNormalized) {
               if (seen.includes(normalized) || normalized.includes(seen) ||
@@ -526,7 +538,6 @@ export const CreateComplaintScreen = ({ route, navigation }) => {
             }
           }
           
-          // Format state and postcode cleanly at the end if applicable
           if (cleanedParts.length >= 2) {
             const last = cleanedParts[cleanedParts.length - 1];
             const prev = cleanedParts[cleanedParts.length - 2];
@@ -544,30 +555,20 @@ export const CreateComplaintScreen = ({ route, navigation }) => {
         if (place && Object.keys(place).length > 0) {
           let formatted = "";
           
-          // 1. Try using the provider's full formatted address first
           if (place.formattedAddress) {
             formatted = deduplicateAddress(place.formattedAddress);
           }
           
-          // 2. If the formatted address is empty or not detailed enough, construct it from components
           if (!formatted || formatted.split(",").length < 3) {
             const parts = [];
-            
             let streetPart = [];
             if (place.houseNumber) streetPart.push(place.houseNumber);
             if (place.building) streetPart.push(place.building);
             if (place.street) streetPart.push(place.street);
-            if (streetPart.length > 0) {
-              parts.push(streetPart.join(" "));
-            }
+            if (streetPart.length > 0) parts.push(streetPart.join(" "));
             
-            if (place.locality) {
-              parts.push(place.locality);
-            }
-
-            if (place.ward) {
-              parts.push(place.ward);
-            }
+            if (place.locality) parts.push(place.locality);
+            if (place.ward) parts.push(place.ward);
             
             if (place.city) {
               parts.push(place.city);
@@ -578,9 +579,7 @@ export const CreateComplaintScreen = ({ route, navigation }) => {
             let regionPart = [];
             if (place.region) regionPart.push(place.region);
             if (place.postalCode) regionPart.push(place.postalCode);
-            if (regionPart.length > 0) {
-              parts.push(regionPart.join(" "));
-            }
+            if (regionPart.length > 0) parts.push(regionPart.join(" "));
             
             const builtAddress = parts.length > 0 ? parts.join(", ") : "";
             formatted = deduplicateAddress(builtAddress);
@@ -592,13 +591,12 @@ export const CreateComplaintScreen = ({ route, navigation }) => {
         }
       } catch (error) {
         console.error("Geocoding failed", error);
-        console.log("DEBUG: Network failures during geocoding:", error);
       }
-      // Force UI update safely outside the try block
+
       updateField("address", finalAddress);
     } catch (error) {
-      console.log("DEBUG: Network failures during GPS:", error);
-      Alert.alert("Location Error", "Could not get your location. Please try again.");
+      console.log("DEBUG: Location error in CreateComplaintScreen:", error);
+      Alert.alert("Location Error", "Could not get your location. Please ensure location services are turned on.");
     } finally {
       setGpsLoading(false);
     }

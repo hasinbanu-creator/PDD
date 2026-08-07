@@ -16,53 +16,19 @@ export const Button = ({
   style,
   textStyle,
 }) => {
-  const variantStyles = {
-    primary: {
-      bg: COLORS.primary,
-      text: COLORS.card,
-      gradient: GRADIENTS.actionGradient,
-    },
-    secondary: {
-      bg: COLORS.secondary,
-      text: COLORS.card,
-    },
-    accent: {
-      bg: COLORS.accent,
-      text: COLORS.card,
-    },
-    outline: {
-      bg: COLORS.card,
-      text: COLORS.primary,
-      borderColor: COLORS.primary,
-      borderWidth: 2,
-    },
-    ghost: {
-      bg: "transparent",
-      text: COLORS.primary,
-    },
-  };
+  const isSecondary = variant === "secondary" || variant === "outline";
 
-  const sizeStyles = {
-    sm: { height: 36, paddingHorizontal: SPACING.lg },
-    md: { height: 48, paddingHorizontal: SPACING.xl },
-    lg: { height: 56, paddingHorizontal: SPACING.xxl },
-  };
-
-  const variantStyle = variantStyles[variant] || variantStyles.primary;
-  const sizeStyle = sizeStyles[size] || sizeStyles.md;
-  
   const buttonText = title || text || children;
 
   const content = loading ? (
-    <ActivityIndicator color={variantStyle?.text} size="small" />
+    <ActivityIndicator color={isSecondary ? "#2563EB" : "#FFFFFF"} size="small" />
   ) : (
     <Text
       style={[
         {
-          color: variantStyle?.text,
-          fontSize: 14,
-          fontWeight: "700",
-          letterSpacing: 0,
+          color: isSecondary ? "#2563EB" : "#FFFFFF",
+          fontSize: 16,
+          fontWeight: "600",
         },
         textStyle,
       ]}
@@ -75,49 +41,31 @@ export const Button = ({
     <TouchableOpacity
       onPress={onPress}
       disabled={disabled || loading}
-      activeOpacity={0.7}
+      activeOpacity={0.8}
       style={[
         {
           width: fullWidth ? "100%" : "auto",
-          opacity: disabled ? 0.5 : 1,
-          borderRadius: 16,
-          ...(variant === "primary" ? SHADOWS.md : {}),
+          height: 52,
+          borderRadius: 14,
+          paddingHorizontal: 20,
+          backgroundColor: disabled ? "#CBD5E1" : isSecondary ? "#FFFFFF" : "#2563EB",
+          borderWidth: isSecondary ? 1.5 : 0,
+          borderColor: isSecondary ? "#2563EB" : "transparent",
+          justifyContent: "center",
+          alignItems: "center",
+          flexDirection: "row",
+          ...(variant === "primary" && !disabled ? {
+            shadowColor: "#2563EB",
+            shadowOffset: { width: 0, height: 4 },
+            shadowOpacity: 0.25,
+            shadowRadius: 8,
+            elevation: 4,
+          } : {}),
         },
         style,
       ]}
     >
-      <View
-        style={{
-          backgroundColor: variantStyle?.gradient ? "transparent" : variantStyle?.bg,
-          borderColor: variantStyle?.borderColor,
-          borderWidth: variantStyle?.borderWidth || 0,
-          borderRadius: 16,
-          justifyContent: "center",
-          alignItems: "center",
-          flexDirection: "row",
-          width: "100%",
-          overflow: "hidden",
-          ...sizeStyle,
-        }}
-      >
-        {variantStyle?.gradient ? (
-          <LinearGradient
-            colors={variantStyle.gradient}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={{
-              width: "100%",
-              height: "100%",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            {content}
-          </LinearGradient>
-        ) : (
-          content
-        )}
-      </View>
+      {content}
     </TouchableOpacity>
   );
 };

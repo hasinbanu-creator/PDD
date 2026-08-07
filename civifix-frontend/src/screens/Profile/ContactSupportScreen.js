@@ -62,7 +62,11 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.card, borderBottomWidth: 1, borderBottomColor: COLORS.border,
     ...SHADOWS.sm,
   },
-  backButton: { marginRight: SPACING.md },
+  backButton: {
+    width: 48, height: 48, borderRadius: 24,
+    backgroundColor: "#EFF6FF", alignItems: "center", justifyContent: "center",
+    marginRight: SPACING.md,
+  },
   headerTitle: { fontSize: FONT_SIZES.xl, fontWeight: "700", color: COLORS.textDark },
   scrollContent: { padding: SPACING.lg, paddingBottom: SPACING.xxxl },
   sectionTitle: {

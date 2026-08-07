@@ -537,7 +537,6 @@ export default function ComplaintsListPage() {
                               <div className="space-y-1">
                                 <div><span className="text-muted-foreground font-bold">District:</span> {getCleanDistrict(complaint, districts)}</div>
                                 <div><span className="text-muted-foreground font-bold">Ward:</span> {getCleanWard(complaint)}</div>
-                                <div><span className="text-muted-foreground font-bold">Supported By:</span> {complaint.support_count || 0} Citizens</div>
                                 <div className="truncate max-w-[220px]" title={complaint.address}><span className="text-muted-foreground font-bold">Address:</span> {complaint.address || "Not Available"}</div>
                                 <div className="truncate max-w-[220px]" title={complaint.landmark}><span className="text-muted-foreground font-bold">Landmark:</span> {complaint.landmark || "Not Available"}</div>
                               </div>

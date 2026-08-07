@@ -94,7 +94,11 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.card, borderBottomWidth: 1, borderBottomColor: COLORS.border,
     ...SHADOWS.sm,
   },
-  backButton: { marginRight: SPACING.md },
+  backButton: {
+    width: 48, height: 48, borderRadius: 24,
+    backgroundColor: "#EFF6FF", alignItems: "center", justifyContent: "center",
+    marginRight: SPACING.md,
+  },
   headerTitle: { fontSize: FONT_SIZES.xl, fontWeight: "700", color: COLORS.textDark },
   scrollContent: { padding: SPACING.lg, paddingBottom: SPACING.xxxl },
   sectionTitle: {
@@ -102,7 +106,7 @@ const styles = StyleSheet.create({
     marginBottom: SPACING.md, marginLeft: SPACING.xs,
   },
   card: {
-    backgroundColor: COLORS.card, borderRadius: BORDER_RADIUS.lg, ...SHADOWS.sm,
+    backgroundColor: COLORS.card, borderRadius: 14, ...SHADOWS.sm,
     marginBottom: SPACING.xl,
   },
   faqItem: { padding: SPACING.lg },
@@ -113,17 +117,19 @@ const styles = StyleSheet.create({
   divider: { height: 1, backgroundColor: COLORS.border, marginHorizontal: SPACING.lg },
   
   supportBox: {
-    backgroundColor: `${COLORS.primary}10`, borderRadius: BORDER_RADIUS.lg,
+    backgroundColor: `${COLORS.primary}10`, borderRadius: 16,
     padding: SPACING.xl, alignItems: "center", marginTop: SPACING.md,
   },
   supportIcon: { marginBottom: SPACING.md },
   supportTitle: { fontSize: FONT_SIZES.lg, fontWeight: "700", color: COLORS.primary, marginBottom: SPACING.xs },
   supportSub: { fontSize: FONT_SIZES.sm, color: COLORS.textLight, textAlign: "center", marginBottom: SPACING.lg },
   supportBtn: {
-    backgroundColor: COLORS.primary, paddingHorizontal: SPACING.xl, paddingVertical: SPACING.md,
-    borderRadius: BORDER_RADIUS.md, width: '100%', alignItems: 'center'
+    backgroundColor: COLORS.primary, height: 52, paddingHorizontal: 20,
+    borderRadius: 14, width: '100%', alignItems: 'center', justifyContent: 'center',
+    shadowColor: "#2563EB", shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25, shadowRadius: 8, elevation: 4,
   },
-  supportBtnText: { color: COLORS.card, fontWeight: "700", fontSize: FONT_SIZES.base },
+  supportBtnText: { color: "#FFFFFF", fontWeight: "600", fontSize: 16 },
 });
 
 export default FAQScreen;

@@ -63,6 +63,7 @@ const STATUS_STYLES: Record<ComplaintStatus, { label: string; color: string; bg:
   APPROVAL: { label: "Review", color: "text-secondary", bg: "bg-secondary/10" },
   CLOSED: { label: "Resolved", color: "text-success", bg: "bg-success/10" },
   RESOLVED: { label: "Resolved", color: "text-success", bg: "bg-success/10" },
+  REOPENED: { label: "Reopened", color: "text-amber-600", bg: "bg-amber-500/10" },
   REJECTED: { label: "Rejected", color: "text-destructive", bg: "bg-destructive/10" },
 };
 

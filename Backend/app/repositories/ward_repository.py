@@ -194,25 +194,31 @@ class WardRepository:
             if status_change.get("increment_total"):
                 update_data["$inc"] = {"complaint_count": 1}
             
-            if status_change.get("new_status") == "CLOSED":
+            if status_change.get("new_status") in ["CLOSED", "RESOLVED"]:
                 if "$inc" not in update_data:
                     update_data["$inc"] = {}
                 update_data["$inc"]["closed_complaints"] = 1
                 update_data["$inc"]["active_complaints"] = -1
-            elif status_change.get("new_status") == "OPEN":
+            elif status_change.get("new_status") in ["OPEN", "REOPENED"]:
                 if "$inc" not in update_data:
                     update_data["$inc"] = {}
                 update_data["$inc"]["active_complaints"] = 1
+                if status_change.get("old_status") in ["CLOSED", "RESOLVED"]:
+                    update_data["$inc"]["closed_complaints"] = -1
             
+            if not update_data:
+                return True
+
+            resolved_id = ObjectId(ward_id) if ward_id and len(str(ward_id)) == 24 else ward_id
             result = await self.collection.update_one(
-                {"_id": ObjectId(ward_id)},
+                {"_id": resolved_id},
                 update_data
             )
             
             return result.matched_count > 0
         except Exception as e:
             logger.error(f"Error updating ward counts: {str(e)}")
-            raise
+            return False
 
     async def is_active(self, ward_id: str) -> bool:
         """Check if ward is active"""

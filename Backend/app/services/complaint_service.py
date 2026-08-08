@@ -518,6 +518,143 @@ class ComplaintService:
             logger.error(f"Error rejecting complaint: {str(e)}")
             raise CivifixException("Failed to reject complaint", status_code=500)
 
+    async def submit_feedback(
+        self,
+        complaint_id: str,
+        rating: Optional[int],
+        feedback_text: str,
+        user_id: str,
+        user_role: str
+    ) -> dict:
+        """Submit feedback for a resolved complaint and trigger Google Cloud NLP sentiment evaluation"""
+        import uuid
+        try:
+            complaint = await self.complaint_repo.get_by_id(complaint_id)
+            if not complaint:
+                raise ResourceNotFoundError("Complaint not found")
+
+            # RBAC: Citizen can submit feedback ONLY for their own complaint
+            complaint_author = str(complaint.get("user_id") or complaint.get("citizenId") or complaint.get("createdBy") or "")
+            if str(user_id) != complaint_author:
+                await self._print_403_checkpoint("submit_feedback", 530, user_id, user_role, "User is not the author of this complaint")
+                raise UnauthorizedError("You can only submit feedback for your own complaint")
+
+            # Status Check: Status MUST be RESOLVED or CLOSED
+            current_status = str(complaint.get("status") or "").upper()
+            if current_status not in [ComplaintStatus.RESOLVED, ComplaintStatus.CLOSED]:
+                raise ValidationError("Feedback can only be submitted for resolved complaints")
+
+            # Duplicate Check: Prevent duplicate feedback submissions
+            if complaint.get("feedback"):
+                raise ValidationError("Feedback has already been submitted for this complaint")
+
+            # Analyze Feedback via Google Cloud Natural Language API
+            from app.services.nlp_service import analyze_sentiment
+            nlp_res = analyze_sentiment(feedback_text)
+
+            feedback_id = str(uuid.uuid4())
+            now = datetime.utcnow()
+            feedback_record = {
+                "feedback_id": feedback_id,
+                "rating": rating,
+                "feedback_text": feedback_text,
+                "sentiment_score": nlp_res["sentiment_score"],
+                "sentiment_magnitude": nlp_res["sentiment_magnitude"],
+                "sentiment_classification": nlp_res["sentiment_classification"],
+                "threshold_used": nlp_res["threshold_used"],
+                "provider": nlp_res.get("provider", "GOOGLE_CLOUD_NATURAL_LANGUAGE"),
+                "created_at": now,
+                "timestamp": now
+            }
+
+            should_reopen = nlp_res["should_reopen"]
+
+            update_data = {
+                "feedback": feedback_record,
+                "sentiment_score": nlp_res["sentiment_score"],
+                "sentiment_magnitude": nlp_res["sentiment_magnitude"],
+                "sentiment_classification": nlp_res["sentiment_classification"],
+                "updated_at": now
+            }
+
+            if should_reopen:
+                new_status = ComplaintStatus.REOPENED
+                reopen_details = {
+                    "reopened_at": now,
+                    "feedback_id": feedback_id,
+                    "sentiment_score": nlp_res["sentiment_score"],
+                    "reason": "NEGATIVE_CITIZEN_FEEDBACK"
+                }
+                update_data.update({
+                    "status": new_status,
+                    "reopened_reason": "NEGATIVE_CITIZEN_FEEDBACK",
+                    "reopen_details": reopen_details
+                })
+            else:
+                new_status = current_status
+
+            success = await self.complaint_repo.update(complaint_id, update_data)
+            if not success:
+                raise CivifixException("Failed to save feedback")
+
+            # History audit trail
+            history_data = {
+                "complaint_id": self._normalize_id(complaint_id),
+                "action": "REOPENED" if should_reopen else "FEEDBACK_SUBMITTED",
+                "old_status": current_status,
+                "new_status": new_status,
+                "performed_by": self._normalize_id(user_id),
+                "role": user_role,
+                "remarks": f"Citizen feedback: '{feedback_text}'. Sentiment: {nlp_res['sentiment_classification']} (Score: {nlp_res['sentiment_score']}). " +
+                           ("Automatically REOPENED due to negative citizen feedback." if should_reopen else "Complaint remains RESOLVED."),
+                "timestamp": now
+            }
+            await self.complaint_repo.add_history(history_data)
+
+            if should_reopen and complaint.get("ward_id"):
+                await self.ward_repo.update_complaint_counts(
+                    str(complaint.get("ward_id")),
+                    {"old_status": current_status, "new_status": new_status}
+                )
+
+            updated = await self.complaint_repo.get_by_id(complaint_id)
+            formatted = self._format_complaint(updated)
+
+            msg = "Thank you for your feedback! " + ("Your complaint has been automatically reopened for re-inspection due to negative citizen feedback." if should_reopen else "We appreciate your feedback.")
+
+            return {
+                "message": msg,
+                "reopened": should_reopen,
+                "sentiment_score": nlp_res["sentiment_score"],
+                "sentiment_classification": nlp_res["sentiment_classification"],
+                "complaint": formatted
+            }
+
+        except CivifixException:
+            raise
+        except Exception as e:
+            logger.error(f"Error submitting feedback: {str(e)}")
+            raise CivifixException("Failed to submit feedback", status_code=500)
+
+    async def get_feedback(self, complaint_id: str, user_id: str, user_role: str) -> dict:
+        """Retrieve feedback for a complaint"""
+        complaint = await self.complaint_repo.get_by_id(complaint_id)
+        if not complaint:
+            raise ResourceNotFoundError("Complaint not found")
+
+        feedback = complaint.get("feedback")
+        if not feedback:
+            raise ResourceNotFoundError("No feedback found for this complaint")
+
+        return {
+            "complaint_id": complaint_id,
+            "feedback": feedback,
+            "status": complaint.get("status"),
+            "reopened_reason": complaint.get("reopened_reason"),
+            "sentiment_score": complaint.get("sentiment_score"),
+            "sentiment_classification": complaint.get("sentiment_classification")
+        }
+
     async def get_user_complaints(
         self,
         user_id: str,

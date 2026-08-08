@@ -236,8 +236,8 @@ export const authService = {
     return unwrapResponse(response);
   },
 
-  submitFeedback: async (id, data) => {
-    const response = await api.put(ENDPOINTS.SUBMIT_FEEDBACK(id), null, { params: data });
+  submitFeedback: async (id, feedbackData) => {
+    const response = await api.post(`/complaints/${id}/feedback`, feedbackData);
     return unwrapResponse(response);
   },
 
@@ -302,6 +302,16 @@ export const authService = {
   supportComplaint: async (complaintId) => {
     const response = await api.post(`/complaints/${complaintId}/support`);
     return unwrapResponse(response);
+  },
+
+  getFeedback: async (complaintId) => {
+    const res = await api.get(`/complaints/${complaintId}/feedback`);
+    return unwrapResponse(res);
+  },
+
+  submitFeedback: async (complaintId, payload) => {
+    const res = await api.post(`/complaints/${complaintId}/feedback`, payload);
+    return unwrapResponse(res);
   },
 
   // ─── INSPECTOR COMPLAINT ACTIONS ─────────────────────────────────────────────

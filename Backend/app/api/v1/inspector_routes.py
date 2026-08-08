@@ -451,7 +451,7 @@ async def start_work(
     complaint_id: str,
     current_user: Dict[str, Any] = Depends(get_current_user)
 ):
-    """Move complaint from OPEN to IN_PROGRESS and auto-assign a random worker"""
+    """Move complaint from OPEN or REOPENED to IN_PROGRESS and auto-assign a random worker"""
     try:
         complaint = await _find_complaint_by_identifier(complaint_id)
         if not complaint:
@@ -460,9 +460,10 @@ async def start_work(
                 status_code=status.HTTP_404_NOT_FOUND
             )
 
-        if complaint.get("status") != "OPEN":
+        current_status = str(complaint.get("status") or "").upper()
+        if current_status not in ["OPEN", "REOPENED"]:
             return ResponseHandler.error(
-                message="Only OPEN complaints can be started",
+                message="Only OPEN or REOPENED complaints can be accepted",
                 status_code=status.HTTP_400_BAD_REQUEST
             )
 
@@ -483,7 +484,7 @@ async def start_work(
                 selected = random.choice(workers)
                 assigned_worker_id = selected["_id"]
 
-        old_status = complaint.get("status")
+        old_status = current_status
         new_status = "IN_PROGRESS"
         update_fields: Dict[str, Any] = {
             "status": new_status,
@@ -499,14 +500,16 @@ async def start_work(
         )
         logger.info(f"STATUS CHANGE AFTER - Complaint ID: {complaint_id}, Old Status: {old_status}, New Status: {new_status}")
 
+        remarks_msg = "Inspector accepted reopened complaint for re-inspection" if old_status == "REOPENED" else "Work started by inspector"
+
         await db.complaint_history.insert_one({
             "complaint_id": complaint.get("_id"),
             "action": "STATUS_CHANGED",
-            "old_status": "OPEN",
+            "old_status": old_status,
             "new_status": "IN_PROGRESS",
             "performed_by": ObjectId(current_user["user_id"]),
             "role": "INSPECTOR",
-            "remarks": "Work started by inspector",
+            "remarks": remarks_msg,
             "timestamp": datetime.utcnow()
         })
         
@@ -540,7 +543,7 @@ async def reject_complaint_simplified(
     complaint_id: str,
     current_user: Dict[str, Any] = Depends(get_current_user)
 ):
-    """Move complaint from OPEN to REJECTED"""
+    """Move complaint from OPEN to REJECTED (Reopened complaints CANNOT be rejected)"""
     try:
         complaint = await _find_complaint_by_identifier(complaint_id)
         if not complaint:
@@ -549,13 +552,21 @@ async def reject_complaint_simplified(
                 status_code=status.HTTP_404_NOT_FOUND
             )
 
-        if complaint.get("status") != "OPEN":
+        current_status = str(complaint.get("status") or "").upper()
+
+        if current_status == "REOPENED" or complaint.get("reopened_reason") is not None:
+            return ResponseHandler.error(
+                message="Reopened complaints cannot be rejected by inspector.",
+                status_code=status.HTTP_400_BAD_REQUEST
+            )
+
+        if current_status != "OPEN":
             return ResponseHandler.error(
                 message="Only OPEN complaints can be rejected here",
                 status_code=status.HTTP_400_BAD_REQUEST
             )
 
-        old_status = complaint.get("status")
+        old_status = current_status
         new_status = "REJECTED"
         logger.info(f"STATUS CHANGE BEFORE - Complaint ID: {complaint_id}, Old Status: {old_status}, New Status: {new_status}")
         await db.complaints.update_one(
@@ -567,7 +578,7 @@ async def reject_complaint_simplified(
         await db.complaint_history.insert_one({
             "complaint_id": complaint.get("_id"),
             "action": "REJECTED",
-            "old_status": "OPEN",
+            "old_status": old_status,
             "new_status": "REJECTED",
             "performed_by": ObjectId(current_user["user_id"]),
             "role": "INSPECTOR",
@@ -614,7 +625,7 @@ async def resolve_complaint(
     images: List[UploadFile] = File(default=[]),
     current_user: Dict[str, Any] = Depends(get_current_user)
 ):
-    """Move complaint to RESOLVED with proof images"""
+    """Move complaint to RESOLVED with mandatory proof/inspection images"""
     try:
         complaint = await _find_complaint_by_identifier(complaint_id)
         if not complaint:
@@ -623,9 +634,12 @@ async def resolve_complaint(
                 status_code=status.HTTP_404_NOT_FOUND
             )
 
+        is_reopened = str(complaint.get("status") or "").upper() == "REOPENED" or complaint.get("reopened_reason") is not None
+
         if not images or len(images) == 0:
+            err_msg = "Please upload a photo before proceeding with a reopened complaint." if is_reopened else "Resolution proof images are required"
             return ResponseHandler.error(
-                message="Resolution proof images are required",
+                message=err_msg,
                 status_code=status.HTTP_400_BAD_REQUEST
             )
 
@@ -647,33 +661,40 @@ async def resolve_complaint(
             image_urls.append(f"{user_id}/images/{new_filename}")
 
         if len(image_urls) == 0:
+            err_msg = "Please upload a photo before proceeding with a reopened complaint." if is_reopened else "Valid resolution proof images are required"
             return ResponseHandler.error(
-                message="Valid resolution proof images are required",
+                message=err_msg,
                 status_code=status.HTTP_400_BAD_REQUEST
             )
 
         old_status = complaint.get("status")
         new_status = "RESOLVED"
+        
+        update_doc = {
+            "status": new_status,
+            "proof_images": image_urls,
+            "reopened_inspection_photo": image_urls[0],
+            "closed_at": datetime.utcnow(),
+            "updated_at": datetime.utcnow()
+        }
+
         logger.info(f"STATUS CHANGE BEFORE - Complaint ID: {complaint_id}, Old Status: {old_status}, New Status: {new_status}")
         await db.complaints.update_one(
             {"_id": complaint.get("_id")},
-            {"$set": {
-                "status": new_status,
-                "proof_images": image_urls,
-                "closed_at": datetime.utcnow(),
-                "updated_at": datetime.utcnow()
-            }}
+            {"$set": update_doc}
         )
         logger.info(f"STATUS CHANGE AFTER - Complaint ID: {complaint_id}, Old Status: {old_status}, New Status: {new_status}")
+
+        remarks_msg = note or ("Inspector uploaded inspection photo & resolved reopened complaint" if is_reopened else "Issue verified and resolved by inspector")
 
         await db.complaint_history.insert_one({
             "complaint_id": complaint.get("_id"),
             "action": "STATUS_CHANGED",
-            "old_status": complaint.get("status"),
+            "old_status": old_status,
             "new_status": "RESOLVED",
             "performed_by": ObjectId(current_user["user_id"]),
             "role": "INSPECTOR",
-            "remarks": note or "Issue verified and resolved by inspector",
+            "remarks": remarks_msg,
             "timestamp": datetime.utcnow()
         })
         
@@ -722,6 +743,12 @@ async def update_complaint_status(
 
         new_status = payload.status
         old_status = complaint.get("status")
+
+        if (old_status == "REOPENED" or complaint.get("reopened_reason") is not None) and new_status == "REJECTED":
+            return ResponseHandler.error(
+                message="Reopened complaints cannot be rejected by inspector.",
+                status_code=status.HTTP_400_BAD_REQUEST
+            )
 
         if new_status not in ["ASSIGNED", "ACCEPTED", "IN_PROGRESS", "FIELD_VISIT", "RESOLVED", "REJECTED"]:
             return ResponseHandler.error(

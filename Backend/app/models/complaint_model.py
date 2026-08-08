@@ -127,4 +127,12 @@ def complaint_response(doc) -> dict:
     doc["updatedAt"] = doc.get("updated_at")
     doc["support_count"] = doc.get("support_count", 0)
     
+    doc["feedback"] = doc.get("feedback")
+    doc["reopened_reason"] = doc.get("reopened_reason")
+    doc["satisfaction_score"] = doc.get("satisfaction_score")
+    doc["sentiment_score"] = doc.get("sentiment_score")
+    doc["sentiment_magnitude"] = doc.get("sentiment_magnitude")
+    doc["sentiment_classification"] = doc.get("sentiment_classification")
+    doc["reopen_details"] = doc.get("reopen_details")
+    
     return doc

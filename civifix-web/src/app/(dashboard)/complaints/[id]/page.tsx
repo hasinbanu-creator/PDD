@@ -36,7 +36,9 @@ import {
   X,
   History,
   MoreVertical,
-  Sparkles
+  Sparkles,
+  Star,
+  MessageSquare
 } from "lucide-react";
 import { useAuth } from "@/context/auth-context";
 import api from "@/lib/api";
@@ -73,6 +75,7 @@ const STATUS_CONFIG: Record<string, { color: string, bg: string, border: string,
   IN_PROGRESS: { color: "text-secondary", bg: "bg-secondary/10", border: "border-secondary/20", icon: Wrench, label: "In Progress" },
   CLOSED: { color: "text-success", bg: "bg-success/10", border: "border-success/20", icon: CheckCircle2, label: "Resolved" },
   RESOLVED: { color: "text-success", bg: "bg-success/10", border: "border-success/20", icon: CheckCircle2, label: "Resolved" },
+  REOPENED: { color: "text-amber-600", bg: "bg-amber-500/10", border: "border-amber-500/30", icon: AlertCircle, label: "Reopened" },
   REJECTED: { color: "text-destructive", bg: "bg-destructive/10", border: "border-destructive/20", icon: XCircle, label: "Rejected" },
 };
 
@@ -161,6 +164,10 @@ const getFinalImageUri = (img: string) => {
   }, [complaint]);
 
 
+  const [loadingFeedback, setLoadingFeedback] = useState(true);
+  const [feedbackAlreadySubmitted, setFeedbackAlreadySubmitted] = useState(false);
+  const [existingFeedbackData, setExistingFeedbackData] = useState<any>(null);
+
   const [updating, setUpdating] = useState(false);
   const [showNotesModal, setShowNotesModal] = useState(false);
   const [showRejectModal, setShowRejectModal] = useState(false);
@@ -172,6 +179,112 @@ const getFinalImageUri = (img: string) => {
   const [rating, setRating] = useState(0);
   const [feedback, setFeedback] = useState("");
   const [rejectReason, setRejectReason] = useState("");
+  const [submittingFeedback, setSubmittingFeedback] = useState(false);
+
+  useEffect(() => {
+    if (!id) return;
+    let isMounted = true;
+
+    const checkFeedbackStatus = async () => {
+      try {
+        setLoadingFeedback(true);
+        const res = await complaintsApi.getFeedback(id);
+        const fbData = res?.data || res;
+        if (fbData && (fbData.feedback || fbData.feedback_text)) {
+          if (isMounted) {
+            const fb = fbData.feedback || fbData;
+            setExistingFeedbackData({
+              ...fb,
+              sentiment_classification: fbData.sentiment_classification || fb.sentiment_classification,
+              sentiment_score: fbData.sentiment_score ?? fb.sentiment_score,
+            });
+            setFeedbackAlreadySubmitted(true);
+          }
+        } else if (complaint?.feedback) {
+          if (isMounted) {
+            setExistingFeedbackData(complaint.feedback);
+            setFeedbackAlreadySubmitted(true);
+          }
+        } else {
+          if (isMounted) setFeedbackAlreadySubmitted(false);
+        }
+      } catch (err: any) {
+        if (complaint?.feedback) {
+          if (isMounted) {
+            setExistingFeedbackData(complaint.feedback);
+            setFeedbackAlreadySubmitted(true);
+          }
+        } else {
+          if (isMounted) setFeedbackAlreadySubmitted(false);
+        }
+      } finally {
+        if (isMounted) setLoadingFeedback(false);
+      }
+    };
+
+    checkFeedbackStatus();
+    return () => { isMounted = false; };
+  }, [id, complaint?.feedback]);
+
+  const handleFeedbackSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (rating < 1) {
+      alert("Please select a 1 to 5 star rating");
+      return;
+    }
+    if (!feedback.trim()) {
+      alert("Please provide feedback comments");
+      return;
+    }
+    try {
+      setSubmittingFeedback(true);
+      const res: any = await api.post(`/complaints/${id}/feedback`, {
+        rating,
+        feedback: feedback.trim()
+      });
+      const resData = res?.data || res;
+      const fbObj = resData?.data?.complaint?.feedback || resData?.complaint?.feedback || resData?.data?.feedback || resData?.feedback || {
+        rating,
+        feedback_text: feedback.trim(),
+        sentiment_classification: resData?.data?.sentiment_classification || resData?.sentiment_classification || "NEUTRAL",
+        sentiment_score: resData?.data?.sentiment_score ?? resData?.sentiment_score
+      };
+
+      setExistingFeedbackData(fbObj);
+      setFeedbackAlreadySubmitted(true);
+
+      refetch();
+      queryClient.invalidateQueries({ queryKey: ["complaint", id] });
+      queryClient.invalidateQueries({ queryKey: ["complaints"] });
+    } catch (err: any) {
+      console.error("Feedback submit error:", err);
+      const errMsg = err?.response?.data?.message || err?.response?.data?.detail || err?.message || "";
+      if (errMsg.toLowerCase().includes("already") || err?.response?.status === 400 || err?.response?.status === 422) {
+        // DUPLICATE SUBMISSION PROTECTION: DO NOT USE BROWSER ALERT!
+        try {
+          const resFb = await complaintsApi.getFeedback(id);
+          const fbData = resFb?.data || resFb;
+          if (fbData && (fbData.feedback || fbData.feedback_text)) {
+            const fb = fbData.feedback || fbData;
+            setExistingFeedbackData({
+              ...fb,
+              sentiment_classification: fbData.sentiment_classification || fb.sentiment_classification,
+              sentiment_score: fbData.sentiment_score ?? fb.sentiment_score,
+            });
+          }
+        } catch (fetchErr) {
+          if (complaint?.feedback) {
+            setExistingFeedbackData(complaint.feedback);
+          }
+        }
+        setFeedbackAlreadySubmitted(true);
+      } else {
+        alert("Failed to submit feedback. Please try again.");
+      }
+    } finally {
+      setSubmittingFeedback(false);
+    }
+  };
 
   const updateStatus = async (newStatus: string) => {
     try {
@@ -251,6 +364,14 @@ const getFinalImageUri = (img: string) => {
   };
 
   const handleResolveConfirm = async () => {
+    const isReopened = complaint?.status === "REOPENED" || !!complaint?.reopened_reason;
+    if (selectedProofImages.length === 0) {
+      if (isReopened) {
+        alert("Please upload a photo before proceeding with a reopened complaint.");
+        return;
+      }
+    }
+
     try {
       setUpdating(true);
 
@@ -596,6 +717,179 @@ const getFinalImageUri = (img: string) => {
               />
             </>
           )}
+
+          {/* ── Reopened Warning Banner ── */}
+          {complaint.status === "REOPENED" && (
+            <div className="mt-8 p-6 bg-amber-500/10 border-2 border-amber-500/30 rounded-[2rem]">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="w-10 h-10 rounded-xl bg-amber-500/20 flex items-center justify-center">
+                  <AlertCircle className="w-6 h-6 text-amber-600" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-black text-amber-900">⚠ Reopened due to Low Citizen Satisfaction</h3>
+                  <p className="text-xs font-bold text-amber-700">Reason: LOW_FEEDBACK_SCORE</p>
+                </div>
+              </div>
+              <p className="text-sm font-medium text-amber-800 mt-2">
+                This complaint was automatically reopened after the citizen submitted feedback resulting in a satisfaction score below the threshold of 50/100.
+              </p>
+            </div>
+          )}
+
+          {/* ── Citizen Feedback Section ── */}
+          {(user?.role === "CITIZEN" || String(user?.id || user?._id) === String(complaint.user_id || complaint.citizenId)) &&
+            ["RESOLVED", "CLOSED", "REOPENED"].includes(complaint.status) && (
+              <div className="mt-8 pt-6 border-t border-border/50">
+                {loadingFeedback ? (
+                  <div className="bg-card border border-border rounded-2xl p-6 shadow-sm flex items-center justify-center gap-3">
+                    <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
+                    <p className="text-sm font-bold text-muted-foreground">Checking feedback...</p>
+                  </div>
+                ) : (feedbackAlreadySubmitted || existingFeedbackData || complaint.feedback) ? (
+                  /* READ-ONLY SUBMITTED FEEDBACK UI */
+                  <div className="bg-emerald-50/70 border-2 border-emerald-500/30 rounded-[2rem] p-6 shadow-sm">
+                    <div className="flex items-center justify-between gap-4 mb-4 pb-4 border-b border-emerald-200/60">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-black shadow-md shadow-emerald-600/20">
+                          ✓
+                        </div>
+                        <div>
+                          <h3 className="text-lg font-black text-emerald-950">Feedback Submitted ✓</h3>
+                          <p className="text-xs font-bold text-emerald-700">Thank you for your feedback.</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="bg-white/95 rounded-2xl p-5 border border-emerald-200/80 space-y-4">
+                      <div>
+                        <label className="block text-xs font-extrabold text-slate-500 uppercase tracking-widest mb-1.5">
+                          Your Rating
+                        </label>
+                        <div className="flex items-center gap-1.5">
+                          {[1, 2, 3, 4, 5].map((star) => {
+                            const curRating = ((existingFeedbackData || complaint.feedback)?.rating || rating || 0);
+                            return (
+                              <Star
+                                key={star}
+                                className={`w-6 h-6 ${
+                                  star <= curRating
+                                    ? "fill-amber-400 text-amber-400"
+                                    : "text-slate-300"
+                                }`}
+                              />
+                            );
+                          })}
+                          <span className="ml-2 text-sm font-extrabold text-slate-800">
+                            {((existingFeedbackData || complaint.feedback)?.rating || rating || 0)} / 5 Stars
+                          </span>
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-extrabold text-slate-500 uppercase tracking-widest mb-1.5">
+                          Your Feedback
+                        </label>
+                        <p className="text-sm font-semibold text-slate-800 italic bg-slate-50 p-4 rounded-xl border border-slate-200">
+                          "{((existingFeedbackData || complaint.feedback)?.feedback_text || (existingFeedbackData || complaint.feedback)?.feedback || feedback)}"
+                        </p>
+                      </div>
+
+                      <div className="flex flex-wrap items-center gap-4 text-xs font-bold text-slate-600 pt-2 border-t border-slate-100">
+                        {((existingFeedbackData || complaint.feedback)?.sentiment_classification || (existingFeedbackData || complaint.feedback)?.sentiment || complaint.sentiment_classification) && (
+                          <span>
+                            Sentiment:{" "}
+                            <span className={`font-black uppercase px-2.5 py-0.5 rounded-full text-[11px] ${
+                              ((existingFeedbackData || complaint.feedback)?.sentiment_classification || (existingFeedbackData || complaint.feedback)?.sentiment || complaint.sentiment_classification) === "POSITIVE"
+                                ? "bg-emerald-100 text-emerald-700"
+                                : ((existingFeedbackData || complaint.feedback)?.sentiment_classification || (existingFeedbackData || complaint.feedback)?.sentiment || complaint.sentiment_classification) === "NEGATIVE"
+                                ? "bg-red-100 text-red-700"
+                                : "bg-blue-100 text-blue-700"
+                            }`}>
+                              {(existingFeedbackData || complaint.feedback)?.sentiment_classification || (existingFeedbackData || complaint.feedback)?.sentiment || complaint.sentiment_classification}
+                            </span>
+                          </span>
+                        )}
+
+                        {((existingFeedbackData || complaint.feedback)?.sentiment_score !== undefined || complaint.sentiment_score !== undefined) && (
+                          <span>
+                            Sentiment Score:{" "}
+                            <span className="font-black text-slate-800">
+                              {(existingFeedbackData || complaint.feedback)?.sentiment_score ?? complaint.sentiment_score}
+                            </span>
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ) : (complaint.status === "RESOLVED" || complaint.status === "CLOSED") ? (
+                  /* EDITABLE FEEDBACK SUBMISSION FORM */
+                  <div className="bg-card border border-border rounded-2xl p-6 shadow-sm">
+                    <div className="flex items-center gap-3 mb-6 pb-4 border-b border-border/50">
+                      <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                        <MessageSquare className="w-5 h-5 text-primary" />
+                      </div>
+                      <div>
+                        <h3 className="text-lg font-black text-foreground">Provide Resolution Feedback</h3>
+                        <p className="text-xs font-medium text-muted-foreground">Rate your satisfaction with how this civic issue was resolved.</p>
+                      </div>
+                    </div>
+
+                    <form onSubmit={handleFeedbackSubmit} className="space-y-6">
+                      <div>
+                        <label className="block text-xs font-extrabold text-foreground uppercase tracking-widest mb-3">
+                          Your Rating (1 to 5 Stars)
+                        </label>
+                        <div className="flex items-center gap-2">
+                          {[1, 2, 3, 4, 5].map((star) => (
+                            <button
+                              key={star}
+                              type="button"
+                              onClick={() => setRating(star)}
+                              className="p-1 hover:scale-110 transition-transform focus:outline-none"
+                            >
+                              <Star
+                                className={`w-8 h-8 ${
+                                  star <= rating
+                                    ? "fill-amber-400 text-amber-400"
+                                    : "text-slate-300 hover:text-amber-200"
+                                }`}
+                              />
+                            </button>
+                          ))}
+                          {rating > 0 && (
+                            <span className="ml-3 text-sm font-bold text-amber-600">
+                              {rating} Star{rating > 1 ? "s" : ""} Selected
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-extrabold text-foreground uppercase tracking-widest mb-2">
+                          Detailed Feedback
+                        </label>
+                        <textarea
+                          rows={3}
+                          value={feedback}
+                          onChange={(e) => setFeedback(e.target.value)}
+                          placeholder="Was the issue resolved completely? Please share any comments..."
+                          className="w-full rounded-xl border border-border bg-background p-4 text-sm font-medium focus:ring-2 focus:ring-primary focus:outline-none"
+                          required
+                        ></textarea>
+                      </div>
+
+                      <button
+                        type="submit"
+                        disabled={submittingFeedback}
+                        className="w-full py-4 bg-primary hover:bg-primary/90 text-primary-foreground font-extrabold text-sm rounded-xl transition-colors shadow-md shadow-primary/20 disabled:opacity-50"
+                      >
+                        {submittingFeedback ? "Analyzing & Submitting Feedback..." : "Submit Feedback"}
+                      </button>
+                    </form>
+                  </div>
+                ) : null}
+              </div>
+            )}
         </div>
 
         {/* Citizen Information */}
@@ -661,6 +955,10 @@ const getFinalImageUri = (img: string) => {
                   title = "Complaint Rejected";
                   dotColorClass = "bg-red-500";
                   defaultRemarks = "Inspector rejected the complaint.";
+                } else if (statusKey === "REOPENED" || action === "REOPENED" || newStatus === "REOPENED") {
+                  title = "Complaint Reopened Automatically";
+                  dotColorClass = "bg-amber-500";
+                  defaultRemarks = "Automatically reopened due to negative citizen feedback.";
                 }
 
                 const remarksText = h.remarks || defaultRemarks;
@@ -697,11 +995,47 @@ const getFinalImageUri = (img: string) => {
           </div>
         )}
 
+        {/* REOPENED BANNER FOR PRIVILEGED USERS */}
+        {isPrivileged && (complaint.status === "REOPENED" || complaint.reopened_reason) && (
+          <div className="bg-amber-50 border-2 border-amber-400 rounded-[2rem] p-6 mb-6 shadow-sm">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-xl bg-amber-500 text-white flex items-center justify-center font-bold shadow-md shadow-amber-500/30">
+                <AlertCircle className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="text-lg font-black text-amber-900">REOPENED DUE TO LOW CITIZEN SATISFACTION</h3>
+                <p className="text-xs font-bold text-amber-700">Reason: {complaint.reopened_reason || "Negative Citizen Feedback"}</p>
+              </div>
+            </div>
+            {complaint.feedback && (
+              <div className="bg-white/90 rounded-2xl p-5 border border-amber-200 space-y-3">
+                <p className="text-sm font-black text-slate-800">
+                  Citizen Feedback: <span className="font-semibold text-slate-700">"{complaint.feedback.feedback_text}"</span>
+                </p>
+                {complaint.feedback.rating > 0 && (
+                  <div className="flex items-center gap-1">
+                    <span className="text-xs font-bold text-slate-600">Rating:</span>
+                    {[...Array(5)].map((_, i) => (
+                      <Star key={i} className={`w-4 h-4 ${i < complaint.feedback.rating ? "text-amber-400 fill-amber-400" : "text-slate-300"}`} />
+                    ))}
+                  </div>
+                )}
+                <div className="flex flex-wrap items-center gap-4 text-xs font-bold text-slate-600 pt-1 border-t border-slate-100">
+                  <span>Sentiment: <span className="text-red-600 font-black">{complaint.sentiment_classification || complaint.feedback.sentiment_classification || "NEGATIVE"}</span></span>
+                  <span>Score: <span className="text-red-600 font-black">{complaint.sentiment_score ?? complaint.feedback.sentiment_score ?? -0.8}</span></span>
+                  {(complaint.feedback.created_at || complaint.updated_at) && (
+                    <span>Reopened Date: {new Date(complaint.feedback.created_at || complaint.updated_at).toLocaleString()}</span>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Inspector Actions — simplified workflow */}
         {user?.role === "INSPECTOR" && (
           <>
-
-            {/* OPEN: Start Work + Reject */}
+            {/* NORMAL OPEN COMPLAINT: Accept + Reject */}
             {complaint.status === "OPEN" && (
               <div className="bg-white rounded-[2rem] p-6 shadow-sm border border-slate-200 mb-6">
                 <div className="flex items-center gap-3 mb-6 pb-4 border-b border-slate-100">
@@ -729,6 +1063,28 @@ const getFinalImageUri = (img: string) => {
               </div>
             )}
 
+            {/* REOPENED COMPLAINT: ACCEPT ONLY (NO REJECT) */}
+            {complaint.status === "REOPENED" && (
+              <div className="bg-white rounded-[2rem] p-6 shadow-sm border border-emerald-200 mb-6">
+                <div className="flex items-center gap-3 mb-6 pb-4 border-b border-slate-100">
+                  <div className="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center">
+                    <Play className="w-5 h-5 text-emerald-600" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-black text-slate-800">Inspector Action</h3>
+                    <p className="text-xs font-bold text-slate-500">Reopened complaints cannot be rejected. Please accept and inspect.</p>
+                  </div>
+                </div>
+                <button
+                  disabled={updating}
+                  onClick={handleAccept}
+                  className="w-full flex items-center justify-center gap-2 bg-[#059669] hover:bg-emerald-700 text-white rounded-2xl py-4 text-base font-extrabold shadow-md shadow-emerald-600/20 disabled:opacity-50 transition-all hover:-translate-y-0.5"
+                >
+                  <Play className="w-5 h-5" /> ACCEPT REOPENED COMPLAINT
+                </button>
+              </div>
+            )}
+
             {/* IN_PROGRESS: Resolve */}
             {complaint.status === "IN_PROGRESS" && (
               <div className="bg-white rounded-[2rem] p-6 shadow-sm border border-slate-200 mb-6">
@@ -748,47 +1104,6 @@ const getFinalImageUri = (img: string) => {
               </div>
             )}
           </>
-        )}
-
-        {/* Citizen Actions — Feedback & Reopen */}
-        {user?.role === "CITIZEN" && ["CLOSED", "RESOLVED"].includes(complaint.status) && (
-          <div className="bg-white rounded-[2rem] p-6 shadow-sm border border-slate-200 mb-6">
-            <h3 className="text-lg font-black text-slate-800 mb-4">Provide Feedback</h3>
-
-            {!complaint.feedback?.rating ? (
-              <div className="mb-6">
-                <div className="flex gap-2 mb-4">
-                  {[1, 2, 3, 4, 5].map((star) => (
-                    <button key={star} onClick={() => setRating(star)} className="focus:outline-none transition-transform hover:scale-110">
-                      <svg className={`w-8 h-8 ${rating >= star ? 'text-amber-500' : 'text-slate-300'}`} fill="currentColor" viewBox="0 0 20 20">
-                        <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                      </svg>
-                    </button>
-                  ))}
-                </div>
-                <textarea
-                  value={feedback}
-                  onChange={(e) => setFeedback(e.target.value)}
-                  placeholder="Write your feedback..."
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-4 mb-4 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
-                  rows={3}
-                />
-                <button
-                  disabled={updating}
-                  onClick={handleSubmitFeedback}
-                  className="w-full bg-primary hover:bg-primary/90 text-white font-bold py-3 rounded-xl transition-colors disabled:opacity-50"
-                >
-                  Submit Feedback
-                </button>
-              </div>
-            ) : (
-              <div className="mb-6 p-4 bg-amber-50 rounded-xl border border-amber-100">
-                <p className="text-sm font-bold text-amber-800">Feedback Submitted ({complaint.feedback.rating}/5)</p>
-                <p className="text-sm text-amber-700 mt-1">{complaint.feedback.comments}</p>
-              </div>
-            )}
-
-          </div>
         )}
 
         {/* Notes Modal */}

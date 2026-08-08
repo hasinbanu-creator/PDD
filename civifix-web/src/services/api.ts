@@ -13,8 +13,13 @@ export const complaintsApi = {
   },
 
   
+  getFeedback: async (id: string) => {
+    const response = await api.get(ENDPOINTS.SUBMIT_FEEDBACK(id));
+    return response.data;
+  },
+
   submitFeedback: async (id: string, data: any) => {
-    const response = await api.put(ENDPOINTS.SUBMIT_FEEDBACK(id), null, { params: data });
+    const response = await api.post(ENDPOINTS.SUBMIT_FEEDBACK(id), data);
     return response.data;
   },
 

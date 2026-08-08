@@ -15,7 +15,7 @@ from app.core.enums import Roles, ComplaintType, Priority
 from app.schemas.complaint_schema import (
     ComplaintCreateSchema, ComplaintAssignWorkerSchema,
     ComplaintSubmitResolutionSchema, ComplaintApproveSchema,
-    ComplaintRejectSchema
+    ComplaintRejectSchema, ComplaintFeedbackSubmitSchema
 )
 from app.services.complaint_service import ComplaintService
 from app.repositories.complaint_repository import ComplaintRepository
@@ -844,95 +844,83 @@ async def inspector_dashboard(
         logger.error(f"Unexpected error: {str(e)}")
         raise HTTPException(status_code=500, detail="Internal server error")
 
-@router.put(
+@router.get(
     "/{complaint_id}/feedback",
     response_model=dict,
-    summary="Submit Complaint Feedback",
+    summary="Get Complaint Feedback",
     tags=["Complaints"]
 )
-async def submit_feedback(
+async def get_feedback_endpoint(
     complaint_id: str,
-    rating: int = Query(..., ge=1, le=5),
-    feedback: Optional[str] = None,
     current_user: dict = Depends(get_current_user),
     service: ComplaintService = Depends(get_complaint_service)
 ):
-    """Submit feedback and rating (CITIZEN only)"""
+    """Retrieve feedback for a specific complaint"""
     try:
-        update_data = {"rating": rating, "feedback": feedback, "status": "CLOSED"}
-        complaint = await service.complaint_repo.get_by_id(complaint_id)
-        old_status = complaint.get("status") if complaint else None
-        new_status = "CLOSED"
-        logger.info(f"STATUS CHANGE BEFORE - Complaint ID: {complaint_id}, Old Status: {old_status}, New Status: {new_status}")
-        success = await service.complaint_repo.update(complaint_id, update_data)
-        logger.info(f"STATUS CHANGE AFTER - Complaint ID: {complaint_id}, Old Status: {old_status}, New Status: {new_status}")
-        if not success:
-            raise HTTPException(status_code=404, detail="Complaint not found")
-            
+        user_id = current_user["user_id"]
+        user_role = current_user.get("role", Roles.CITIZEN)
+        result = await service.get_feedback(complaint_id, user_id, user_role)
         return SuccessResponse.create(
-            message="Feedback submitted successfully"
+            data=result,
+            message="Feedback retrieved successfully"
         )
     except CivifixException as e:
         raise HTTPException(status_code=e.status_code, detail=str(e))
     except Exception as e:
-        raise HTTPException(status_code=500, detail="Internal server error")
-
-@router.put(
-    "/{complaint_id}/reopen",
-    response_model=dict,
-    summary="Reopen Complaint",
-    tags=["Complaints"]
-)
-async def reopen_complaint(
-    complaint_id: str,
-    reason: str = Query(...),
-    current_user: dict = Depends(get_current_user),
-    service: ComplaintService = Depends(get_complaint_service)
-):
-    """Reopen a closed complaint (CITIZEN only)"""
-    try:
-        update_data = {"status": "REOPENED", "reopen_reason": reason}
-        complaint = await service.complaint_repo.get_by_id(complaint_id)
-        old_status = complaint.get("status") if complaint else None
-        new_status = "REOPENED"
-        logger.info(f"STATUS CHANGE BEFORE - Complaint ID: {complaint_id}, Old Status: {old_status}, New Status: {new_status}")
-        success = await service.complaint_repo.update(complaint_id, update_data)
-        logger.info(f"STATUS CHANGE AFTER - Complaint ID: {complaint_id}, Old Status: {old_status}, New Status: {new_status}")
-        if not success:
-            raise HTTPException(status_code=404, detail="Complaint not found")
-            
-        return SuccessResponse.create(
-            message="Complaint reopened successfully"
-        )
-    except CivifixException as e:
-        raise HTTPException(status_code=e.status_code, detail=str(e))
-    except Exception as e:
-        raise HTTPException(status_code=500, detail="Internal server error")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.post(
-    "/{complaint_id}/support",
+    "/{complaint_id}/feedback",
     response_model=dict,
-    summary="Support an existing complaint",
+    summary="Submit Complaint Feedback & Google Cloud NLP Reopening Assessment",
     tags=["Complaints"]
 )
-async def support_complaint(
+@router.put(
+    "/{complaint_id}/feedback",
+    response_model=dict,
+    summary="Submit Complaint Feedback & Google Cloud NLP Reopening Assessment (PUT compatibility)",
+    tags=["Complaints"]
+)
+async def submit_feedback_endpoint(
     complaint_id: str,
+    feedback_data: Optional[ComplaintFeedbackSubmitSchema] = None,
+    rating: Optional[int] = Query(None, ge=1, le=5),
+    feedback: Optional[str] = Query(None),
     current_user: dict = Depends(get_current_user),
     service: ComplaintService = Depends(get_complaint_service)
 ):
-    """Register citizen support for an existing complaint"""
+    """
+    Submit citizen feedback on a resolved complaint.
+    Evaluates rating + Google Cloud Natural Language sentiment score.
+    If sentiment score < NLP_REOPEN_THRESHOLD (default -0.3), automatically updates complaint status to REOPENED.
+    """
     try:
-        citizen_id = current_user["user_id"]
-        result = await service.support_complaint(complaint_id, citizen_id)
-        return {
-            "status": "success",
-            "message": "Support registered successfully",
-            "data": result
-        }
-    except CivifixException as ce:
-        raise HTTPException(status_code=ce.status_code, detail=ce.message)
+        user_id = current_user["user_id"]
+        user_role = current_user.get("role", Roles.CITIZEN)
+
+        final_rating = feedback_data.rating if feedback_data else rating
+        final_feedback = feedback_data.feedback if feedback_data else feedback
+
+        if not final_feedback or len(final_feedback.strip()) < 3:
+            raise HTTPException(status_code=400, detail="Feedback text must be at least 3 characters")
+
+        result = await service.submit_feedback(
+            complaint_id=complaint_id,
+            rating=int(final_rating) if final_rating else None,
+            feedback_text=str(final_feedback).strip(),
+            user_id=user_id,
+            user_role=user_role
+        )
+
+        return SuccessResponse.create(
+            data=result,
+            message=result.get("message", "Feedback submitted successfully")
+        )
+    except CivifixException as e:
+        logger.error(f"Error in submit_feedback_endpoint: {str(e)}")
+        raise HTTPException(status_code=e.status_code, detail=str(e))
     except Exception as e:
-        logger.error(f"Error supporting complaint: {str(e)}")
-        raise HTTPException(status_code=500, detail="Failed to register support")
+        logger.error(f"Unexpected error in submit_feedback_endpoint: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 

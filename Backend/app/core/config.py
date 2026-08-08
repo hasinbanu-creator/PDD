@@ -1,8 +1,11 @@
 from pydantic_settings import BaseSettings
 from typing import Optional
+import os
+
+backend_env_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../.env"))
+
 
 class Settings(BaseSettings):
-
     APP_NAME: str = "Civifix"
 
     ENV: str = "development"
@@ -50,7 +53,12 @@ class Settings(BaseSettings):
     GEMINI_API_KEY: Optional[str] = None
     BLOCK_UNRELATED_CIVIC_ISSUES: bool = False
 
+    GOOGLE_APPLICATION_CREDENTIALS: Optional[str] = None
+    GOOGLE_CLOUD_PROJECT: Optional[str] = None
+    NLP_REOPEN_THRESHOLD: float = -0.3
+
     class Config:
-        env_file = ".env"
+        env_file = backend_env_path if os.path.exists(backend_env_path) else ".env"
+        extra = "ignore"
 
 settings = Settings()

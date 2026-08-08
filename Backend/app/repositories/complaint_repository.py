@@ -113,7 +113,18 @@ class ComplaintRepository:
     ) -> tuple[List[dict], int]:
         """Get complaints by ward with pagination"""
         try:
-            query = {"ward_id": ObjectId(ward_id)}
+            try:
+                resolved_id = ObjectId(ward_id)
+            except Exception:
+                resolved_id = ward_id
+
+            query = {
+                "$or": [
+                    {"ward_id": resolved_id},
+                    {"ward_id": str(ward_id)},
+                    {"wardId": str(ward_id)}
+                ]
+            }
             
             if status:
                 query["status"] = status

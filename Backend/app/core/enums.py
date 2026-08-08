@@ -22,6 +22,7 @@ class ComplaintStatus(str, Enum):
     FIELD_VISIT = "FIELD_VISIT"
     RESOLVED = "RESOLVED"
     CLOSED = "CLOSED"
+    REOPENED = "REOPENED"
     REJECTED = "REJECTED"
     PENDING = "PENDING"
 
@@ -56,5 +57,7 @@ class ComplaintHistoryAction(str, Enum):
     APPROVED = "APPROVED"
     REJECTED = "REJECTED"
     CLOSED = "CLOSED"
+    REOPENED = "REOPENED"
+    FEEDBACK_SUBMITTED = "FEEDBACK_SUBMITTED"
     IMAGE_ADDED = "IMAGE_ADDED"
     NOTE_ADDED = "NOTE_ADDED"

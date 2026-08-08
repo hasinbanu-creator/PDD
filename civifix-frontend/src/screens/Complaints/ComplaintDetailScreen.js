@@ -412,12 +412,17 @@ export const ComplaintDetailScreen = ({ route, navigation }) => {
   const isCitizen = user?.role === "CITIZEN";
   const isInspector = user?.role === "INSPECTOR";
 
+  const [loadingFeedback, setLoadingFeedback] = useState(true);
+  const [feedbackAlreadySubmitted, setFeedbackAlreadySubmitted] = useState(false);
+  const [existingFeedbackData, setExistingFeedbackData] = useState(null);
+
   useEffect(() => {
     const load = async () => {
       console.log("[ComplaintDetailScreen] useEffect triggered for complaintId:", complaintId);
       if (!complaintId) { 
         console.log("[ComplaintDetailScreen] No complaintId found, skipping fetch.");
         setLoading(false); 
+        setLoadingFeedback(false);
         return; 
       }
       try {
@@ -425,12 +430,41 @@ export const ComplaintDetailScreen = ({ route, navigation }) => {
         setError("");
         console.log(`[ComplaintDetailScreen] Fetching complaint using authService.getComplaint(${complaintId})`);
         const data = await authService.getComplaint(complaintId);
-        console.log("[ComplaintDetailScreen] API response for getComplaint:", JSON.stringify(data, null, 2));
-        console.log("[ComplaintDetailScreen] Fetched complaint data ID:", data?._id || data?.complaint_id);
         setComplaint(data);
+
+        // Check feedback status
+        try {
+          setLoadingFeedback(true);
+          const fbRes = await authService.getFeedback(complaintId);
+          const fbData = fbRes?.data || fbRes;
+          if (fbData && (fbData.feedback || fbData.feedback_text)) {
+            const fb = fbData.feedback || fbData;
+            setExistingFeedbackData({
+              ...fb,
+              sentiment_classification: fbData.sentiment_classification || fb.sentiment_classification,
+              sentiment_score: fbData.sentiment_score ?? fb.sentiment_score,
+            });
+            setFeedbackAlreadySubmitted(true);
+          } else if (data?.feedback) {
+            setExistingFeedbackData(data.feedback);
+            setFeedbackAlreadySubmitted(true);
+          } else {
+            setFeedbackAlreadySubmitted(false);
+          }
+        } catch (fbErr) {
+          if (data?.feedback) {
+            setExistingFeedbackData(data.feedback);
+            setFeedbackAlreadySubmitted(true);
+          } else {
+            setFeedbackAlreadySubmitted(false);
+          }
+        } finally {
+          setLoadingFeedback(false);
+        }
       } catch (err) {
         console.error("[ComplaintDetailScreen] Error fetching complaint:", err);
         setError(getErrorMessage(err, "Unable to load complaint details"));
+        setLoadingFeedback(false);
       } finally {
         setLoading(false);
       }
@@ -440,15 +474,49 @@ export const ComplaintDetailScreen = ({ route, navigation }) => {
 
   const handleSubmitFeedback = async () => {
     if (rating === 0) return alert("Please select a rating");
+    if (!feedback.trim()) return alert("Please enter feedback comments");
+
     try {
       setSubmitting(true);
-      await authService.submitFeedback(complaintId, { rating, feedback });
-      alert("Feedback submitted successfully!");
-      // Reload complaint
+      const res = await authService.submitFeedback(complaintId, { rating, feedback: feedback.trim() });
+      const resData = res?.data || res;
+      const fbObj = resData?.complaint?.feedback || resData?.data?.complaint?.feedback || resData?.feedback || resData?.data?.feedback || {
+        rating,
+        feedback_text: feedback.trim(),
+        sentiment_classification: resData?.sentiment_classification || resData?.data?.sentiment_classification || "NEUTRAL",
+        sentiment_score: resData?.sentiment_score ?? resData?.data?.sentiment_score
+      };
+
+      setExistingFeedbackData(fbObj);
+      setFeedbackAlreadySubmitted(true);
+
       const data = await authService.getComplaint(complaintId);
       setComplaint(data);
     } catch (err) {
-      alert(getErrorMessage(err, "Failed to submit feedback"));
+      console.error("Mobile feedback submit error:", err);
+      const msg = getErrorMessage(err, "");
+      if (msg.toLowerCase().includes("already") || err.response?.status === 400 || err.response?.status === 422) {
+        // DUPLICATE SUBMISSION PROTECTION: DO NOT SHOW ALERT!
+        try {
+          const fbRes = await authService.getFeedback(complaintId);
+          const fbData = fbRes?.data || fbRes;
+          if (fbData && (fbData.feedback || fbData.feedback_text)) {
+            const fb = fbData.feedback || fbData;
+            setExistingFeedbackData({
+              ...fb,
+              sentiment_classification: fbData.sentiment_classification || fb.sentiment_classification,
+              sentiment_score: fbData.sentiment_score ?? fb.sentiment_score,
+            });
+          }
+        } catch (fErr) {
+          if (complaint?.feedback) {
+            setExistingFeedbackData(complaint.feedback);
+          }
+        }
+        setFeedbackAlreadySubmitted(true);
+      } else {
+        alert(msg || "Failed to submit feedback");
+      }
     } finally {
       setSubmitting(false);
     }
@@ -554,8 +622,12 @@ export const ComplaintDetailScreen = ({ route, navigation }) => {
   const handleResolve = async () => {
     try {
       setSubmitting(true);
+      const isReopened = normalizedStatus.toLowerCase() === "reopened" || !!complaint?.reopened_reason;
       if (selectedProofImages.length === 0) {
-        alert("Please attach at least one proof image.");
+        const errMsg = isReopened 
+          ? "Please upload a photo before proceeding with a reopened complaint." 
+          : "Please attach at least one proof image.";
+        alert(errMsg);
         setSubmitting(false);
         return;
       }
@@ -792,43 +864,121 @@ export const ComplaintDetailScreen = ({ route, navigation }) => {
             )}
           </View>
 
-          {/* ── FEEDBACK & RATING (If CLOSED/RESOLVED) ── */}
-          {isCitizen && complaint && ["closed", "resolved"].includes(normalizedStatus.toLowerCase()) && !complaint.rating && (
-            <View style={styles.card}>
-              <SectionTitle title="Feedback & Rating" icon="star-outline" />
-              <View style={styles.ratingRow}>
-                {[1, 2, 3, 4, 5].map((star) => (
-                  <TouchableOpacity key={star} onPress={() => setRating(star)}>
-                    <Icon name={rating >= star ? "star" : "star-outline"} size={32} color={rating >= star ? "#F59E0B" : GRAY_400} />
-                  </TouchableOpacity>
-                ))}
+          {/* ── REOPENED WARNING CARD ── */}
+          {normalizedStatus.toUpperCase() === "REOPENED" && (
+            <View style={[styles.card, { backgroundColor: "#FEF3C7", borderColor: "#F59E0B", borderWidth: 1.5 }]}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 6 }}>
+                <Icon name="alert-circle-outline" size={24} color="#D97706" />
+                <Text style={{ fontSize: 16, fontWeight: "800", color: "#B45309" }}>Reopened: Low Satisfaction</Text>
               </View>
-              <TextInput
-                style={styles.textInput}
-                placeholder="Share your experience (optional)"
-                placeholderTextColor={GRAY_400}
-                value={feedback}
-                onChangeText={setFeedback}
-                multiline
-                numberOfLines={3}
-              />
-              <TouchableOpacity style={styles.actionBtn} onPress={handleSubmitFeedback} disabled={submitting}>
-                {submitting ? <ActivityIndicator size="small" color="#fff" /> : <Text style={styles.actionBtnText}>Submit Feedback</Text>}
-              </TouchableOpacity>
+              <Text style={{ fontSize: 13, fontWeight: "600", color: "#92400E", lineHeight: 18 }}>
+                Reason: LOW_FEEDBACK_SCORE. This complaint was automatically reopened because the citizen's satisfaction score fell below 50/100.
+              </Text>
             </View>
           )}
 
-          {/* ── ALREADY RATED ── */}
-          {isCitizen && complaint?.rating && (
-            <View style={styles.card}>
-              <SectionTitle title="Your Feedback" icon="star-check-outline" />
-              <View style={styles.ratingRow}>
-                {[1, 2, 3, 4, 5].map((star) => (
-                  <Icon key={star} name={complaint.rating >= star ? "star" : "star-outline"} size={24} color={complaint.rating >= star ? "#F59E0B" : GRAY_400} />
-                ))}
+          {/* ── CITIZEN FEEDBACK SECTION ── */}
+          {isCitizen && complaint && ["closed", "resolved", "reopened"].includes(normalizedStatus.toLowerCase()) && (
+            loadingFeedback ? (
+              <View style={styles.card}>
+                <ActivityIndicator size="small" color={PRIMARY} />
+                <Text style={{ fontSize: 13, color: GRAY_500, textAlign: "center", marginTop: 8 }}>
+                  Checking feedback...
+                </Text>
               </View>
-              {complaint.feedback && <Text style={styles.feedbackText}>{complaint.feedback}</Text>}
-            </View>
+            ) : (feedbackAlreadySubmitted || existingFeedbackData || complaint?.feedback) ? (
+              /* READ-ONLY SUBMITTED FEEDBACK UI */
+              <View style={[styles.card, { backgroundColor: "#ECFDF5", borderColor: "#A7F3D0", borderWidth: 1.5 }]}>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 12, paddingBottom: 10, borderBottomWidth: 1, borderBottomColor: "#D1FAE5" }}>
+                  <View style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: "#059669", alignItems: "center", justifyContent: "center" }}>
+                    <Icon name="check" size={20} color="#fff" />
+                  </View>
+                  <View>
+                    <Text style={{ fontSize: 16, fontWeight: "800", color: "#064E3B" }}>Feedback Submitted ✓</Text>
+                    <Text style={{ fontSize: 12, color: "#047857" }}>Thank you for your feedback.</Text>
+                  </View>
+                </View>
+
+                <Text style={{ fontSize: 12, fontWeight: "700", color: GRAY_500, textTransform: "uppercase", marginBottom: 6 }}>
+                  Your Rating:
+                </Text>
+                <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 12 }}>
+                  {[1, 2, 3, 4, 5].map((star) => {
+                    const activeRating = ((existingFeedbackData || complaint.feedback)?.rating || rating || 0);
+                    return (
+                      <Icon
+                        key={star}
+                        name={star <= activeRating ? "star" : "star-outline"}
+                        size={26}
+                        color={star <= activeRating ? "#F59E0B" : GRAY_400}
+                      />
+                    );
+                  })}
+                  <Text style={{ fontSize: 14, fontWeight: "700", color: COLORS.textDark, marginLeft: 8 }}>
+                    {((existingFeedbackData || complaint.feedback)?.rating || rating || 0)} / 5 Stars
+                  </Text>
+                </View>
+
+                <Text style={{ fontSize: 12, fontWeight: "700", color: GRAY_500, textTransform: "uppercase", marginBottom: 6 }}>
+                  Your Feedback:
+                </Text>
+                <View style={{ backgroundColor: "#FFFFFF", padding: 14, borderRadius: 12, borderWidth: 1, borderColor: "#D1FAE5", marginBottom: 12 }}>
+                  <Text style={{ fontSize: 14, fontStyle: "italic", color: COLORS.textDark }}>
+                    "{((existingFeedbackData || complaint.feedback)?.feedback_text || (existingFeedbackData || complaint.feedback)?.feedback || feedback)}"
+                  </Text>
+                </View>
+
+                <View style={{ flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: 12, paddingTop: 8, borderTopWidth: 1, borderTopColor: "#D1FAE5" }}>
+                  {((existingFeedbackData || complaint.feedback)?.sentiment_classification || (existingFeedbackData || complaint.feedback)?.sentiment || complaint.sentiment_classification) && (
+                    <Text style={{ fontSize: 12, fontWeight: "700", color: GRAY_600 }}>
+                      Sentiment:{" "}
+                      <Text style={{ fontWeight: "800", color: ((existingFeedbackData || complaint.feedback)?.sentiment_classification || (existingFeedbackData || complaint.feedback)?.sentiment || complaint.sentiment_classification) === "POSITIVE" ? "#059669" : ((existingFeedbackData || complaint.feedback)?.sentiment_classification || (existingFeedbackData || complaint.feedback)?.sentiment || complaint.sentiment_classification) === "NEGATIVE" ? "#DC2626" : "#2563EB" }}>
+                        {(existingFeedbackData || complaint.feedback)?.sentiment_classification || (existingFeedbackData || complaint.feedback)?.sentiment || complaint.sentiment_classification}
+                      </Text>
+                    </Text>
+                  )}
+                  {((existingFeedbackData || complaint.feedback)?.sentiment_score !== undefined || complaint.sentiment_score !== undefined) && (
+                    <Text style={{ fontSize: 12, fontWeight: "700", color: GRAY_600 }}>
+                      Sentiment Score:{" "}
+                      <Text style={{ fontWeight: "800", color: COLORS.textDark }}>
+                        {(existingFeedbackData || complaint.feedback)?.sentiment_score ?? complaint.sentiment_score}
+                      </Text>
+                    </Text>
+                  )}
+                </View>
+              </View>
+            ) : (normalizedStatus.toLowerCase() === "resolved" || normalizedStatus.toLowerCase() === "closed") ? (
+              /* EDITABLE FEEDBACK FORM */
+              <View style={styles.card}>
+                <SectionTitle title="Resolution Feedback" icon="star-outline" />
+                <Text style={{ fontSize: 13, color: GRAY_500, marginBottom: 12 }}>
+                  Rate your satisfaction with the resolution of this complaint:
+                </Text>
+                <View style={styles.ratingRow}>
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <TouchableOpacity key={star} onPress={() => setRating(star)}>
+                      <Icon name={rating >= star ? "star" : "star-outline"} size={32} color={rating >= star ? "#F59E0B" : GRAY_400} />
+                    </TouchableOpacity>
+                  ))}
+                </View>
+                <TextInput
+                  style={[styles.textInput, { marginTop: 12, minHeight: 80 }]}
+                  placeholder="Tell us about your experience..."
+                  placeholderTextColor={GRAY_400}
+                  value={feedback}
+                  onChangeText={setFeedback}
+                  multiline
+                  numberOfLines={3}
+                />
+                <TouchableOpacity
+                  style={[styles.actionBtn, { height: 52, borderRadius: 14, backgroundColor: PRIMARY, marginTop: 14 }]}
+                  onPress={handleSubmitFeedback}
+                  disabled={submitting}
+                >
+                  {submitting ? <ActivityIndicator size="small" color="#fff" /> : <Text style={[styles.actionBtnText, { fontSize: 16, fontWeight: "600" }]}>Submit Feedback</Text>}
+                </TouchableOpacity>
+              </View>
+            ) : null
           )}
 
 
@@ -843,6 +993,16 @@ export const ComplaintDetailScreen = ({ route, navigation }) => {
                   </TouchableOpacity>
                   <TouchableOpacity style={[styles.actionBtn, { flex: 1, backgroundColor: ERROR }]} onPress={handleReject} disabled={submitting}>
                     {submitting ? <ActivityIndicator size="small" color="#fff" /> : <Text style={styles.actionBtnText}>Reject</Text>}
+                  </TouchableOpacity>
+                </View>
+              )}
+              {normalizedStatus.toLowerCase() === "reopened" && (
+                <View>
+                  <Text style={{ fontSize: 13, fontWeight: "600", color: "#666", marginBottom: 12 }}>
+                    Reopened complaints cannot be rejected. Please accept and inspect.
+                  </Text>
+                  <TouchableOpacity style={[styles.actionBtn, { backgroundColor: "#059669" }]} onPress={handleAccept} disabled={submitting}>
+                    {submitting ? <ActivityIndicator size="small" color="#fff" /> : <Text style={styles.actionBtnText}>ACCEPT REOPENED COMPLAINT</Text>}
                   </TouchableOpacity>
                 </View>
               )}

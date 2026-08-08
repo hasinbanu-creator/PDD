@@ -174,6 +174,20 @@ class ComplaintRejectSchema(BaseModel):
         }
 
 
+class ComplaintFeedbackSubmitSchema(BaseModel):
+    """Schema for citizen submitting feedback on a resolved complaint"""
+    rating: int = Field(..., ge=1, le=5, description="1 to 5 star rating")
+    feedback: str = Field(..., min_length=3, max_length=1000, description="Textual feedback")
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "rating": 1,
+                "feedback": "The pothole was not properly filled and is still causing issues."
+            }
+        }
+
+
 class ComplaintResponseSchema(BaseModel):
     """Schema for complaint response"""
     id: Optional[str] = Field(None, alias="_id")
@@ -199,6 +213,10 @@ class ComplaintResponseSchema(BaseModel):
     inspector_note: Optional[str]
     worker_note: Optional[str]
     rejection_reason: Optional[str]
+    reopened_reason: Optional[str] = None
+    satisfaction_score: Optional[float] = None
+    feedback: Optional[dict] = None
+    reopen_details: Optional[dict] = None
     deadline: Optional[datetime]
     created_at: datetime
     updated_at: datetime

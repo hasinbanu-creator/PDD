@@ -57,7 +57,7 @@ const ComplaintSuccessScreen = ({ route, navigation }) => {
       <View style={styles.actionCard}>
         <TouchableOpacity 
           style={styles.primaryBtn} 
-          onPress={() => navigation.navigate("ComplaintDetail", { complaint })}
+          onPress={() => navigation.navigate("ComplaintDetail", { complaint, complaintId: complaint.id || complaint._id || complaint.complaint_id })}
         >
           <Text style={styles.primaryBtnText}>View Complaint</Text>
         </TouchableOpacity>

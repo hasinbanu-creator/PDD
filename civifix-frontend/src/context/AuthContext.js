@@ -52,6 +52,31 @@ export const AuthProvider = ({ children }) => {
     }
   );
 
+  const [districtsList, setDistrictsList] = useState([]);
+
+  useEffect(() => {
+    authService.getDistricts()
+      .then(list => setDistrictsList(Array.isArray(list) ? list : list?.data || []))
+      .catch(err => console.warn("Failed to prefetch districts:", err));
+  }, []);
+
+  useEffect(() => {
+    if (state.user && districtsList.length > 0) {
+      const distVal = state.user.district || state.user.district_id;
+      if (distVal && typeof distVal === "string" && distVal.length === 24) {
+        const match = districtsList.find(d => (d._id || d.id) === distVal);
+        if (match && (!state.user.district_name || /^[0-9a-fA-F]{24}$/.test(state.user.district_name))) {
+          const updatedUser = {
+            ...state.user,
+            district_name: match.name,
+            districtName: match.name
+          };
+          dispatch({ type: "SET_USER", payload: updatedUser });
+        }
+      }
+    }
+  }, [districtsList, state.user]);
+
   useEffect(() => {
     const bootstrapAsync = async () => {
       try {

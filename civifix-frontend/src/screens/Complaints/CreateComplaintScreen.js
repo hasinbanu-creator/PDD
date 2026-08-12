@@ -1164,7 +1164,7 @@ export const CreateComplaintScreen = ({ route, navigation }) => {
       <SuccessModal
         visible={!!successData}
         complaint={successData}
-        onView={() => { setSuccessData(null); navigation.replace("ComplaintDetail", { complaint: successData }); }}
+        onView={() => { setSuccessData(null); navigation.replace("ComplaintDetail", { complaint: successData, complaintId: successData.id || successData._id || successData.complaint_id }); }}
         onDone={() => { setSuccessData(null); navigation.goBack(); }}
       />
     </View>

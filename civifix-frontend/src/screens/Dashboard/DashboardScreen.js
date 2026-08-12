@@ -422,8 +422,8 @@ const SuperAdminDashboard = ({ navigation, meData, user }) => {
           : complaints.map((c, i) => (
               <ComplaintItem key={c._id || i} complaint={c} index={i} total={complaints.length}
                 onPress={() => {
-                  console.log("[DashboardScreen] Complaint pressed (SuperAdmin):", c._id || c.complaint_id);
-                  navigation.navigate("ComplaintDetail", { complaint: c, complaintId: c._id || c.complaint_id });
+                  console.log("[DashboardScreen] Complaint pressed (SuperAdmin):", c.id || c._id || c.complaint_id);
+                  navigation.navigate("ComplaintDetail", { complaint: c, complaintId: c.id || c._id || c.complaint_id });
                 }} />
             ))
         }
@@ -1161,8 +1161,8 @@ const InspectorDashboard = ({ navigation, meData, user }) => {
                 index={i}
                 total={arr.length}
                 onPress={() => {
-                  console.log("[DashboardScreen] Complaint pressed (Inspector):", c._id || c.complaint_id);
-                  navigation.navigate("ComplaintDetail", { complaint: c, complaintId: c._id || c.complaint_id });
+                  console.log("[DashboardScreen] Complaint pressed (Inspector):", c.id || c._id || c.complaint_id);
+                  navigation.navigate("ComplaintDetail", { complaint: c, complaintId: c.id || c._id || c.complaint_id });
                 }}
               />
             ))
@@ -1238,8 +1238,8 @@ const WorkerDashboard = ({ navigation, meData, user }) => {
           : assignments.map((c, i) => (
               <ComplaintItem key={c._id || i} complaint={c} index={i} total={assignments.length}
                 onPress={() => {
-                  console.log("[DashboardScreen] Complaint pressed (Worker):", c._id || c.complaint_id);
-                  navigation.navigate("ComplaintDetail", { complaint: c, complaintId: c._id || c.complaint_id });
+                  console.log("[DashboardScreen] Complaint pressed (Worker):", c.id || c._id || c.complaint_id);
+                  navigation.navigate("ComplaintDetail", { complaint: c, complaintId: c.id || c._id || c.complaint_id });
                 }} />
             ))
         }
@@ -1276,13 +1276,13 @@ const CitizenDashboard = ({ navigation, meData, user }) => {
       const c = meta.status_counts;
       return {
         open: (c.OPEN || 0) + (c.PENDING || 0),
-        active: (c.WORKING || 0) + (c.ASSIGNED || 0) + (c.IN_PROGRESS || 0) + (c.APPROVAL || 0),
+        active: (c.WORKING || 0) + (c.ASSIGNED || 0) + (c.IN_PROGRESS || 0) + (c.APPROVAL || 0) + (c.REOPENED || 0),
         closed: (c.CLOSED || 0) + (c.RESOLVED || 0),
       };
     }
     return {
       open:   complaints.filter((c) => { const s = normalizeComplaintStatus(c.status); return ["PENDING", "OPEN"].includes(s); }).length,
-      active: complaints.filter((c) => { const s = normalizeComplaintStatus(c.status); return ["ASSIGNED", "IN_PROGRESS", "APPROVAL"].includes(s); }).length,
+      active: complaints.filter((c) => { const s = normalizeComplaintStatus(c.status); return ["ASSIGNED", "IN_PROGRESS", "APPROVAL", "REOPENED"].includes(s); }).length,
       closed: complaints.filter((c) => { const s = normalizeComplaintStatus(c.status); return ["RESOLVED", "CLOSED"].includes(s); }).length,
     };
   }, [meta, complaints]);
@@ -1314,7 +1314,7 @@ const CitizenDashboard = ({ navigation, meData, user }) => {
           ? <View style={{ padding: SPACING.lg }}><ActivityIndicator color={COLORS.primary} /></View>
           : complaints.map((c, i) => (
               <ComplaintItem key={c._id || i} complaint={c} index={i} total={complaints.length}
-                onPress={() => navigation.navigate("ComplaintDetail", { complaint: c })} />
+                onPress={() => navigation.navigate("ComplaintDetail", { complaint: c, complaintId: c.id || c._id || c.complaint_id })} />
             ))
         }
       </ListCard>

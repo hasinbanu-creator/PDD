@@ -12,6 +12,8 @@ import {
   Dimensions,
   TextInput,
   Image,
+  Modal,
+  KeyboardAvoidingView,
 } from "react-native";
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import authService from "../../services/authService";
@@ -195,13 +197,20 @@ function InfoRow({ icon, label, value }) {
   );
 }
 
-function NoteCard({ icon, label, value, color }) {
+function NoteCard({ icon, label, value, color, date }) {
   if (!value) return null;
   return (
     <View style={[styles.noteCard, { borderLeftColor: color }]}>
-      <View style={styles.noteHeader}>
-        <Icon name={icon} size={14} color={color} />
-        <Text style={[styles.noteLabel, { color }]}>{label}</Text>
+      <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: SPACING.xs }}>
+          <Icon name={icon} size={14} color={color} />
+          <Text style={[styles.noteLabel, { color }]}>{label}</Text>
+        </View>
+        {date && (
+          <Text style={{ fontSize: 10, color: "#9CA3AF", fontWeight: "600" }}>
+            {new Date(date).toLocaleString()}
+          </Text>
+        )}
       </View>
       <Text style={styles.noteValue}>{value}</Text>
     </View>
@@ -239,6 +248,8 @@ function HistoryItem({ item, complaint, isLast }) {
     statusKey = "RESOLVED";
   } else if (newStatus === "REJECTED") {
     statusKey = "REJECTED";
+  } else if (newStatus === "REOPENED" || action === "REOPENED") {
+    statusKey = "REOPENED";
   } else {
     if (action === "REJECTED") {
       statusKey = "REJECTED";
@@ -267,6 +278,11 @@ function HistoryItem({ item, complaint, isLast }) {
     dotColor = "#DC2626"; // Red
     defaultRemarks = "Inspector rejected the complaint.";
     dotIcon = "close-circle-outline";
+  } else if (statusKey === "REOPENED") {
+    title = "Complaint Reopened";
+    dotColor = "#D97706"; // Amber
+    defaultRemarks = "Complaint was reopened due to low citizen satisfaction.";
+    dotIcon = "alert-circle-outline";
   }
 
   const remarksText = item.remarks || defaultRemarks;
@@ -400,7 +416,7 @@ export const ComplaintDetailScreen = ({ route, navigation }) => {
     }
   }, [complaint]);
   
-  const complaintId = passedId || initialComplaint?._id || initialComplaint?.complaint_id;
+  const complaintId = passedId || initialComplaint?.id || initialComplaint?._id || initialComplaint?.complaint_id;
   const [loading, setLoading]     = useState(Boolean(complaintId));
   const [error, setError]         = useState("");
   
@@ -423,8 +439,13 @@ export const ComplaintDetailScreen = ({ route, navigation }) => {
   const [feedbackAlreadySubmitted, setFeedbackAlreadySubmitted] = useState(false);
   const [existingFeedbackData, setExistingFeedbackData] = useState(null);
 
+  const [showRejectModal, setShowRejectModal] = useState(false);
+  const [rejectReason, setRejectReason] = useState("");
+
   useEffect(() => {
     const load = async () => {
+      console.log("Complaint Details screen opened");
+      console.log("Complaint ID:", complaintId);
       console.log("[ComplaintDetailScreen] useEffect triggered for complaintId:", complaintId);
       if (!complaintId) { 
         console.log("[ComplaintDetailScreen] No complaintId found, skipping fetch.");
@@ -562,10 +583,17 @@ export const ComplaintDetailScreen = ({ route, navigation }) => {
   };
 
   const handleReject = async () => {
+    if (!rejectReason.trim()) {
+      alert("Please specify a rejection reason.");
+      return;
+    }
     try {
       setSubmitting(true);
+      setShowRejectModal(false);
       await authService.inspectorRejectComplaint(complaintId);
-      alert("Complaint rejected!");
+      await authService.inspectorAddNote(complaintId, { note: `Rejection Reason: ${rejectReason}` });
+      alert("Complaint rejected successfully!");
+      setRejectReason("");
       const data = await authService.getComplaint(complaintId);
       setComplaint(data);
     } catch (err) {
@@ -859,7 +887,7 @@ export const ComplaintDetailScreen = ({ route, navigation }) => {
 
             {/* Notes section */}
             {(complaint?.citizen_note || complaint?.worker_note ||
-              complaint?.inspector_note || complaint?.rejection_reason) && (
+              complaint?.inspector_note || complaint?.rejection_reason || (complaint?.notes && complaint.notes.length > 0)) && (
               <>
                 <View style={styles.cardDivider} />
                 <SectionTitle title="Notes" icon="note-text-outline" />
@@ -867,20 +895,71 @@ export const ComplaintDetailScreen = ({ route, navigation }) => {
                 <NoteCard icon="account-hard-hat"     label="Worker Note"      value={complaint?.worker_note}      color="#7C3AED" />
                 <NoteCard icon="shield-account"       label="Inspector Note"   value={complaint?.inspector_note}   color="#0891B2" />
                 <NoteCard icon="close-circle-outline" label="Rejection Reason" value={complaint?.rejection_reason} color="#DC2626" />
+
+                {complaint?.notes && complaint.notes.length > 0 && complaint.notes.map((note, idx) => {
+                  const role = note.author_role || "INSPECTOR";
+                  const color = role === "WORKER" ? "#7C3AED" : role === "CITIZEN" ? "#2563EB" : "#0891B2";
+                  const icon = role === "WORKER" ? "account-hard-hat" : role === "CITIZEN" ? "account-outline" : "shield-account";
+                  return (
+                    <NoteCard
+                      key={idx}
+                      icon={icon}
+                      label={role}
+                      value={note.text}
+                      color={color}
+                      date={note.created_at || note.timestamp}
+                    />
+                  );
+                })}
               </>
             )}
           </View>
 
           {/* ── REOPENED WARNING CARD ── */}
-          {normalizedStatus.toUpperCase() === "REOPENED" && (
-            <View style={[styles.card, { backgroundColor: "#FEF3C7", borderColor: "#F59E0B", borderWidth: 1.5 }]}>
-              <View style={{ flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 6 }}>
+          {(normalizedStatus.toUpperCase() === "REOPENED" || complaint?.reopened_reason) && (
+            <View style={[styles.card, { backgroundColor: "#FEF3C7", borderColor: "#F59E0B", borderWidth: 1.5, gap: 10 }]}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
                 <Icon name="alert-circle-outline" size={24} color="#D97706" />
-                <Text style={{ fontSize: 16, fontWeight: "800", color: "#B45309" }}>Reopened: Low Satisfaction</Text>
+                <View>
+                  <Text style={{ fontSize: 15, fontWeight: "800", color: "#B45309" }}>REOPENED: LOW SATISFACTION</Text>
+                  <Text style={{ fontSize: 11, fontWeight: "700", color: "#B45309", opacity: 0.8 }}>
+                    Reason: {complaint?.reopened_reason || "NEGATIVE_CITIZEN_FEEDBACK"}
+                  </Text>
+                </View>
               </View>
-              <Text style={{ fontSize: 13, fontWeight: "600", color: "#92400E", lineHeight: 18 }}>
-                Reason: LOW_FEEDBACK_SCORE. This complaint was automatically reopened because the citizen's satisfaction score fell below 50/100.
-              </Text>
+              {complaint?.feedback && (
+                <View style={{ backgroundColor: "#fff", borderRadius: 12, padding: 12, borderWidth: 1, borderColor: "#FDE68A", gap: 8 }}>
+                  <Text style={{ fontSize: 13, fontWeight: "700", color: "#1F2937" }}>
+                    Citizen Feedback: <Text style={{ fontWeight: "500", color: "#4B5563" }}>"{complaint.feedback.feedback_text}"</Text>
+                  </Text>
+                  {complaint.feedback.rating > 0 && (
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+                      <Text style={{ fontSize: 12, fontWeight: "700", color: "#4B5563" }}>Rating:</Text>
+                      {Array.from({ length: 5 }).map((_, i) => (
+                        <Icon
+                          key={i}
+                          name="star"
+                          size={14}
+                          color={i < complaint.feedback.rating ? "#F59E0B" : "#D1D5DB"}
+                        />
+                      ))}
+                    </View>
+                  )}
+                  <View style={{ flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: 10, paddingTop: 8, borderTopWidth: 1, borderTopColor: "#F3F4F6" }}>
+                    <Text style={{ fontSize: 11, fontWeight: "700", color: "#4B5563" }}>
+                      Sentiment: <Text style={{ color: "#DC2626", fontWeight: "800" }}>{complaint.feedback.sentiment_classification || "NEGATIVE"}</Text>
+                    </Text>
+                    <Text style={{ fontSize: 11, fontWeight: "700", color: "#4B5563" }}>
+                      Score: <Text style={{ color: "#DC2626", fontWeight: "800" }}>{complaint.feedback.sentiment_score ?? -0.8}</Text>
+                    </Text>
+                    {complaint.feedback.created_at && (
+                      <Text style={{ fontSize: 10, fontWeight: "600", color: "#9CA3AF" }}>
+                        {new Date(complaint.feedback.created_at).toLocaleString()}
+                      </Text>
+                    )}
+                  </View>
+                </View>
+              )}
             </View>
           )}
 
@@ -998,7 +1077,7 @@ export const ComplaintDetailScreen = ({ route, navigation }) => {
                   <TouchableOpacity style={[styles.actionBtn, { flex: 1, backgroundColor: "#059669" }]} onPress={handleAccept} disabled={submitting}>
                     {submitting ? <ActivityIndicator size="small" color="#fff" /> : <Text style={styles.actionBtnText}>Accept</Text>}
                   </TouchableOpacity>
-                  <TouchableOpacity style={[styles.actionBtn, { flex: 1, backgroundColor: ERROR }]} onPress={handleReject} disabled={submitting}>
+                  <TouchableOpacity style={[styles.actionBtn, { flex: 1, backgroundColor: ERROR }]} onPress={() => setShowRejectModal(true)} disabled={submitting}>
                     {submitting ? <ActivityIndicator size="small" color="#fff" /> : <Text style={styles.actionBtnText}>Reject</Text>}
                   </TouchableOpacity>
                 </View>
@@ -1097,6 +1176,84 @@ export const ComplaintDetailScreen = ({ route, navigation }) => {
         imageUrl={viewerImageUrl}
         onClose={() => setViewerVisible(false)}
       />
+      <Modal
+        visible={showRejectModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowRejectModal(false)}
+      >
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "center", alignItems: "center", padding: SPACING.lg }}
+        >
+          <View style={{ backgroundColor: "#fff", borderRadius: 20, width: "100%", maxWidth: 340, padding: SPACING.xl, ...SHADOWS.lg }}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: SPACING.sm, marginBottom: SPACING.md }}>
+              <Icon name="alert-circle-outline" size={24} color={ERROR} />
+              <Text style={{ fontSize: 18, fontWeight: "800", color: COLORS.textDark }}>Reject Complaint</Text>
+            </View>
+            <Text style={{ fontSize: 13, color: COLORS.textLight, marginBottom: SPACING.md, lineHeight: 18 }}>
+              Please specify the reason for rejecting this complaint. This reason will be recorded as an inspection note and sent to the citizen.
+            </Text>
+            <TextInput
+              placeholder="e.g. Invalid photo, outside jurisdiction, etc."
+              value={rejectReason}
+              onChangeText={setRejectReason}
+              multiline
+              numberOfLines={4}
+              style={{
+                backgroundColor: "#F3F4F6",
+                borderRadius: 12,
+                padding: SPACING.md,
+                fontSize: 14,
+                color: COLORS.textDark,
+                textAlignVertical: "top",
+                minHeight: 80,
+                borderWidth: 1,
+                borderColor: "#E5E7EB",
+                marginBottom: SPACING.lg,
+              }}
+              placeholderTextColor="#9CA3AF"
+            />
+            <View style={{ flexDirection: "row", gap: SPACING.md }}>
+              <TouchableOpacity
+                style={{
+                  flex: 1,
+                  paddingVertical: 12,
+                  borderRadius: 12,
+                  backgroundColor: "#E5E7EB",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+                onPress={() => {
+                  setShowRejectModal(false);
+                  setRejectReason("");
+                }}
+                disabled={submitting}
+              >
+                <Text style={{ fontSize: 14, fontWeight: "700", color: COLORS.textDark }}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={{
+                  flex: 1,
+                  paddingVertical: 12,
+                  borderRadius: 12,
+                  backgroundColor: ERROR,
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+                onPress={handleReject}
+                disabled={submitting || !rejectReason.trim()}
+              >
+                {submitting ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <Text style={{ fontSize: 14, fontWeight: "700", color: "#fff" }}>Reject</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
     </View>
   );
 };

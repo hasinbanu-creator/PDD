@@ -823,7 +823,14 @@ class ComplaintService:
             "ai": complaint.get("ai"),
             "final_priority": complaint.get("final_priority") or (str(complaint.get("priority", "MEDIUM")).strip().capitalize() if str(complaint.get("priority", "MEDIUM")).strip().capitalize() in ["Low", "Medium", "High"] else "Medium"),
             "priority_updated_by": complaint.get("priority_updated_by"),
-            "priority_updated_at": complaint.get("priority_updated_at").isoformat() if isinstance(complaint.get("priority_updated_at"), datetime) else complaint.get("priority_updated_at")
+            "priority_updated_at": complaint.get("priority_updated_at").isoformat() if isinstance(complaint.get("priority_updated_at"), datetime) else complaint.get("priority_updated_at"),
+            "notes": complaint.get("inspector_notes", []),
+            "inspector_notes": complaint.get("inspector_notes", []),
+            "feedback": complaint.get("feedback"),
+            "sentiment_score": complaint.get("sentiment_score"),
+            "sentiment_classification": complaint.get("sentiment_classification"),
+            "reopened_reason": complaint.get("reopened_reason"),
+            "reopen_details": complaint.get("reopen_details")
         }
 
     def _format_history(self, history: dict) -> dict:

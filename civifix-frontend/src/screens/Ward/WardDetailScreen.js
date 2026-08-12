@@ -28,10 +28,10 @@ const WardDetailScreen = ({ navigation, route }) => {
   const loadComplaints = async () => {
     try {
       setError("");
-      const res = await authService.getComplaints({ page: 1, limit: 50 });
-      const allComplaints = res?.complaints ?? res?.data ?? [];
-      const wardComplaints = allComplaints.filter((c) => c.ward_id === ward._id);
-      setComplaints(wardComplaints);
+      const wardId = ward._id || ward.id || ward.ward_id;
+      const res = await authService.getWardComplaints({ ward_id: wardId, limit: 100 });
+      const allComplaints = res?.complaints ?? res?.data ?? (Array.isArray(res) ? res : []);
+      setComplaints(allComplaints);
     } catch (err) {
       setError(getErrorMessage(err, "Failed to load complaints"));
     } finally {

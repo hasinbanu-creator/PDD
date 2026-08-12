@@ -112,7 +112,7 @@ const SummaryChips = ({ complaints }) => {
 
   const chips = [
     { label: "Total",       value: complaints.length,        color: PRIMARY  },
-    { label: "Active",      value: (counts.OPEN || 0) + (counts.IN_PROGRESS || 0) + (counts.ASSIGNED || 0) + (counts.APPROVAL || 0), color: "#0891B2" },
+    { label: "Active",      value: (counts.OPEN || 0) + (counts.IN_PROGRESS || 0) + (counts.ASSIGNED || 0) + (counts.APPROVAL || 0) + (counts.REOPENED || 0), color: "#0891B2" },
     { label: "Resolved",    value: counts.RESOLVED || 0,     color: SUCCESS  },
     { label: "Rejected",    value: counts.REJECTED || 0,     color: ERROR    },
   ];
@@ -363,8 +363,8 @@ export const ComplaintsListScreen = ({ navigation }) => {
             <ComplaintCard
               complaint={item}
               onPress={() => {
-                console.log("[ComplaintsListScreen] Complaint pressed:", item._id || item.complaint_id);
-                navigation.navigate("ComplaintDetail", { complaint: item, complaintId: item._id || item.complaint_id });
+                console.log("[ComplaintsListScreen] Complaint pressed:", item.id || item._id || item.complaint_id);
+                navigation.navigate("ComplaintDetail", { complaint: item, complaintId: item.id || item._id || item.complaint_id });
               }}
             />
           )}

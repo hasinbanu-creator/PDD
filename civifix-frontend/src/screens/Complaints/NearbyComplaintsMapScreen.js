@@ -108,7 +108,7 @@ const NearbyComplaintsMapScreen = ({ navigation }) => {
               }}
               pinColor={getMarkerColor(complaint.status)}
             >
-              <Callout onPress={() => navigation.navigate("ComplaintDetail", { complaint })}>
+              <Callout onPress={() => navigation.navigate("ComplaintDetail", { complaint, complaintId: complaint.id || complaint._id || complaint.complaint_id })}>
                 <View style={styles.callout}>
                   <Text style={styles.calloutTitle}>{complaint.complaint_type || "Issue"}</Text>
                   <Text style={styles.calloutStatus}>{(complaint.status || "Pending").toUpperCase()}</Text>

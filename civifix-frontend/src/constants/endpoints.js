@@ -54,6 +54,15 @@ const resolveApiUrl = () => {
     return configuredUrl;
   }
 
+  try {
+    const hostname = new URL(configuredUrl).hostname;
+    if (hostname === "localhost" || hostname === "127.0.0.1") {
+      return configuredUrl; // Dev USB connection using ADB reverse
+    }
+  } catch (e) {
+    console.warn("Failed to parse configuredUrl as URL:", e.message);
+  }
+
   // If we are on a physical device, we should try to use the metro host (LAN IP)
   const lanHost = getLanIp();
   if (lanHost) {
@@ -64,6 +73,7 @@ const resolveApiUrl = () => {
 };
 
 export const API_URL = resolveApiUrl();
+console.log("CiviFix API BASE URL:", API_URL);
 
 export const ENDPOINTS = {
   // Auth endpoints

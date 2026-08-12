@@ -8,7 +8,7 @@ export const complaintsApi = {
   },
   
   addNote: async (id: string, payload: { text: string }) => {
-    const res = await api.put(`/complaints/${id}/note`, payload);
+    const res = await api.post(`/inspector/complaints/${id}/notes`, { note: payload.text });
     return unwrapResponse(res);
   },
 

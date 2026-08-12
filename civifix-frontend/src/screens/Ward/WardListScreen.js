@@ -43,7 +43,18 @@ const WardListScreen = ({ navigation }) => {
         const res = await authService.getWards({ page: 1, limit: 100 });
         wardsData = res?.wards ?? res?.data ?? [];
       }
-      setWards(Array.isArray(wardsData) ? wardsData : []);
+      const rawWards = Array.isArray(wardsData) ? wardsData : [];
+      const sortedWards = [...rawWards].sort((a, b) => {
+        const numA = parseInt(a.ward_number, 10);
+        const numB = parseInt(b.ward_number, 10);
+        if (!isNaN(numA) && !isNaN(numB)) {
+          return numA - numB;
+        }
+        const labelA = a.ward_name || "";
+        const labelB = b.ward_name || "";
+        return labelA.localeCompare(labelB, undefined, { numeric: true, sensitivity: 'base' });
+      });
+      setWards(sortedWards);
     } catch (err) {
       setError(getErrorMessage(err, "Failed to load wards"));
     } finally {

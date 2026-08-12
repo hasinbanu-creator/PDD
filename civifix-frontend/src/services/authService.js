@@ -342,6 +342,11 @@ export const authService = {
     });
     return unwrapResponse(response);
   },
+
+  inspectorAddNote: async (complaintId, payload) => {
+    const res = await api.post(`/inspector/complaints/${complaintId}/notes`, payload);
+    return unwrapResponse(res);
+  },
 };
 
 export default authService;

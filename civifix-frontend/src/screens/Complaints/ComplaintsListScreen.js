@@ -51,16 +51,13 @@ const STATUS_COLOR = {
 
 const CATEGORIES = [
   { value: "ALL", label: "All Types" },
-  { value: "GARBAGE", label: "Garbage" },
-  { value: "ROAD_DAMAGE", label: "Roads" },
-  { value: "POTHOLE", label: "Pothole" },
-  { value: "STREETLIGHT", label: "Lights" },
-  { value: "WATER_SUPPLY", label: "Water" },
-  { value: "DRAINAGE", label: "Drainage" },
-  { value: "SANITATION", label: "Sanitation" },
-  { value: "TREE_CUTTING", label: "Trees" },
-  { value: "CONSTRUCTION", label: "Construction" },
-  { value: "OTHER", label: "Other" },
+  { value: "garbage_waste", label: "Garbage" },
+  { value: "road_damage", label: "Roads" },
+  { value: "pothole", label: "Pothole" },
+  { value: "street_light", label: "Lights" },
+  { value: "drainage_issue", label: "Drainage" },
+  { value: "road_waterlogging", label: "Waterlogging" },
+  { value: "construction_block", label: "Construction" },
 ];
 
 // ─── HELPERS ──────────────────────────────────────────────────────────────────

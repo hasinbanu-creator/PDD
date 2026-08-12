@@ -232,12 +232,20 @@ async def api_health_check():
 @app.on_event("startup")
 async def startup_event():
     """Initialize app on startup"""
+    import sys
+    from app.core.enums import ComplaintType
+    import app.core.enums as enums_mod
     logger.info("=" * 50)
     logger.info("Civifix Backend Starting")
     logger.info(f"Environment: {settings.ENV}")
     logger.info(f"Database: {settings.DATABASE_NAME}")
     logger.info(f"SMTP Username Loaded: {settings.SMTP_USERNAME}")
     logger.info(f"Sender Email Loaded: {settings.SENDER_EMAIL}")
+    logger.info(f"SYS EXECUTABLE: {sys.executable}")
+    logger.info(f"PYTHON VERSION: {sys.version}")
+    logger.info(f"ENUMS FILE: {getattr(enums_mod, '__file__', 'None')}")
+    logger.info(f"COMPLAINTTYPE MODULE: {ComplaintType.__module__}")
+    logger.info(f"COMPLAINTTYPE MEMBERS: {list(ComplaintType.__members__.keys())}")
     logger.info("=" * 50)
     
     # Initialize default roles
@@ -250,6 +258,15 @@ async def startup_event():
     db = await get_database()
     await create_indexes(db)
     logger.info("MongoDB indexes created")
+
+    # Initialize Local AI Vision Model
+    try:
+        from app.services.vision_service import VisionService
+        vision_service = VisionService()
+        vision_service.load_model()
+    except Exception as vision_err:
+        logger.error(f"Failed to initialize local vision model at startup: {vision_err}")
+
 
 
 @app.on_event("shutdown")

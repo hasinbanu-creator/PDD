@@ -136,6 +136,13 @@ function formatDate(iso) {
 }
 
 function humaniseType(type) {
+  if (!type) return "Complaint";
+  const t = String(type).toLowerCase();
+  if (t === "garbage_waste") return "Garbage / Waste";
+  if (t === "street_light") return "Street Light";
+  if (t === "road_waterlogging") return "Road Waterlogging";
+  if (t === "construction_block") return "Construction Block";
+  if (t === "drainage_issue") return "Drainage Issue";
   return (type || "Complaint").replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
 

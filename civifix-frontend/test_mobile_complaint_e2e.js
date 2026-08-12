@@ -26,13 +26,13 @@ require('module').prototype.require = (function(orig) {
     }
     if (name === 'react-native') {
       return {
-        Platform: { OS: 'android' },
+        Platform: { OS: 'ios' },
         DeviceEventEmitter: { emit: () => {} }
       };
     }
     if (name === 'react-native-device-info') {
       return {
-        isEmulatorSync: () => true
+        isEmulatorSync: () => false
       };
     }
     if (name === 'react-native-config') {
@@ -116,7 +116,7 @@ async function run() {
   createForm.append("district_name", "Kanchipuram");
   createForm.append("districtName", "Kanchipuram");
   
-  createForm.append("complaint_type", "GARBAGE");
+  createForm.append("complaint_type", "garbage_waste");
   createForm.append("description", "Piles of plastic garbage on the roadside.");
   createForm.append("priority", "MEDIUM");
   createForm.append("latitude", "12.9716");

@@ -35,6 +35,7 @@ const initials = (name = "") =>
 // STATUS_STYLES removed to use getComplaintStatusMeta from utils/status as the single source of truth
 
 const TYPE_META = {
+  // Legacy
   ROAD_DAMAGE:  { icon: "road-variant",         color: "#DC2626", title: "Road Damage"      },
   POTHOLE:      { icon: "road-variant",         color: "#DC2626", title: "Pothole"          },
   GARBAGE:      { icon: "trash-can-outline",    color: "#0891B2", title: "Waste Collection" },
@@ -45,6 +46,21 @@ const TYPE_META = {
   TREE_CUTTING: { icon: "tree-outline",         color: "#059669", title: "Tree Issue"       },
   CONSTRUCTION: { icon: "hammer-wrench",        color: "#D97706", title: "Construction"     },
   OTHER:        { icon: "alert-outline",        color: "#DC2626", title: "Civic Issue"      },
+
+  // Canonical new
+  garbage_waste:      { icon: "trash-can-outline",    color: "#0891B2", title: "Garbage / Waste" },
+  road_damage:        { icon: "road-variant",         color: "#DC2626", title: "Road Damage" },
+  pothole:            { icon: "road-variant",         color: "#DC2626", title: "Pothole" },
+  street_light:       { icon: "lightbulb-on-outline", color: COLORS.primary, title: "Street Light" },
+  drainage_issue:     { icon: "pipe-disconnected",    color: "#0891B2", title: "Drainage Issue" },
+  road_waterlogging:   { icon: "water-outline",        color: COLORS.primary, title: "Road Waterlogging" },
+  construction_block: { icon: "hammer-wrench",        color: "#D97706", title: "Construction Block" },
+
+  // Lowercase legacy
+  water_supply: { icon: "water-outline",        color: COLORS.primary, title: "Water Supply" },
+  sanitation:   { icon: "broom",                color: "#0891B2", title: "Sanitation"       },
+  tree_fallen_branch: { icon: "tree-outline",         color: "#059669", title: "Tree / Fallen Branch" },
+  other_issue:  { icon: "alert-outline",        color: "#DC2626", title: "Other Issue"      },
 };
 
 const ROLE_META = {

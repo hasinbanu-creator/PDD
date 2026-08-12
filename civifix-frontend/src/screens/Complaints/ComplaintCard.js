@@ -60,6 +60,7 @@ const STATUS = {
 // ─── TYPE CONFIG ──────────────────────────────────────────────────────────────
 
 const TYPE_META = {
+  // Legacy
   ROAD_DAMAGE:  { icon: "road-variant",         color: "#DC2626" },
   POTHOLE:      { icon: "road-variant",         color: "#DC2626" },
   GARBAGE:      { icon: "trash-can-outline",    color: "#0891B2" },
@@ -70,10 +71,32 @@ const TYPE_META = {
   TREE_CUTTING: { icon: "tree-outline",         color: "#059669" },
   CONSTRUCTION: { icon: "hammer-wrench",        color: "#D97706" },
   OTHER:        { icon: "alert-circle-outline", color: "#6B7280" },
+
+  // Canonical new
+  garbage_waste:      { icon: "trash-can-outline",    color: "#0891B2" },
+  road_damage:        { icon: "road-variant",         color: "#DC2626" },
+  pothole:            { icon: "road-variant",         color: "#DC2626" },
+  street_light:       { icon: "lightbulb-on-outline", color: "#D97706" },
+  drainage_issue:     { icon: "pipe-disconnected",    color: "#0891B2" },
+  road_waterlogging:   { icon: "water-outline",        color: "#0052CC" },
+  construction_block: { icon: "hammer-wrench",        color: "#D97706" },
+
+  // Lowercase legacy
+  water_supply: { icon: "water-outline",        color: "#0052CC" },
+  sanitation:   { icon: "broom",                color: "#0891B2" },
+  tree_fallen_branch: { icon: "tree-outline",         color: "#059669" },
+  other_issue:  { icon: "alert-circle-outline", color: "#6B7280" },
 };
 
-const formatType = (type = "") =>
-  type.replace(/_/g, " ").toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase());
+const formatType = (type = "") => {
+  const t = String(type).toLowerCase();
+  if (t === "garbage_waste") return "Garbage / Waste";
+  if (t === "street_light") return "Street Light";
+  if (t === "road_waterlogging") return "Road Waterlogging";
+  if (t === "construction_block") return "Construction Block";
+  if (t === "drainage_issue") return "Drainage Issue";
+  return type.replace(/_/g, " ").toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase());
+};
 
 const formatDate = (dateStr) => {
   if (!dateStr) return null;

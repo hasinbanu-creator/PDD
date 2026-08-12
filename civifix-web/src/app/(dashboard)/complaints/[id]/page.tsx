@@ -88,6 +88,7 @@ const PRIORITY_CONFIG: Record<string, { color: string, bg: string, label: string
 };
 
 const TYPE_META: Record<string, { icon: any, color: string, bg: string, title: string }> = {
+  // Legacy
   ROAD_DAMAGE: { icon: Map, color: "text-destructive", bg: "bg-destructive/10", title: "Road Damage" },
   GARBAGE: { icon: ClipboardList, color: "text-secondary", bg: "bg-secondary/10", title: "Waste Collection" },
   POTHOLE: { icon: Map, color: "text-destructive", bg: "bg-destructive/10", title: "Pothole" },
@@ -98,6 +99,21 @@ const TYPE_META: Record<string, { icon: any, color: string, bg: string, title: s
   TREE_CUTTING: { icon: TreePine, color: "text-success", bg: "bg-success/10", title: "Tree Issue" },
   CONSTRUCTION: { icon: Wrench, color: "text-accent", bg: "bg-accent/10", title: "Construction Block" },
   OTHER: { icon: AlertCircle, color: "text-destructive", bg: "bg-destructive/10", title: "Civic Issue" },
+
+  // Canonical new
+  garbage_waste: { icon: ClipboardList, color: "text-secondary", bg: "bg-secondary/10", title: "Garbage / Waste" },
+  road_damage: { icon: Map, color: "text-destructive", bg: "bg-destructive/10", title: "Road Damage" },
+  pothole: { icon: Map, color: "text-destructive", bg: "bg-destructive/10", title: "Pothole" },
+  street_light: { icon: Lightbulb, color: "text-primary", bg: "bg-primary/10", title: "Street Light" },
+  drainage_issue: { icon: Wrench, color: "text-secondary", bg: "bg-secondary/10", title: "Drainage Issue" },
+  road_waterlogging: { icon: Activity, color: "text-primary", bg: "bg-primary/10", title: "Road Waterlogging" },
+  construction_block: { icon: Wrench, color: "text-accent", bg: "bg-accent/10", title: "Construction Block" },
+
+  // Lowercase legacy
+  water_supply: { icon: Activity, color: "text-primary", bg: "bg-primary/10", title: "Water Supply" },
+  sanitation: { icon: ClipboardList, color: "text-secondary", bg: "bg-secondary/10", title: "Sanitation" },
+  tree_fallen_branch: { icon: TreePine, color: "text-success", bg: "bg-success/10", title: "Tree / Fallen Branch" },
+  other_issue: { icon: AlertCircle, color: "text-destructive", bg: "bg-destructive/10", title: "Other Issue" }
 };
 
 function InfoRow({ icon: Icon, label, value }: { icon: any, label: string, value?: string | null }) {

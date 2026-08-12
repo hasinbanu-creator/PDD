@@ -26,7 +26,7 @@ import {
 } from "lucide-react";
 
 type ComplaintStatus = "OPEN" | "WORKING" | "APPROVAL" | "CLOSED" | "REJECTED" | "IN_PROGRESS" | "RESOLVED";
-type ComplaintType = "ROAD_DAMAGE" | "POTHOLE" | "GARBAGE" | "STREETLIGHT" | "WATER_SUPPLY" | "DRAINAGE" | "SANITATION" | "TREE_CUTTING" | "CONSTRUCTION" | "OTHER";
+type ComplaintType = string;
 
 const getCleanDistrict = (c: any, districts?: any[]) => {
   const val = c.districtName || c.district_name || c.district?.name || c.district;
@@ -79,6 +79,7 @@ const STATUS_GROUPS: Record<string, string[]> = {
 };
 
 const TYPE_META: Record<string, { icon: React.ElementType; color: string; bg: string; title: string }> = {
+  // Legacy
   ROAD_DAMAGE: { icon: Map, color: "text-destructive", bg: "bg-destructive/10", title: "Road Damage" },
   POTHOLE: { icon: Map, color: "text-destructive", bg: "bg-destructive/10", title: "Pothole" },
   GARBAGE: { icon: Trash2, color: "text-secondary", bg: "bg-secondary/10", title: "Waste Collection" },
@@ -89,6 +90,21 @@ const TYPE_META: Record<string, { icon: React.ElementType; color: string; bg: st
   TREE_CUTTING: { icon: TreePine, color: "text-success", bg: "bg-success/10", title: "Tree Issue" },
   CONSTRUCTION: { icon: Wrench, color: "text-accent", bg: "bg-accent/10", title: "Construction" },
   OTHER: { icon: AlertCircle, color: "text-destructive", bg: "bg-destructive/10", title: "Civic Issue" },
+
+  // Canonical new
+  garbage_waste: { icon: Trash2, color: "text-secondary", bg: "bg-secondary/10", title: "Garbage / Waste" },
+  road_damage: { icon: Map, color: "text-destructive", bg: "bg-destructive/10", title: "Road Damage" },
+  pothole: { icon: Map, color: "text-destructive", bg: "bg-destructive/10", title: "Pothole" },
+  street_light: { icon: AlertCircle, color: "text-primary", bg: "bg-primary/10", title: "Street Light" },
+  drainage_issue: { icon: Wrench, color: "text-secondary", bg: "bg-secondary/10", title: "Drainage Issue" },
+  road_waterlogging: { icon: Activity, color: "text-primary", bg: "bg-primary/10", title: "Road Waterlogging" },
+  construction_block: { icon: Wrench, color: "text-accent", bg: "bg-accent/10", title: "Construction Block" },
+
+  // Lowercase legacy
+  water_supply: { icon: Activity, color: "text-primary", bg: "bg-primary/10", title: "Water Supply" },
+  sanitation: { icon: ClipboardList, color: "text-secondary", bg: "bg-secondary/10", title: "Sanitation" },
+  tree_fallen_branch: { icon: TreePine, color: "text-success", bg: "bg-success/10", title: "Tree / Fallen Branch" },
+  other_issue: { icon: AlertCircle, color: "text-destructive", bg: "bg-destructive/10", title: "Other Issue" }
 };
 
 export default function ComplaintsListPage() {

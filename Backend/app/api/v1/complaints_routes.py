@@ -46,9 +46,11 @@ def get_complaint_service(db=Depends(get_database)):
 async def verify_complaint_image_endpoint(
     file: Optional[UploadFile] = File(None),
     image: Optional[UploadFile] = File(None),
+    selected_category: Optional[str] = Form(None),
+    complaint_type: Optional[str] = Form(None),
     current_user: dict = Depends(get_current_user)
 ):
-    """Verify uploaded image contains a valid civic issue and is not blurry"""
+    """Verify uploaded image contains a valid civic issue and matches the selected category"""
     import traceback
     from fastapi.responses import JSONResponse
     from PIL import Image
@@ -87,27 +89,43 @@ async def verify_complaint_image_endpoint(
                 }
             )
             
-        logger.info("Calling Gemini...")
+        target_category = selected_category or complaint_type
+        if target_category:
+            val = str(target_category).lower().strip().replace(" ", "_")
+            legacy_map = {
+                "garbage": "garbage_waste",
+                "road_damage": "road_damage",
+                "pothole": "pothole",
+                "streetlight": "street_light",
+                "street_light": "street_light",
+                "water_supply": "road_waterlogging",
+                "drainage": "drainage_issue",
+                "drainage_issue": "drainage_issue",
+                "construction": "construction_block",
+                "construction_block": "construction_block",
+            }
+            target_category = legacy_map.get(val, val)
+
+        logger.info(f"Calling Local ResNet-18 Vision AI for category verification. Selected category: {target_category}")
         from app.ai.image_verification import verify_complaint_image
-        result = await verify_complaint_image(content, uploaded_file.content_type)
-        logger.info("Gemini response received.")
+        result = await verify_complaint_image(content, uploaded_file.content_type, selected_category=target_category)
+        logger.info("Local ResNet-18 prediction and verification completed.")
         
         if result.get("api_status") in ["TIMEOUT", "API_ERROR", "FAILED"]:
             error_msg = result.get("error_details") or result.get("api_error_details") or "AI Verification Unavailable"
-            logger.error(f"[AI Image Verification Endpoint] Gemini verification failed. Status: {result.get('api_status')}, Error: {error_msg}")
+            logger.error(f"[AI Image Verification Endpoint] Local verification failed. Status: {result.get('api_status')}, Error: {error_msg}")
             
-            status_code = status.HTTP_503_SERVICE_UNAVAILABLE if result.get("api_status") in ["TIMEOUT", "API_ERROR"] else status.HTTP_500_INTERNAL_SERVER_ERROR
             return JSONResponse(
-                status_code=status_code,
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 content={
                     "success": False,
-                    "error": f"Gemini returned: {error_msg}"
+                    "error": f"Local AI model error: {error_msg}"
                 }
             )
             
-        is_verified = result.get("contains_civic_issue", False) and not result.get("is_low_quality", False)
-        
+        is_verified = result.get("verified", False)
         raw_conf = result.get("confidence", 1.0)
+        
         if isinstance(raw_conf, (int, float)):
             if raw_conf <= 1.0:
                 confidence_val = int(raw_conf * 100)
@@ -116,17 +134,37 @@ async def verify_complaint_image_endpoint(
         else:
             confidence_val = 100
 
-        logger.info(f"[AI Image Verification Endpoint] Image verified successfully. contains_civic_issue: {result.get('contains_civic_issue')}, is_low_quality: {result.get('is_low_quality')}")
-        logger.info("Returning response.")
-        
-        return {
+        legacy_data = {
+            "contains_civic_issue": result.get("contains_civic_issue", True),
+            "is_low_quality": result.get("is_low_quality", False),
+            "predicted_category": result.get("predicted_category", "OTHER"),
+            "confidence": raw_conf,
+            "reason": result.get("verification_message", ""),
+            "verification_status": result.get("verification_status"),
+            "verified": result.get("verified"),
+            "selected_category": result.get("selected_category"),
+            "verification_message": result.get("verification_message")
+        }
+
+        response_payload = {
             "success": True,
             "verified": is_verified,
-            "category_match": True,
+            "category_match": result.get("verification_status") == "MATCH",
             "confidence": confidence_val,
-            "message": "Image verified successfully.",
-            "data": result
+            "message": result.get("verification_message"),
+            
+            # New 3-state output properties at root level
+            "verification_status": result.get("verification_status"),
+            "selected_category": result.get("selected_category"),
+            "predicted_category": result.get("predicted_category"),
+            "verification_message": result.get("verification_message"),
+            
+            "data": legacy_data
         }
+        
+        logger.info(f"[AI Image Verification Endpoint] Image verified. Status: {result.get('verification_status')}, Verified: {is_verified}")
+        return response_payload
+        
     except Exception as e:
         tb = traceback.format_exc()
         logger.error(f"[AI Image Verification Endpoint] Unexpected crash in endpoint:\n{tb}")
@@ -169,6 +207,23 @@ async def create_complaint(
 ):
     """Create a new complaint (CITIZEN only)"""
     try:
+        # Normalize raw complaint_type parameter to lowercase canonical form
+        if complaint_type:
+            val = str(complaint_type).lower().strip().replace(" ", "_")
+            legacy_map = {
+                "garbage": "garbage_waste",
+                "road_damage": "road_damage",
+                "pothole": "pothole",
+                "streetlight": "street_light",
+                "street_light": "street_light",
+                "water_supply": "road_waterlogging",
+                "drainage": "drainage_issue",
+                "drainage_issue": "drainage_issue",
+                "construction": "construction_block",
+                "construction_block": "construction_block",
+            }
+            complaint_type = legacy_map.get(val, val)
+
         logger.info("=========================================")
         logger.info("FastAPI: CREATE COMPLAINT REQUEST RECEIVED")
         logger.info(f"ward_id: {ward_id}, complaint_type: {complaint_type}, description: {description}")
@@ -495,7 +550,7 @@ async def create_complaint(
 
         complaint_data = ComplaintCreateSchema(
             ward_id=wardId or ward_id,
-            complaint_type=ComplaintType(complaint_type),
+            complaint_type=complaint_type,
             description=description,
             latitude=latitude,
             longitude=longitude,

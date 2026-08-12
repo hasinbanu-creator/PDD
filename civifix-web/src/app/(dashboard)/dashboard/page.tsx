@@ -31,7 +31,7 @@ import api from "@/lib/api";
 
 
 type ComplaintStatus = "OPEN" | "PENDING" | "WORKING" | "IN_PROGRESS" | "APPROVAL" | "CLOSED" | "RESOLVED" | "REJECTED";
-type ComplaintType = "ROAD_DAMAGE" | "POTHOLE" | "GARBAGE" | "STREETLIGHT" | "WATER_SUPPLY" | "DRAINAGE" | "SANITATION" | "TREE_CUTTING" | "CONSTRUCTION" | "OTHER";
+type ComplaintType = string;
 
 const getCleanDistrict = (c: any, districts?: any[]) => {
   const val = c.districtName || c.district_name || c.district?.name || c.district;
@@ -67,7 +67,8 @@ const STATUS_STYLES: Record<ComplaintStatus, { label: string; color: string; bg:
   REJECTED: { label: "Rejected", color: "text-destructive", bg: "bg-destructive/10" },
 };
 
-const TYPE_META: Record<ComplaintType, { icon: React.ElementType; color: string; bg: string; title: string }> = {
+const TYPE_META: Record<string, { icon: React.ElementType; color: string; bg: string; title: string }> = {
+  // Legacy
   ROAD_DAMAGE: { icon: Map, color: "text-destructive", bg: "bg-destructive/10", title: "Road Damage" },
   POTHOLE: { icon: Map, color: "text-destructive", bg: "bg-destructive/10", title: "Pothole" },
   GARBAGE: { icon: ClipboardList, color: "text-secondary", bg: "bg-secondary/10", title: "Waste Collection" },
@@ -78,6 +79,21 @@ const TYPE_META: Record<ComplaintType, { icon: React.ElementType; color: string;
   TREE_CUTTING: { icon: MapPin, color: "text-success", bg: "bg-success/10", title: "Tree Issue" },
   CONSTRUCTION: { icon: Wrench, color: "text-accent", bg: "bg-accent/10", title: "Construction" },
   OTHER: { icon: AlertCircle, color: "text-destructive", bg: "bg-destructive/10", title: "Civic Issue" },
+
+  // Canonical new
+  garbage_waste: { icon: ClipboardList, color: "text-secondary", bg: "bg-secondary/10", title: "Garbage / Waste" },
+  road_damage: { icon: Map, color: "text-destructive", bg: "bg-destructive/10", title: "Road Damage" },
+  pothole: { icon: Map, color: "text-destructive", bg: "bg-destructive/10", title: "Pothole" },
+  street_light: { icon: AlertCircle, color: "text-primary", bg: "bg-primary/10", title: "Street Light" },
+  drainage_issue: { icon: Wrench, color: "text-secondary", bg: "bg-secondary/10", title: "Drainage Issue" },
+  road_waterlogging: { icon: Activity, color: "text-primary", bg: "bg-primary/10", title: "Road Waterlogging" },
+  construction_block: { icon: Wrench, color: "text-accent", bg: "bg-accent/10", title: "Construction Block" },
+
+  // Lowercase legacy
+  water_supply: { icon: Activity, color: "text-primary", bg: "bg-primary/10", title: "Water Supply" },
+  sanitation: { icon: ClipboardList, color: "text-secondary", bg: "bg-secondary/10", title: "Sanitation" },
+  tree_fallen_branch: { icon: MapPin, color: "text-success", bg: "bg-success/10", title: "Tree / Fallen Branch" },
+  other_issue: { icon: AlertCircle, color: "text-destructive", bg: "bg-destructive/10", title: "Other Issue" }
 };
 
 const ROLE_META: Record<string, { label: string; color: string; bg: string; gradient: string }> = {

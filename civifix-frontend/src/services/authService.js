@@ -258,7 +258,7 @@ export const authService = {
     return unwrapResponse(response);
   },
 
-  verifyImage: async (imageUri) => {
+  verifyImage: async (imageUri, selectedCategory) => {
     let fileUri = imageUri;
     if (Platform.OS === 'android' && fileUri) {
       if (fileUri.startsWith('file:/') && !fileUri.startsWith('file:///')) {
@@ -283,6 +283,11 @@ export const authService = {
       name: "complaint.jpg",
       type: "image/jpeg",
     });
+
+    if (selectedCategory) {
+      formData.append("selected_category", selectedCategory);
+      formData.append("complaint_type", selectedCategory);
+    }
 
     try {
       const response = await nativeFetchFormData(ENDPOINTS.VERIFY_IMAGE, "POST", formData);

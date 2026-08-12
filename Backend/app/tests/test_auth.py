@@ -21,9 +21,10 @@ async def test_register_user():
         inserted_id = ObjectId()
     mock_db.users.insert_one = AsyncMock(return_value=MockResult())
     
+    from httpx import ASGITransport
     with patch("app.services.auth_service.db", mock_db), \
          patch("app.repositories.otp_repository.OTPRepository.create_otp_log", new_callable=AsyncMock):
-        async with AsyncClient(app=app, base_url="http://test") as client:
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
             response = await client.post(
                 "/api/v1/auth/register",
                 json={
@@ -62,9 +63,10 @@ async def test_register_duplicate_email():
         inserted_id = ObjectId()
     mock_db.users.insert_one = AsyncMock(return_value=MockResult())
     
+    from httpx import ASGITransport
     with patch("app.services.auth_service.db", mock_db), \
          patch("app.repositories.otp_repository.OTPRepository.create_otp_log", new_callable=AsyncMock):
-        async with AsyncClient(app=app, base_url="http://test") as client:
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
             # Register first user
             await client.post(
                 "/api/v1/auth/register",
@@ -99,7 +101,8 @@ async def test_register_duplicate_email():
 @pytest.mark.asyncio
 async def test_health_check():
     """Test health check endpoint"""
-    async with AsyncClient(app=app, base_url="http://test") as client:
+    from httpx import ASGITransport
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         response = await client.get("/health")
         
         assert response.status_code == 200
@@ -110,7 +113,8 @@ async def test_health_check():
 @pytest.mark.asyncio
 async def test_root_endpoint():
     """Test root endpoint"""
-    async with AsyncClient(app=app, base_url="http://test") as client:
+    from httpx import ASGITransport
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         response = await client.get("/")
         
         assert response.status_code == 200

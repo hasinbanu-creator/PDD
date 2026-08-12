@@ -29,9 +29,19 @@ class ComplaintStatus(str, Enum):
 
 class ComplaintType(str, Enum):
     """Types of complaints"""
+    # Canonical new lowercase categories
+    GARBAGE_WASTE = "garbage_waste"
+    ROAD_DAMAGE = "road_damage"
+    POTHOLE = "pothole"
+    STREET_LIGHT = "street_light"
+    DRAINAGE_ISSUE = "drainage_issue"
+    ROAD_WATERLOGGING = "road_waterlogging"
+    CONSTRUCTION_BLOCK = "construction_block"
+
+    # Legacy categories for historical database compatibility
     GARBAGE = "GARBAGE"
-    ROAD_DAMAGE = "ROAD_DAMAGE"
-    POTHOLE = "POTHOLE"
+    ROAD_DAMAGE_LEGACY = "ROAD_DAMAGE"
+    POTHOLE_LEGACY = "POTHOLE"
     STREETLIGHT = "STREETLIGHT"
     WATER_SUPPLY = "WATER_SUPPLY"
     DRAINAGE = "DRAINAGE"
@@ -39,6 +49,12 @@ class ComplaintType(str, Enum):
     TREE_CUTTING = "TREE_CUTTING"
     CONSTRUCTION = "CONSTRUCTION"
     OTHER = "OTHER"
+
+    # Lowercase legacy names
+    water_supply = "water_supply"
+    sanitation = "sanitation"
+    tree_fallen_branch = "tree_fallen_branch"
+    other_issue = "other_issue"
 
 
 class Priority(str, Enum):

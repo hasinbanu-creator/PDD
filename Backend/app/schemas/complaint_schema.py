@@ -88,6 +88,38 @@ class ComplaintCreateSchema(BaseModel):
     priority_updated_at: Optional[str] = Field(None, description="Timestamp of override")
     support_count: Optional[int] = Field(0, description="Support Count")
 
+    @validator("complaint_type", pre=True)
+    def validate_complaint_type_creation(cls, v):
+        if not v:
+            raise ValueError("Complaint type is required")
+        val = str(v).lower().strip().replace(" ", "_")
+        # Map legacy categories to new canonical lowercase categories
+        legacy_map = {
+            "garbage": "garbage_waste",
+            "road_damage": "road_damage",
+            "pothole": "pothole",
+            "streetlight": "street_light",
+            "street_light": "street_light",
+            "water_supply": "road_waterlogging",
+            "drainage": "drainage_issue",
+            "drainage_issue": "drainage_issue",
+            "construction": "construction_block",
+            "construction_block": "construction_block",
+        }
+        normalized_val = legacy_map.get(val, val)
+        allowed_types = {
+            "garbage_waste",
+            "road_damage",
+            "pothole",
+            "street_light",
+            "drainage_issue",
+            "road_waterlogging",
+            "construction_block",
+        }
+        if normalized_val not in allowed_types:
+            raise ValueError(f"Complaint type '{v}' is not supported for new complaints.")
+        return ComplaintType(normalized_val)
+
     @validator("description")
     def validate_description(cls, v):
         if not v or len(v.strip()) < 10:

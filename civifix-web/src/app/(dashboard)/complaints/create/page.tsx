@@ -27,16 +27,13 @@ import {
 } from "lucide-react";
 
 const COMPLAINT_TYPES = [
-  { value: "GARBAGE",      label: "Garbage / Waste",      icon: Trash2,    color: "text-secondary", bg: "bg-secondary/10" },
-  { value: "ROAD_DAMAGE",  label: "Road Damage",          icon: Map,       color: "text-destructive",  bg: "bg-destructive/10" },
-  { value: "POTHOLE",      label: "Pothole",              icon: Map,       color: "text-destructive",  bg: "bg-destructive/10" },
-  { value: "STREETLIGHT",  label: "Street Light",         icon: Lightbulb, color: "text-primary", bg: "bg-primary/10" },
-  { value: "WATER_SUPPLY", label: "Water Supply",         icon: Activity,  color: "text-primary", bg: "bg-primary/10" },
-  { value: "DRAINAGE",     label: "Drainage Issue",       icon: Wrench,    color: "text-secondary", bg: "bg-secondary/10" },
-  { value: "SANITATION",   label: "Sanitation",           icon: ClipboardList, color: "text-secondary", bg: "bg-secondary/10" },
-  { value: "TREE_CUTTING", label: "Tree / Fallen Branch", icon: TreePine,  color: "text-success", bg: "bg-success/10" },
-  { value: "CONSTRUCTION", label: "Construction Block",   icon: Wrench,    color: "text-accent", bg: "bg-accent/10" },
-  { value: "OTHER",        label: "Other Issue",          icon: AlertCircle, color: "text-destructive", bg: "bg-destructive/10" },
+  { value: "garbage_waste",      label: "Garbage / Waste",      icon: Trash2,    color: "text-secondary", bg: "bg-secondary/10" },
+  { value: "road_damage",        label: "Road Damage",          icon: Map,       color: "text-destructive",  bg: "bg-destructive/10" },
+  { value: "pothole",            label: "Pothole",              icon: Map,       color: "text-destructive",  bg: "bg-destructive/10" },
+  { value: "street_light",       label: "Street Light",         icon: Lightbulb, color: "text-primary", bg: "bg-primary/10" },
+  { value: "drainage_issue",     label: "Drainage Issue",       icon: Wrench,    color: "text-secondary", bg: "bg-secondary/10" },
+  { value: "road_waterlogging",   label: "Road Waterlogging",    icon: Activity,  color: "text-primary", bg: "bg-primary/10" },
+  { value: "construction_block", label: "Construction Block",   icon: Wrench,    color: "text-accent", bg: "bg-accent/10" },
 ];
 
 const PRIORITIES = [
@@ -927,7 +924,7 @@ export default function CreateComplaintPage() {
               <div className="text-center py-6">
                 <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-6"></div>
                 <h3 className="text-xl font-black text-foreground">🤖 Verifying uploaded image...</h3>
-                <p className="text-sm text-muted-foreground mt-2 font-medium">Please wait while Gemini AI analyzes the image.</p>
+                <p className="text-sm text-muted-foreground mt-2 font-medium">AI is verifying your image...</p>
               </div>
             )}
 

@@ -55,16 +55,13 @@ const GRAY_800      = "#1F2937";
 const DEFAULT_DISTRICT_ID = "6a156a1258884d22663b2a06";
 
 const COMPLAINT_TYPES = [
-  { value: "GARBAGE",      label: "Garbage / Waste",      icon: "trash-can-outline",   color: "#0891B2" },
-  { value: "ROAD_DAMAGE",  label: "Road Damage",          icon: "road-variant",         color: "#DC2626" },
-  { value: "POTHOLE",      label: "Pothole",              icon: "road-variant",         color: "#DC2626" },
-  { value: "STREETLIGHT",  label: "Street Light",         icon: "lightbulb-on-outline", color: "#D97706" },
-  { value: "WATER_SUPPLY", label: "Water Supply",         icon: "water-outline",        color: "#0052CC" },
-  { value: "DRAINAGE",     label: "Drainage Issue",       icon: "pipe-disconnected",    color: "#0891B2" },
-  { value: "SANITATION",   label: "Sanitation",           icon: "broom",                color: "#059669" },
-  { value: "TREE_CUTTING", label: "Tree / Fallen Branch", icon: "tree-outline",         color: "#059669" },
-  { value: "CONSTRUCTION", label: "Construction Block",   icon: "hammer-wrench",        color: "#D97706" },
-  { value: "OTHER",        label: "Other Issue",          icon: "alert-circle-outline", color: "#6B7280" },
+  { value: "garbage_waste",      label: "Garbage / Waste",      icon: "trash-can-outline",   color: "#0891B2" },
+  { value: "road_damage",        label: "Road Damage",          icon: "road-variant",         color: "#DC2626" },
+  { value: "pothole",            label: "Pothole",              icon: "road-variant",         color: "#DC2626" },
+  { value: "street_light",       label: "Street Light",         icon: "lightbulb-on-outline", color: "#D97706" },
+  { value: "drainage_issue",     label: "Drainage Issue",       icon: "pipe-disconnected",    color: "#0891B2" },
+  { value: "road_waterlogging",   label: "Road Waterlogging",    icon: "water-outline",        color: "#0052CC" },
+  { value: "construction_block", label: "Construction Block",   icon: "hammer-wrench",        color: "#D97706" },
 ];
 
 const PRIORITIES = [
@@ -353,7 +350,7 @@ export const CreateComplaintScreen = ({ route, navigation }) => {
     setAiVerificationError(null);
     try {
       console.log("[CreateComplaintScreen] Sending image for verification:", imageUri);
-      const result = await authService.verifyImage(imageUri);
+      const result = await authService.verifyImage(imageUri, form.complaint_type);
       console.log("[CreateComplaintScreen] Verification result:", JSON.stringify(result));
       
       setAiVerifiedPayload(result);
@@ -982,7 +979,7 @@ export const CreateComplaintScreen = ({ route, navigation }) => {
               <View style={{ alignItems: "center", paddingVertical: 20 }}>
                 <ActivityIndicator size="large" color={PRIMARY} style={{ marginBottom: 20 }} />
                 <Text style={{ fontSize: 18, fontWeight: "900", color: "#1F2937", textAlign: "center" }}>🤖 Verifying uploaded image...</Text>
-                <Text style={{ fontSize: 13, color: "#6B7280", marginTop: 8, textAlign: "center" }}>Please wait while Gemini AI analyzes the image.</Text>
+                <Text style={{ fontSize: 13, color: "#6B7280", marginTop: 8, textAlign: "center" }}>AI is verifying your image...</Text>
               </View>
             )}
 

@@ -61,9 +61,8 @@ class ComplaintValidator:
     def validate_complaint_type(complaint_type: str) -> bool:
         """Validate complaint type"""
         valid_types = [
-            "GARBAGE", "ROAD_DAMAGE", "POTHOLE", "STREETLIGHT",
-            "WATER_SUPPLY", "DRAINAGE", "SANITATION", "TREE_CUTTING",
-            "CONSTRUCTION", "OTHER"
+            "garbage_waste", "road_damage", "pothole", "street_light",
+            "drainage_issue", "road_waterlogging", "construction_block"
         ]
         return complaint_type in valid_types
 

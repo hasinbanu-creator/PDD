@@ -134,5 +134,6 @@ def complaint_response(doc) -> dict:
     doc["sentiment_magnitude"] = doc.get("sentiment_magnitude")
     doc["sentiment_classification"] = doc.get("sentiment_classification")
     doc["reopen_details"] = doc.get("reopen_details")
+    doc["resolution_cycles"] = doc.get("resolution_cycles") or []
     
     return doc

@@ -1,79 +1,30 @@
 import { Platform } from "react-native";
 import Config from "react-native-config";
-import DeviceInfo from "react-native-device-info";
 
-const DEFAULT_API_URL = "http://localhost:8000/api/v1";
+const DEFAULT_API_URL = "http://192.168.43.223:8000/api/v1";
 
-const isLocalhostLike = (url) => {
-  if (!url) return true;
-
-  try {
-    const { hostname } = new URL(url);
-    return ["localhost", "127.0.0.1", "0.0.0.0", "10.0.2.2", "::1"].includes(hostname) || hostname.startsWith("192.168.");
-  } catch {
-    return false;
-  }
+const getConfiguredApiUrl = () => {
+  return (
+    process.env.EXPO_PUBLIC_API_URL ||
+    Config.EXPO_PUBLIC_API_URL ||
+    Config.API_URL ||
+    DEFAULT_API_URL
+  );
 };
-
-const getMetroHost = () => {
-  try {
-    const { NativeModules } = require("react-native");
-    const scriptURL = NativeModules?.SourceCode?.scriptURL;
-    if (scriptURL) {
-      const address = scriptURL.split("/")[2];
-      const host = address.split(":")[0];
-      if (host && host !== "localhost" && host !== "127.0.0.1") {
-        return host;
-      }
-    }
-  } catch (e) {
-    console.warn("Failed to get Metro host IP:", e);
-  }
-  return null;
-};
-
-const getLanIp = () => getMetroHost();
-
-const getConfiguredApiUrl = () => process.env.EXPO_PUBLIC_API_URL || Config.EXPO_PUBLIC_API_URL || Config.API_URL || DEFAULT_API_URL;
 
 const normalizeApiUrl = (url) => {
-  if (!url) return url;
-  return url.endsWith("/") ? url : `${url}/`;
+  if (!url) return DEFAULT_API_URL;
+
+  return url.endsWith("/") ? url.slice(0, -1) : url;
 };
 
-const resolveApiUrl = () => {
-  const configuredUrl = normalizeApiUrl(getConfiguredApiUrl());
+export const API_URL = normalizeApiUrl(getConfiguredApiUrl());
 
-  if (Platform.OS === "android" && DeviceInfo.isEmulatorSync()) {
-    return configuredUrl.replace(/localhost|127\.0\.0\.1|192\.168\.\d+\.\d+/, "10.0.2.2");
-  }
-
-  const isLocalhost = isLocalhostLike(configuredUrl);
-
-  if (!isLocalhost || Platform.OS === "web") {
-    return configuredUrl;
-  }
-
-  try {
-    const hostname = new URL(configuredUrl).hostname;
-    if (hostname === "localhost" || hostname === "127.0.0.1") {
-      return configuredUrl; // Dev USB connection using ADB reverse
-    }
-  } catch (e) {
-    console.warn("Failed to parse configuredUrl as URL:", e.message);
-  }
-
-  // If we are on a physical device, we should try to use the metro host (LAN IP)
-  const lanHost = getLanIp();
-  if (lanHost) {
-    return configuredUrl.replace(/localhost|127\.0\.0\.1|0\.0\.0\.0/, lanHost);
-  }
-
-  return configuredUrl;
-};
-
-export const API_URL = resolveApiUrl();
-console.log("CiviFix API BASE URL:", API_URL);
+console.log("=================================");
+console.log("CiviFix API CONFIGURATION");
+console.log("Platform:", Platform.OS);
+console.log("API URL:", API_URL);
+console.log("=================================");
 
 export const ENDPOINTS = {
   // Auth endpoints

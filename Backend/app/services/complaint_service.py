@@ -544,9 +544,24 @@ class ComplaintService:
             if current_status not in [ComplaintStatus.RESOLVED, ComplaintStatus.CLOSED]:
                 raise ValidationError("Feedback can only be submitted for resolved complaints")
 
-            # Duplicate Check: Prevent duplicate feedback submissions
-            if complaint.get("feedback"):
-                raise ValidationError("Feedback has already been submitted for this complaint")
+            resolution_cycles = list(complaint.get("resolution_cycles") or [])
+            if not resolution_cycles:
+                proof_imgs = complaint.get("proof_images") or []
+                resolution_cycles = [{
+                    "cycle_number": 1,
+                    "inspector_id": str(complaint.get("inspector_id") or ""),
+                    "inspector_name": "Inspector",
+                    "images": proof_imgs,
+                    "note": complaint.get("inspector_note") or "",
+                    "resolved_at": complaint.get("closed_at") or datetime.utcnow(),
+                    "status": "RESOLVED",
+                    "citizen_feedback": None,
+                    "result": None
+                }]
+
+            active_cycle = resolution_cycles[-1]
+            if active_cycle.get("citizen_feedback"):
+                raise ValidationError("Feedback has already been submitted for this resolution cycle")
 
             # Analyze Feedback via Google Cloud Natural Language API
             from app.services.nlp_service import analyze_sentiment
@@ -569,7 +584,11 @@ class ComplaintService:
 
             should_reopen = nlp_res["should_reopen"]
 
+            active_cycle["citizen_feedback"] = feedback_record
+            active_cycle["result"] = "REOPENED" if should_reopen else "COMPLETED"
+
             update_data = {
+                "resolution_cycles": resolution_cycles,
                 "feedback": feedback_record,
                 "sentiment_score": nlp_res["sentiment_score"],
                 "sentiment_magnitude": nlp_res["sentiment_magnitude"],
@@ -591,7 +610,10 @@ class ComplaintService:
                     "reopen_details": reopen_details
                 })
             else:
-                new_status = current_status
+                new_status = ComplaintStatus.CLOSED
+                update_data.update({
+                    "status": new_status
+                })
 
             success = await self.complaint_repo.update(complaint_id, update_data)
             if not success:
@@ -600,13 +622,13 @@ class ComplaintService:
             # History audit trail
             history_data = {
                 "complaint_id": self._normalize_id(complaint_id),
-                "action": "REOPENED" if should_reopen else "FEEDBACK_SUBMITTED",
+                "action": "REOPENED" if should_reopen else "CLOSED",
                 "old_status": current_status,
                 "new_status": new_status,
                 "performed_by": self._normalize_id(user_id),
                 "role": user_role,
                 "remarks": f"Citizen feedback: '{feedback_text}'. Sentiment: {nlp_res['sentiment_classification']} (Score: {nlp_res['sentiment_score']}). " +
-                           ("Automatically REOPENED due to negative citizen feedback." if should_reopen else "Complaint remains RESOLVED."),
+                           ("Automatically REOPENED due to negative citizen feedback." if should_reopen else "Complaint CLOSED following positive feedback."),
                 "timestamp": now
             }
             await self.complaint_repo.add_history(history_data)
@@ -642,7 +664,15 @@ class ComplaintService:
         if not complaint:
             raise ResourceNotFoundError("Complaint not found")
 
-        feedback = complaint.get("feedback")
+        cycles = list(complaint.get("resolution_cycles") or [])
+        if cycles:
+            active_cycle = cycles[-1]
+            feedback = active_cycle.get("citizen_feedback")
+            if not feedback and str(complaint.get("status") or "").upper() in ["RESOLVED", "CLOSED"]:
+                raise ResourceNotFoundError("No feedback found for current resolution cycle")
+        else:
+            feedback = complaint.get("feedback")
+
         if not feedback:
             raise ResourceNotFoundError("No feedback found for this complaint")
 
@@ -651,8 +681,8 @@ class ComplaintService:
             "feedback": feedback,
             "status": complaint.get("status"),
             "reopened_reason": complaint.get("reopened_reason"),
-            "sentiment_score": complaint.get("sentiment_score"),
-            "sentiment_classification": complaint.get("sentiment_classification")
+            "sentiment_score": feedback.get("sentiment_score") if isinstance(feedback, dict) else complaint.get("sentiment_score"),
+            "sentiment_classification": feedback.get("sentiment_classification") if isinstance(feedback, dict) else complaint.get("sentiment_classification")
         }
 
     async def get_user_complaints(

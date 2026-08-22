@@ -30,7 +30,7 @@ import { useInspectorDashboard, useAdminDashboard, useWorkerDashboard } from "@/
 import api from "@/lib/api";
 
 
-type ComplaintStatus = "OPEN" | "PENDING" | "WORKING" | "IN_PROGRESS" | "APPROVAL" | "CLOSED" | "RESOLVED" | "REJECTED";
+type ComplaintStatus = "OPEN" | "PENDING" | "WORKING" | "IN_PROGRESS" | "APPROVAL" | "CLOSED" | "RESOLVED" | "REOPENED" | "REJECTED";
 type ComplaintType = string;
 
 const getCleanDistrict = (c: any, districts?: any[]) => {

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { API_URL } from "@/constants/endpoints";
 import authService from "@/services/auth";
@@ -169,6 +169,108 @@ const getFinalImageUri = (img: string) => {
   const complaint: any = data;
   const queryClient = useQueryClient();
 
+  const resolutionCycles = Array.isArray(complaint?.resolution_cycles) && complaint.resolution_cycles.length > 0
+    ? complaint.resolution_cycles
+    : [];
+  const activeCycle = resolutionCycles.length > 0 ? resolutionCycles[resolutionCycles.length - 1] : null;
+  const activeCycleHasFeedback = activeCycle ? !!activeCycle.citizen_feedback : false;
+
+  const timelineEvents = useMemo(() => {
+    const events: Array<{ id: string; title: string; description: string; date: Date | null; color: string }> = [];
+
+    // 1. Created Event
+    if (complaint?.created_at) {
+      events.push({
+        id: "created",
+        title: "Complaint Created",
+        description: "Complaint submitted by citizen",
+        date: new Date(complaint.created_at),
+        color: "bg-blue-600 border-blue-600 text-blue-600"
+      });
+    }
+
+    // 2. History Events
+    if (Array.isArray(complaint?.history) && complaint.history.length > 0) {
+      complaint.history.forEach((h: any, idx: number) => {
+        const actionStr = String(h.action || h.new_status || "").toUpperCase();
+        if (actionStr.includes("ASSIGN")) {
+          events.push({
+            id: `hist-assign-${idx}`,
+            title: "Complaint Assigned",
+            description: h.remarks || "Complaint assigned to inspector",
+            date: h.timestamp ? new Date(h.timestamp) : null,
+            color: "bg-purple-600 border-purple-600 text-purple-600"
+          });
+        } else if (actionStr.includes("START") || actionStr.includes("PROGRESS") || actionStr.includes("WORK")) {
+          events.push({
+            id: `hist-work-${idx}`,
+            title: "Inspector Started Work",
+            description: h.remarks || "Inspector started working on complaint",
+            date: h.timestamp ? new Date(h.timestamp) : null,
+            color: "bg-cyan-600 border-cyan-600 text-cyan-600"
+          });
+        }
+      });
+    }
+
+    // 3. Resolution Cycles Events
+    if (Array.isArray(complaint?.resolution_cycles)) {
+      complaint.resolution_cycles.forEach((cy: any, idx: number) => {
+        const cycleNum = cy.cycle_number || (idx + 1);
+        if (cy.resolved_at) {
+          events.push({
+            id: `cycle-resolve-${idx}`,
+            title: `Resolution Update #${cycleNum}`,
+            description: cy.note ? `Inspector Note: "${cy.note}"` : "Inspector completed work (2 proof photos uploaded)",
+            date: new Date(cy.resolved_at),
+            color: "bg-emerald-600 border-emerald-600 text-emerald-600"
+          });
+        }
+
+        if (cy.citizen_feedback) {
+          const fb = cy.citizen_feedback;
+          const fbDate = fb.created_at || fb.timestamp ? new Date(fb.created_at || fb.timestamp) : (cy.resolved_at ? new Date(new Date(cy.resolved_at).getTime() + 60000) : null);
+          const sentLabel = fb.sentiment_classification || (cy.result === "REOPENED" ? "NEGATIVE" : "POSITIVE");
+          const sentScore = fb.sentiment_score !== undefined ? ` (Score: ${fb.sentiment_score})` : "";
+
+          events.push({
+            id: `cycle-fb-${idx}`,
+            title: `Feedback #${cycleNum} Submitted`,
+            description: `"${fb.feedback_text || fb.text}" - Sentiment: ${sentLabel}${sentScore}`,
+            date: fbDate,
+            color: sentLabel === "NEGATIVE" ? "bg-red-600 border-red-600 text-red-600" : "bg-emerald-600 border-emerald-600 text-emerald-600"
+          });
+
+          if (cy.result === "REOPENED") {
+            events.push({
+              id: `cycle-reopen-${idx}`,
+              title: `Complaint Reopened`,
+              description: "Complaint automatically reopened due to negative citizen feedback",
+              date: fbDate ? new Date(fbDate.getTime() + 1000) : null,
+              color: "bg-red-600 border-red-600 text-red-600"
+            });
+          } else if (cy.result === "COMPLETED") {
+            events.push({
+              id: `cycle-complete-${idx}`,
+              title: `Complaint Completed`,
+              description: "Complaint successfully resolved with positive citizen feedback",
+              date: fbDate ? new Date(fbDate.getTime() + 1000) : null,
+              color: "bg-emerald-600 border-emerald-600 text-emerald-600"
+            });
+          }
+        }
+      });
+    }
+
+    events.sort((a, b) => {
+      if (!a.date) return -1;
+      if (!b.date) return 1;
+      return a.date.getTime() - b.date.getTime();
+    });
+
+    return events;
+  }, [complaint]);
+
   useEffect(() => {
     if (complaint) {
       console.log("--- DEBUG LOGS ---");
@@ -204,35 +306,27 @@ const getFinalImageUri = (img: string) => {
     const checkFeedbackStatus = async () => {
       try {
         setLoadingFeedback(true);
-        const res = await complaintsApi.getFeedback(id);
-        const fbData = res?.data || res;
-        if (fbData && (fbData.feedback || fbData.feedback_text)) {
+        const cycles = Array.isArray(complaint?.resolution_cycles) ? complaint.resolution_cycles : [];
+        const activeC = cycles.length > 0 ? cycles[cycles.length - 1] : null;
+
+        if (activeC && activeC.citizen_feedback) {
           if (isMounted) {
-            const fb = fbData.feedback || fbData;
-            setExistingFeedbackData({
-              ...fb,
-              sentiment_classification: fbData.sentiment_classification || fb.sentiment_classification,
-              sentiment_score: fbData.sentiment_score ?? fb.sentiment_score,
-            });
+            setExistingFeedbackData(activeC.citizen_feedback);
             setFeedbackAlreadySubmitted(true);
           }
-        } else if (complaint?.feedback) {
+        } else if (!activeC && complaint?.feedback && complaint?.status !== "RESOLVED") {
           if (isMounted) {
             setExistingFeedbackData(complaint.feedback);
             setFeedbackAlreadySubmitted(true);
           }
         } else {
-          if (isMounted) setFeedbackAlreadySubmitted(false);
+          if (isMounted) {
+            setExistingFeedbackData(null);
+            setFeedbackAlreadySubmitted(false);
+          }
         }
       } catch (err: any) {
-        if (complaint?.feedback) {
-          if (isMounted) {
-            setExistingFeedbackData(complaint.feedback);
-            setFeedbackAlreadySubmitted(true);
-          }
-        } else {
-          if (isMounted) setFeedbackAlreadySubmitted(false);
-        }
+        if (isMounted) setFeedbackAlreadySubmitted(false);
       } finally {
         if (isMounted) setLoadingFeedback(false);
       }
@@ -240,7 +334,7 @@ const getFinalImageUri = (img: string) => {
 
     checkFeedbackStatus();
     return () => { isMounted = false; };
-  }, [id, complaint?.feedback]);
+  }, [id, complaint?.feedback, complaint?.resolution_cycles]);
 
   const handleFeedbackSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -259,44 +353,32 @@ const getFinalImageUri = (img: string) => {
         feedback: feedback.trim()
       });
       const resData = res?.data || res;
-      const fbObj = resData?.data?.complaint?.feedback || resData?.complaint?.feedback || resData?.data?.feedback || resData?.feedback || {
-        rating,
-        feedback_text: feedback.trim(),
-        sentiment_classification: resData?.data?.sentiment_classification || resData?.sentiment_classification || "NEUTRAL",
-        sentiment_score: resData?.data?.sentiment_score ?? resData?.sentiment_score
-      };
+      setFeedback("");
+      setRating(0);
 
-      setExistingFeedbackData(fbObj);
-      setFeedbackAlreadySubmitted(true);
-
-      refetch();
+      await refetch();
       queryClient.invalidateQueries({ queryKey: ["complaint", id] });
       queryClient.invalidateQueries({ queryKey: ["complaints"] });
+
+      const cycles = Array.isArray(complaint?.resolution_cycles) ? complaint.resolution_cycles : [];
+      const activeC = cycles.length > 0 ? cycles[cycles.length - 1] : null;
+      if (activeC && activeC.citizen_feedback) {
+        setExistingFeedbackData(activeC.citizen_feedback);
+        setFeedbackAlreadySubmitted(true);
+      } else {
+        const fbObj = resData?.data?.complaint?.feedback || resData?.complaint?.feedback || resData?.data?.feedback || resData?.feedback || {
+          rating,
+          feedback_text: feedback.trim(),
+          sentiment_classification: resData?.data?.sentiment_classification || resData?.sentiment_classification || "NEUTRAL",
+          sentiment_score: resData?.data?.sentiment_score ?? resData?.sentiment_score
+        };
+        setExistingFeedbackData(fbObj);
+        setFeedbackAlreadySubmitted(true);
+      }
     } catch (err: any) {
       console.error("Feedback submit error:", err);
       const errMsg = err?.response?.data?.message || err?.response?.data?.detail || err?.message || "";
-      if (errMsg.toLowerCase().includes("already") || err?.response?.status === 400 || err?.response?.status === 422) {
-        // DUPLICATE SUBMISSION PROTECTION: DO NOT USE BROWSER ALERT!
-        try {
-          const resFb = await complaintsApi.getFeedback(id);
-          const fbData = resFb?.data || resFb;
-          if (fbData && (fbData.feedback || fbData.feedback_text)) {
-            const fb = fbData.feedback || fbData;
-            setExistingFeedbackData({
-              ...fb,
-              sentiment_classification: fbData.sentiment_classification || fb.sentiment_classification,
-              sentiment_score: fbData.sentiment_score ?? fb.sentiment_score,
-            });
-          }
-        } catch (fetchErr) {
-          if (complaint?.feedback) {
-            setExistingFeedbackData(complaint.feedback);
-          }
-        }
-        setFeedbackAlreadySubmitted(true);
-      } else {
-        alert("Failed to submit feedback. Please try again.");
-      }
+      alert(errMsg || "Failed to submit feedback. Please try again.");
     } finally {
       setSubmittingFeedback(false);
     }
@@ -669,13 +751,113 @@ const getFinalImageUri = (img: string) => {
                   </div>
                 )}
 
-                {resolutionImages.length > 0 && (
+                {/* ── Activity Timeline Section ── */}
+                {timelineEvents.length > 0 && (
+                  <div className="mt-8 pt-6 border-t border-border/50 bg-card border border-border rounded-3xl p-6 shadow-sm">
+                    <div className="flex items-center gap-3 mb-6 pb-3 border-b border-border/50">
+                      <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center">
+                        <FileText className="w-5 h-5 text-blue-600" />
+                      </div>
+                      <div>
+                        <h3 className="text-lg font-black text-foreground">Activity Timeline</h3>
+                        <p className="text-xs font-medium text-muted-foreground">Complete chronological history of this complaint.</p>
+                      </div>
+                    </div>
+
+                    <div className="relative pl-4 space-y-6 before:absolute before:left-[19px] before:top-3 before:bottom-3 before:w-0.5 before:bg-slate-200">
+                      {timelineEvents.map((ev: any, idx: number) => (
+                        <div key={ev.id || idx} className="relative flex items-start gap-4">
+                          <div className={`w-3 h-3 rounded-full border-2 bg-white ${ev.color} z-10 mt-1 shrink-0`}></div>
+                          <div className="flex-1 bg-slate-50/70 p-4 rounded-2xl border border-slate-200/80">
+                            <div className="flex items-center justify-between gap-2 mb-1">
+                              <h4 className="text-sm font-black text-slate-800">{ev.title}</h4>
+                              {ev.date && (
+                                <span className="text-[11px] font-semibold text-slate-500">
+                                  {ev.date.toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-xs font-medium text-slate-600">{ev.description}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {resolutionCycles.length > 0 ? (
+                  resolutionCycles.map((cycle: any, cIdx: number) => {
+                    const cycleNum = cycle.cycle_number || (cIdx + 1);
+                    const cycleDate = cycle.resolved_at ? new Date(cycle.resolved_at).toLocaleString() : null;
+                    const hasFb = !!cycle.citizen_feedback;
+                    const cycleStatus = cycle.result === "REOPENED" ? "REOPENED" : cycle.result === "COMPLETED" ? "COMPLETED" : (hasFb ? "FEEDBACK SUBMITTED" : "Awaiting Feedback");
+
+                    return (
+                      <div key={`cycle-${cIdx}`} className="mt-8 pt-6 border-t border-border/50 bg-slate-50/50 p-6 rounded-3xl border border-slate-200">
+                        <div className="flex items-center justify-between gap-4 mb-4 pb-3 border-b border-slate-200">
+                          <h3 className="text-sm font-bold text-slate-800 uppercase tracking-widest">
+                            Inspector Resolution Update #{cycleNum}
+                          </h3>
+                          <span className={`text-xs font-extrabold px-3 py-1 rounded-full ${
+                            cycle.result === "REOPENED" ? "bg-red-100 text-red-700" : cycle.result === "COMPLETED" ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"
+                          }`}>
+                            {cycleStatus}
+                          </span>
+                        </div>
+
+                        {cycleDate && (
+                          <p className="text-xs font-semibold text-slate-500 mb-2">Resolved Date: {cycleDate}</p>
+                        )}
+
+                        {cycle.note && (
+                          <p className="text-sm italic text-slate-700 mb-4">Inspector Note: "{cycle.note}"</p>
+                        )}
+
+                        <h4 className="text-xs font-extrabold text-slate-500 uppercase tracking-widest mb-3">Resolution Proof Photos (2 Photos)</h4>
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+                          {Array.isArray(cycle.images) && cycle.images.map((url: string, index: number) => {
+                            const finalUrl = getFinalImageUri(url);
+                            return (
+                              <div
+                                key={index}
+                                className="relative aspect-square rounded-2xl overflow-hidden border border-border shadow-sm cursor-pointer group"
+                                onClick={() => setSelectedImagePreview(finalUrl)}
+                              >
+                                <img src={finalUrl} alt={`Resolution Proof ${index + 1}`} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                              </div>
+                            );
+                          })}
+                        </div>
+
+                        {cycle.citizen_feedback && (
+                          <div className="bg-white rounded-2xl p-4 border border-slate-200 space-y-3 mt-4">
+                            <h5 className="text-xs font-extrabold text-slate-500 uppercase tracking-widest">Citizen Feedback (Cycle #{cycleNum})</h5>
+                            <p className="text-sm italic text-slate-800">"{cycle.citizen_feedback.feedback_text || cycle.citizen_feedback.text}"</p>
+                            {cycle.citizen_feedback.rating > 0 && (
+                              <div className="flex items-center gap-1">
+                                {[1, 2, 3, 4, 5].map((star) => (
+                                  <Star key={star} className={`w-4 h-4 ${star <= cycle.citizen_feedback.rating ? "fill-amber-400 text-amber-400" : "text-slate-300"}`} />
+                                ))}
+                              </div>
+                            )}
+                            <div className="flex flex-wrap items-center gap-4 text-xs font-bold text-slate-600 pt-2 border-t border-slate-100">
+                              <span>Sentiment: <span className={`font-black ${cycle.result === "REOPENED" ? "text-red-600" : "text-emerald-600"}`}>{cycle.citizen_feedback.sentiment_classification || (cycle.result === "REOPENED" ? "NEGATIVE" : "POSITIVE")}</span></span>
+                              {cycle.citizen_feedback.sentiment_score !== undefined && (
+                                <span>Score: <span className="font-black text-slate-900">{cycle.citizen_feedback.sentiment_score}</span></span>
+                              )}
+                              <span className="ml-auto font-black text-xs uppercase">{cycle.result || "COMPLETED"}</span>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })
+                ) : resolutionImages.length > 0 ? (
                   <div className="mt-8 pt-6 border-t border-border/50">
                     <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-widest mb-4">Proof of Resolution</h3>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                       {resolutionImages.map((url: string, index: number) => {
                         const finalUrl = getFinalImageUri(url);
-                        console.log(`[Web] Rendering Proof Image: ${url} -> ${finalUrl}`);
                         return (
                           <div
                             key={index}
@@ -688,7 +870,7 @@ const getFinalImageUri = (img: string) => {
                       })}
                     </div>
                   </div>
-                )}
+                ) : null}
               </>
             );
           })()}
@@ -753,159 +935,156 @@ const getFinalImageUri = (img: string) => {
           )}
 
           {/* ── Citizen Feedback Section ── */}
-          {(user?.role === "CITIZEN" || String(user?.id || user?._id) === String(complaint.user_id || complaint.citizenId)) &&
-            ["RESOLVED", "CLOSED", "REOPENED"].includes(complaint.status) && (
-              <div className="mt-8 pt-6 border-t border-border/50">
-                {loadingFeedback ? (
-                  <div className="bg-card border border-border rounded-2xl p-6 shadow-sm flex items-center justify-center gap-3">
-                    <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
-                    <p className="text-sm font-bold text-muted-foreground">Checking feedback...</p>
-                  </div>
-                ) : (feedbackAlreadySubmitted || existingFeedbackData || complaint.feedback) ? (
-                  /* READ-ONLY SUBMITTED FEEDBACK UI */
-                  <div className="bg-emerald-50/70 border-2 border-emerald-500/30 rounded-[2rem] p-6 shadow-sm">
-                    <div className="flex items-center justify-between gap-4 mb-4 pb-4 border-b border-emerald-200/60">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-black shadow-md shadow-emerald-600/20">
-                          ✓
-                        </div>
-                        <div>
-                          <h3 className="text-lg font-black text-emerald-950">Feedback Submitted ✓</h3>
-                          <p className="text-xs font-bold text-emerald-700">Thank you for your feedback.</p>
-                        </div>
-                      </div>
+          {(user?.role === "CITIZEN" || String(user?.id || user?._id) === String(complaint.user_id || complaint.citizenId)) && (
+            <div className="mt-8 pt-6 border-t border-border/50">
+              {loadingFeedback ? (
+                <div className="bg-card border border-border rounded-2xl p-6 shadow-sm flex items-center justify-center gap-3">
+                  <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
+                  <p className="text-sm font-bold text-muted-foreground">Checking feedback...</p>
+                </div>
+              ) : (!activeCycleHasFeedback && (["RESOLVED", "CLOSED"].includes(complaint.status) || activeCycle?.status === "RESOLVED")) ? (
+                /* EDITABLE FEEDBACK SUBMISSION FORM FOR ACTIVE CYCLE */
+                <div className="bg-card border border-border rounded-2xl p-6 shadow-sm">
+                  <div className="flex items-center gap-3 mb-6 pb-4 border-b border-border/50">
+                    <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                      <MessageSquare className="w-5 h-5 text-primary" />
                     </div>
+                    <div>
+                      <h3 className="text-lg font-black text-foreground">How satisfied are you with this updated resolution?</h3>
+                      <p className="text-xs font-medium text-muted-foreground">Rate your satisfaction with the inspector's resolution update (Cycle #{activeCycle?.cycle_number || 1}).</p>
+                    </div>
+                  </div>
 
-                    <div className="bg-white/95 rounded-2xl p-5 border border-emerald-200/80 space-y-4">
-                      <div>
-                        <label className="block text-xs font-extrabold text-slate-500 uppercase tracking-widest mb-1.5">
-                          Your Rating
-                        </label>
-                        <div className="flex items-center gap-1.5">
-                          {[1, 2, 3, 4, 5].map((star) => {
-                            const curRating = ((existingFeedbackData || complaint.feedback)?.rating || rating || 0);
-                            return (
-                              <Star
-                                key={star}
-                                className={`w-6 h-6 ${
-                                  star <= curRating
-                                    ? "fill-amber-400 text-amber-400"
-                                    : "text-slate-300"
-                                }`}
-                              />
-                            );
-                          })}
-                          <span className="ml-2 text-sm font-extrabold text-slate-800">
-                            {((existingFeedbackData || complaint.feedback)?.rating || rating || 0)} / 5 Stars
-                          </span>
-                        </div>
-                      </div>
-
-                      <div>
-                        <label className="block text-xs font-extrabold text-slate-500 uppercase tracking-widest mb-1.5">
-                          Your Feedback
-                        </label>
-                        <p className="text-sm font-semibold text-slate-800 italic bg-slate-50 p-4 rounded-xl border border-slate-200">
-                          "{((existingFeedbackData || complaint.feedback)?.feedback_text || (existingFeedbackData || complaint.feedback)?.feedback || feedback)}"
-                        </p>
-                      </div>
-
-                      <div className="flex flex-wrap items-center gap-4 text-xs font-bold text-slate-600 pt-2 border-t border-slate-100">
-                        {((existingFeedbackData || complaint.feedback)?.sentiment_classification || (existingFeedbackData || complaint.feedback)?.sentiment || complaint.sentiment_classification) && (
-                          <span>
-                            Sentiment:{" "}
-                            <span className={`font-black uppercase px-2.5 py-0.5 rounded-full text-[11px] ${
-                              ((existingFeedbackData || complaint.feedback)?.sentiment_classification || (existingFeedbackData || complaint.feedback)?.sentiment || complaint.sentiment_classification) === "POSITIVE"
-                                ? "bg-emerald-100 text-emerald-700"
-                                : ((existingFeedbackData || complaint.feedback)?.sentiment_classification || (existingFeedbackData || complaint.feedback)?.sentiment || complaint.sentiment_classification) === "NEGATIVE"
-                                ? "bg-red-100 text-red-700"
-                                : "bg-blue-100 text-blue-700"
-                            }`}>
-                              {(existingFeedbackData || complaint.feedback)?.sentiment_classification || (existingFeedbackData || complaint.feedback)?.sentiment || complaint.sentiment_classification}
-                            </span>
-                          </span>
-                        )}
-
-                        {((existingFeedbackData || complaint.feedback)?.sentiment_score !== undefined || complaint.sentiment_score !== undefined) && (
-                          <span>
-                            Sentiment Score:{" "}
-                            <span className="font-black text-slate-800">
-                              {(existingFeedbackData || complaint.feedback)?.sentiment_score ?? complaint.sentiment_score}
-                            </span>
+                  <form onSubmit={handleFeedbackSubmit} className="space-y-6">
+                    <div>
+                      <label className="block text-xs font-extrabold text-foreground uppercase tracking-widest mb-3">
+                        Your Rating (1 to 5 Stars)
+                      </label>
+                      <div className="flex items-center gap-2">
+                        {[1, 2, 3, 4, 5].map((star) => (
+                          <button
+                            key={star}
+                            type="button"
+                            onClick={() => setRating(star)}
+                            className="p-1 hover:scale-110 transition-transform focus:outline-none"
+                          >
+                            <Star
+                              className={`w-8 h-8 ${
+                                star <= rating
+                                  ? "fill-amber-400 text-amber-400"
+                                  : "text-slate-300 hover:text-amber-200"
+                              }`}
+                            />
+                          </button>
+                        ))}
+                        {rating > 0 && (
+                          <span className="ml-3 text-sm font-bold text-amber-600">
+                            {rating} Star{rating > 1 ? "s" : ""} Selected
                           </span>
                         )}
                       </div>
                     </div>
-                  </div>
-                ) : (complaint.status === "RESOLVED" || complaint.status === "CLOSED") ? (
-                  /* EDITABLE FEEDBACK SUBMISSION FORM */
-                  <div className="bg-card border border-border rounded-2xl p-6 shadow-sm">
-                    <div className="flex items-center gap-3 mb-6 pb-4 border-b border-border/50">
-                      <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
-                        <MessageSquare className="w-5 h-5 text-primary" />
-                      </div>
-                      <div>
-                        <h3 className="text-lg font-black text-foreground">Provide Resolution Feedback</h3>
-                        <p className="text-xs font-medium text-muted-foreground">Rate your satisfaction with how this civic issue was resolved.</p>
-                      </div>
+
+                    <div>
+                      <label className="block text-xs font-extrabold text-foreground uppercase tracking-widest mb-2">
+                        Detailed Feedback
+                      </label>
+                      <textarea
+                        rows={3}
+                        value={feedback}
+                        onChange={(e) => setFeedback(e.target.value)}
+                        placeholder="Was the issue resolved completely? Please share any comments..."
+                        className="w-full rounded-xl border border-border bg-background p-4 text-sm font-medium focus:ring-2 focus:ring-primary focus:outline-none"
+                        required
+                      ></textarea>
                     </div>
 
-                    <form onSubmit={handleFeedbackSubmit} className="space-y-6">
+                    <button
+                      type="submit"
+                      disabled={submittingFeedback}
+                      className="w-full py-4 bg-primary hover:bg-primary/90 text-primary-foreground font-extrabold text-sm rounded-xl transition-colors shadow-md shadow-primary/20 disabled:opacity-50"
+                    >
+                      {submittingFeedback ? "Analyzing & Submitting Feedback..." : "Submit Feedback"}
+                    </button>
+                  </form>
+                </div>
+              ) : activeCycleHasFeedback ? (
+                /* READ-ONLY SUBMITTED FEEDBACK UI FOR ACTIVE CYCLE */
+                <div className="bg-emerald-50/70 border-2 border-emerald-500/30 rounded-[2rem] p-6 shadow-sm">
+                  <div className="flex items-center justify-between gap-4 mb-4 pb-4 border-b border-emerald-200/60">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-black shadow-md shadow-emerald-600/20">
+                        ✓
+                      </div>
                       <div>
-                        <label className="block text-xs font-extrabold text-foreground uppercase tracking-widest mb-3">
-                          Your Rating (1 to 5 Stars)
-                        </label>
-                        <div className="flex items-center gap-2">
-                          {[1, 2, 3, 4, 5].map((star) => (
-                            <button
+                        <h3 className="text-lg font-black text-emerald-950">Feedback Submitted ✓</h3>
+                        <p className="text-xs font-bold text-emerald-700">Thank you for your feedback.</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="bg-white/95 rounded-2xl p-5 border border-emerald-200/80 space-y-4">
+                    <div>
+                      <label className="block text-xs font-extrabold text-slate-500 uppercase tracking-widest mb-1.5">
+                        Your Rating
+                      </label>
+                      <div className="flex items-center gap-1.5">
+                        {[1, 2, 3, 4, 5].map((star) => {
+                          const curRating = (activeCycle?.citizen_feedback?.rating || (existingFeedbackData || complaint.feedback)?.rating || rating || 0);
+                          return (
+                            <Star
                               key={star}
-                              type="button"
-                              onClick={() => setRating(star)}
-                              className="p-1 hover:scale-110 transition-transform focus:outline-none"
-                            >
-                              <Star
-                                className={`w-8 h-8 ${
-                                  star <= rating
-                                    ? "fill-amber-400 text-amber-400"
-                                    : "text-slate-300 hover:text-amber-200"
-                                }`}
-                              />
-                            </button>
-                          ))}
-                          {rating > 0 && (
-                            <span className="ml-3 text-sm font-bold text-amber-600">
-                              {rating} Star{rating > 1 ? "s" : ""} Selected
-                            </span>
-                          )}
-                        </div>
+                              className={`w-6 h-6 ${
+                                star <= curRating
+                                  ? "fill-amber-400 text-amber-400"
+                                  : "text-slate-300"
+                              }`}
+                            />
+                          );
+                        })}
+                        <span className="ml-2 text-sm font-extrabold text-slate-800">
+                          {(activeCycle?.citizen_feedback?.rating || (existingFeedbackData || complaint.feedback)?.rating || rating || 0)} / 5 Stars
+                        </span>
                       </div>
+                    </div>
 
-                      <div>
-                        <label className="block text-xs font-extrabold text-foreground uppercase tracking-widest mb-2">
-                          Detailed Feedback
-                        </label>
-                        <textarea
-                          rows={3}
-                          value={feedback}
-                          onChange={(e) => setFeedback(e.target.value)}
-                          placeholder="Was the issue resolved completely? Please share any comments..."
-                          className="w-full rounded-xl border border-border bg-background p-4 text-sm font-medium focus:ring-2 focus:ring-primary focus:outline-none"
-                          required
-                        ></textarea>
-                      </div>
+                    <div>
+                      <label className="block text-xs font-extrabold text-slate-500 uppercase tracking-widest mb-1.5">
+                        Your Feedback
+                      </label>
+                      <p className="text-sm font-semibold text-slate-800 italic bg-slate-50 p-4 rounded-xl border border-slate-200">
+                        "{activeCycle?.citizen_feedback?.feedback_text || activeCycle?.citizen_feedback?.text || ((existingFeedbackData || complaint.feedback)?.feedback_text || (existingFeedbackData || complaint.feedback)?.feedback || feedback)}"
+                      </p>
+                    </div>
 
-                      <button
-                        type="submit"
-                        disabled={submittingFeedback}
-                        className="w-full py-4 bg-primary hover:bg-primary/90 text-primary-foreground font-extrabold text-sm rounded-xl transition-colors shadow-md shadow-primary/20 disabled:opacity-50"
-                      >
-                        {submittingFeedback ? "Analyzing & Submitting Feedback..." : "Submit Feedback"}
-                      </button>
-                    </form>
+                    <div className="flex flex-wrap items-center gap-4 text-xs font-bold text-slate-600 pt-2 border-t border-slate-100">
+                      {(activeCycle?.citizen_feedback?.sentiment_classification || (existingFeedbackData || complaint.feedback)?.sentiment_classification || complaint.sentiment_classification) && (
+                        <span>
+                          Sentiment:{" "}
+                          <span className={`font-black uppercase px-2.5 py-0.5 rounded-full text-[11px] ${
+                            (activeCycle?.citizen_feedback?.sentiment_classification || (existingFeedbackData || complaint.feedback)?.sentiment_classification || complaint.sentiment_classification) === "POSITIVE"
+                              ? "bg-emerald-100 text-emerald-700"
+                              : "bg-red-100 text-red-700"
+                          }`}>
+                            {activeCycle?.citizen_feedback?.sentiment_classification || (existingFeedbackData || complaint.feedback)?.sentiment_classification || complaint.sentiment_classification}
+                          </span>
+                        </span>
+                      )}
+
+                      {(activeCycle?.citizen_feedback?.sentiment_score !== undefined || (existingFeedbackData || complaint.feedback)?.sentiment_score !== undefined || complaint.sentiment_score !== undefined) && (
+                        <span>
+                          Sentiment Score:{" "}
+                          <span className="font-black text-slate-800">
+                            {activeCycle?.citizen_feedback?.sentiment_score ?? (existingFeedbackData || complaint.feedback)?.sentiment_score ?? complaint.sentiment_score}
+                          </span>
+                        </span>
+                      )}
+                    </div>
                   </div>
-                ) : null}
-              </div>
-            )}
+                </div>
+              ) : null}
+            </div>
+          )}
         </div>
 
         {/* Citizen Information */}

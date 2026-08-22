@@ -1,5 +1,5 @@
 
-import React, { useContext, useEffect, useState } from "react";
+import React, { useContext, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   ScrollView,
@@ -460,32 +460,23 @@ export const ComplaintDetailScreen = ({ route, navigation }) => {
         const data = await authService.getComplaint(complaintId);
         setComplaint(data);
 
-        // Check feedback status
+        // Check active cycle feedback status
         try {
           setLoadingFeedback(true);
-          const fbRes = await authService.getFeedback(complaintId);
-          const fbData = fbRes?.data || fbRes;
-          if (fbData && (fbData.feedback || fbData.feedback_text)) {
-            const fb = fbData.feedback || fbData;
-            setExistingFeedbackData({
-              ...fb,
-              sentiment_classification: fbData.sentiment_classification || fb.sentiment_classification,
-              sentiment_score: fbData.sentiment_score ?? fb.sentiment_score,
-            });
+          const cycles = Array.isArray(data?.resolution_cycles) ? data.resolution_cycles : [];
+          const activeC = cycles.length > 0 ? cycles[cycles.length - 1] : null;
+          if (activeC && activeC.citizen_feedback) {
+            setExistingFeedbackData(activeC.citizen_feedback);
             setFeedbackAlreadySubmitted(true);
-          } else if (data?.feedback) {
+          } else if (!activeC && data?.feedback && data?.status !== "RESOLVED") {
             setExistingFeedbackData(data.feedback);
             setFeedbackAlreadySubmitted(true);
           } else {
+            setExistingFeedbackData(null);
             setFeedbackAlreadySubmitted(false);
           }
         } catch (fbErr) {
-          if (data?.feedback) {
-            setExistingFeedbackData(data.feedback);
-            setFeedbackAlreadySubmitted(true);
-          } else {
-            setFeedbackAlreadySubmitted(false);
-          }
+          setFeedbackAlreadySubmitted(false);
         } finally {
           setLoadingFeedback(false);
         }
@@ -508,43 +499,31 @@ export const ComplaintDetailScreen = ({ route, navigation }) => {
       setSubmitting(true);
       const res = await authService.submitFeedback(complaintId, { rating, feedback: feedback.trim() });
       const resData = res?.data || res;
-      const fbObj = resData?.complaint?.feedback || resData?.data?.complaint?.feedback || resData?.feedback || resData?.data?.feedback || {
-        rating,
-        feedback_text: feedback.trim(),
-        sentiment_classification: resData?.sentiment_classification || resData?.data?.sentiment_classification || "NEUTRAL",
-        sentiment_score: resData?.sentiment_score ?? resData?.data?.sentiment_score
-      };
-
-      setExistingFeedbackData(fbObj);
-      setFeedbackAlreadySubmitted(true);
+      setFeedback("");
+      setRating(0);
 
       const data = await authService.getComplaint(complaintId);
       setComplaint(data);
+
+      const cycles = Array.isArray(data?.resolution_cycles) ? data.resolution_cycles : [];
+      const activeC = cycles.length > 0 ? cycles[cycles.length - 1] : null;
+      if (activeC && activeC.citizen_feedback) {
+        setExistingFeedbackData(activeC.citizen_feedback);
+        setFeedbackAlreadySubmitted(true);
+      } else {
+        const fbObj = resData?.complaint?.feedback || resData?.data?.complaint?.feedback || resData?.feedback || resData?.data?.feedback || {
+          rating,
+          feedback_text: feedback.trim(),
+          sentiment_classification: resData?.sentiment_classification || resData?.data?.sentiment_classification || "NEUTRAL",
+          sentiment_score: resData?.sentiment_score ?? resData?.data?.sentiment_score
+        };
+        setExistingFeedbackData(fbObj);
+        setFeedbackAlreadySubmitted(true);
+      }
     } catch (err) {
       console.error("Mobile feedback submit error:", err);
       const msg = getErrorMessage(err, "");
-      if (msg.toLowerCase().includes("already") || err.response?.status === 400 || err.response?.status === 422) {
-        // DUPLICATE SUBMISSION PROTECTION: DO NOT SHOW ALERT!
-        try {
-          const fbRes = await authService.getFeedback(complaintId);
-          const fbData = fbRes?.data || fbRes;
-          if (fbData && (fbData.feedback || fbData.feedback_text)) {
-            const fb = fbData.feedback || fbData;
-            setExistingFeedbackData({
-              ...fb,
-              sentiment_classification: fbData.sentiment_classification || fb.sentiment_classification,
-              sentiment_score: fbData.sentiment_score ?? fb.sentiment_score,
-            });
-          }
-        } catch (fErr) {
-          if (complaint?.feedback) {
-            setExistingFeedbackData(complaint.feedback);
-          }
-        }
-        setFeedbackAlreadySubmitted(true);
-      } else {
-        alert(msg || "Failed to submit feedback");
-      }
+      alert(msg || "Failed to submit feedback");
     } finally {
       setSubmitting(false);
     }
@@ -657,12 +636,8 @@ export const ComplaintDetailScreen = ({ route, navigation }) => {
   const handleResolve = async () => {
     try {
       setSubmitting(true);
-      const isReopened = normalizedStatus.toLowerCase() === "reopened" || !!complaint?.reopened_reason;
-      if (selectedProofImages.length === 0) {
-        const errMsg = isReopened 
-          ? "Please upload a photo before proceeding with a reopened complaint." 
-          : "Please attach at least one proof image.";
-        alert(errMsg);
+      if (selectedProofImages.length !== 2) {
+        alert("Please attach exactly 2 resolution proof images before resolving.");
         setSubmitting(false);
         return;
       }
@@ -710,6 +685,21 @@ export const ComplaintDetailScreen = ({ route, navigation }) => {
     resolutionImages = complaint.proof_images;
   }
 
+  let resolutionCycles = [];
+  if (Array.isArray(complaint?.resolution_cycles) && complaint.resolution_cycles.length > 0) {
+    resolutionCycles = complaint.resolution_cycles;
+  } else if (resolutionImages.length > 0) {
+    resolutionCycles = [{
+      cycle_number: 1,
+      images: resolutionImages,
+      note: complaint?.inspector_note,
+      citizen_feedback: complaint?.feedback
+    }];
+  }
+
+  const activeCycle = resolutionCycles.length > 0 ? resolutionCycles[resolutionCycles.length - 1] : null;
+  const activeCycleHasFeedback = activeCycle ? !!activeCycle.citizen_feedback : !!(existingFeedbackData || complaint?.feedback);
+
 
 
 
@@ -720,6 +710,109 @@ export const ComplaintDetailScreen = ({ route, navigation }) => {
     console.log("complaint.proof_images:", complaint?.proof_images);
   }, [complaint]);
 
+
+  const timelineEvents = useMemo(() => {
+    const events = [];
+
+    // 1. Created Event
+    if (complaint?.created_at) {
+      events.push({
+        id: "created",
+        title: "Complaint Created",
+        description: "Complaint submitted by citizen",
+        date: new Date(complaint.created_at),
+        icon: "file-document-outline",
+        color: "#2563EB"
+      });
+    }
+
+    // 2. History Events (Assigned, Started Work, etc.)
+    if (Array.isArray(complaint?.history) && complaint.history.length > 0) {
+      complaint.history.forEach((h, idx) => {
+        const actionStr = String(h.action || h.new_status || "").toUpperCase();
+        if (actionStr.includes("ASSIGN")) {
+          events.push({
+            id: `hist-assign-${idx}`,
+            title: "Complaint Assigned",
+            description: h.remarks || "Complaint assigned to inspector",
+            date: h.timestamp ? new Date(h.timestamp) : null,
+            icon: "account-hard-hat-outline",
+            color: "#7C3AED"
+          });
+        } else if (actionStr.includes("START") || actionStr.includes("PROGRESS") || actionStr.includes("WORK")) {
+          events.push({
+            id: `hist-work-${idx}`,
+            title: "Inspector Started Work",
+            description: h.remarks || "Inspector started working on complaint",
+            date: h.timestamp ? new Date(h.timestamp) : null,
+            icon: "progress-wrench",
+            color: "#0891B2"
+          });
+        }
+      });
+    }
+
+    // 3. Resolution Cycles Events
+    if (Array.isArray(complaint?.resolution_cycles)) {
+      complaint.resolution_cycles.forEach((cy, idx) => {
+        const cycleNum = cy.cycle_number || (idx + 1);
+        if (cy.resolved_at) {
+          events.push({
+            id: `cycle-resolve-${idx}`,
+            title: `Resolution Update #${cycleNum}`,
+            description: cy.note ? `Inspector Note: "${cy.note}"` : "Inspector completed work (2 proof photos uploaded)",
+            date: new Date(cy.resolved_at),
+            icon: "shield-check-outline",
+            color: "#059669"
+          });
+        }
+
+        if (cy.citizen_feedback) {
+          const fb = cy.citizen_feedback;
+          const fbDate = fb.created_at || fb.timestamp ? new Date(fb.created_at || fb.timestamp) : (cy.resolved_at ? new Date(new Date(cy.resolved_at).getTime() + 60000) : null);
+          const sentLabel = fb.sentiment_classification || (cy.result === "REOPENED" ? "NEGATIVE" : "POSITIVE");
+          const sentScore = fb.sentiment_score !== undefined ? ` (Score: ${fb.sentiment_score})` : "";
+
+          events.push({
+            id: `cycle-fb-${idx}`,
+            title: `Feedback #${cycleNum} Submitted`,
+            description: `"${fb.feedback_text || fb.text}" - Sentiment: ${sentLabel}${sentScore}`,
+            date: fbDate,
+            icon: "star-outline",
+            color: sentLabel === "NEGATIVE" ? "#DC2626" : "#059669"
+          });
+
+          if (cy.result === "REOPENED") {
+            events.push({
+              id: `cycle-reopen-${idx}`,
+              title: `Complaint Reopened`,
+              description: "Complaint automatically reopened due to negative feedback",
+              date: fbDate ? new Date(fbDate.getTime() + 1000) : null,
+              icon: "alert-circle-outline",
+              color: "#DC2626"
+            });
+          } else if (cy.result === "COMPLETED") {
+            events.push({
+              id: `cycle-complete-${idx}`,
+              title: `Complaint Completed`,
+              description: "Complaint successfully resolved with positive citizen feedback",
+              date: fbDate ? new Date(fbDate.getTime() + 1000) : null,
+              icon: "check-circle-outline",
+              color: "#059669"
+            });
+          }
+        }
+      });
+    }
+
+    events.sort((a, b) => {
+      if (!a.date) return -1;
+      if (!b.date) return 1;
+      return a.date.getTime() - b.date.getTime();
+    });
+
+    return events;
+  }, [complaint]);
 
   return (
     <View style={styles.flex}>
@@ -860,30 +953,131 @@ export const ComplaintDetailScreen = ({ route, navigation }) => {
                 </ScrollView>
               </>
             )}
+          </View>
 
-            {resolutionImages.length > 0 && (
-              <>
-                <View style={styles.cardDivider} />
-                <SectionTitle title="Proof of Resolution" icon="shield-check-outline" />
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.imageRow}>
-                  {resolutionImages.map((img, idx) => {
-                    const uri = getFinalImageUri(img);
-                    return (
-                      <TouchableOpacity
-                        key={`resolve-${img}-${idx}`}
-                        activeOpacity={0.8}
-                        onPress={() => {
-                          setViewerImageUrl(uri);
-                          setViewerVisible(true);
-                        }}
-                      >
-                        <Image source={{ uri }} style={styles.previewImage} />
-                      </TouchableOpacity>
-                    );
-                  })}
-                </ScrollView>
-              </>
-            )}
+          {/* ── ACTIVITY TIMELINE CARD ── */}
+          {timelineEvents.length > 0 && (
+            <View style={styles.card}>
+              <SectionTitle title="Activity Timeline" icon="timeline-text-outline" />
+              <View style={{ paddingLeft: 6, marginTop: 10 }}>
+                {timelineEvents.map((ev, idx) => {
+                  const isLast = idx === timelineEvents.length - 1;
+                  return (
+                    <View key={ev.id || idx} style={{ flexDirection: "row", gap: 12, marginBottom: isLast ? 0 : 16 }}>
+                      <View style={{ alignItems: "center" }}>
+                        <View style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: ev.color + "18", alignItems: "center", justifyContent: "center", borderWidth: 1.5, borderColor: ev.color }}>
+                          <Icon name={ev.icon} size={14} color={ev.color} />
+                        </View>
+                        {!isLast && <View style={{ width: 2, flex: 1, backgroundColor: "#E5E7EB", marginTop: 4, marginBottom: -4 }} />}
+                      </View>
+                      <View style={{ flex: 1, paddingTop: 2 }}>
+                        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+                          <Text style={{ fontSize: 13, fontWeight: "800", color: "#1F2937" }}>{ev.title}</Text>
+                          {ev.date && (
+                            <Text style={{ fontSize: 10, fontWeight: "600", color: GRAY_500 }}>
+                              {ev.date.toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
+                            </Text>
+                          )}
+                        </View>
+                        <Text style={{ fontSize: 12, color: GRAY_600, marginTop: 2 }}>{ev.description}</Text>
+                      </View>
+                    </View>
+                  );
+                })}
+              </View>
+            </View>
+          )}
+
+          <View style={{ gap: 0 }}>
+            {resolutionCycles.length > 0 && resolutionCycles.map((cycle, cIdx) => {
+              const cycleNum = cycle.cycle_number || (cIdx + 1);
+              const cycleDate = cycle.resolved_at ? new Date(cycle.resolved_at).toLocaleString() : null;
+              const hasFb = !!cycle.citizen_feedback;
+              const cycleStatus = cycle.result === "REOPENED" ? "REOPENED" : cycle.result === "COMPLETED" ? "COMPLETED" : (hasFb ? "FEEDBACK SUBMITTED" : "Awaiting Feedback");
+
+              return (
+                <View key={`cycle-${cIdx}`} style={[styles.card, { backgroundColor: "#F9FAFB", borderColor: "#E5E7EB", borderWidth: 1.5, marginTop: 12 }]}>
+                  <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 10, paddingBottom: 8, borderBottomWidth: 1, borderBottomColor: "#E5E7EB" }}>
+                    <SectionTitle title={`Resolution Update #${cycleNum}`} icon="shield-check-outline" />
+                    <View style={{ backgroundColor: cycle.result === "REOPENED" ? "#FEE2E2" : cycle.result === "COMPLETED" ? "#D1FAE5" : "#FEF3C7", paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 }}>
+                      <Text style={{ fontSize: 11, fontWeight: "800", color: cycle.result === "REOPENED" ? "#DC2626" : cycle.result === "COMPLETED" ? "#059669" : "#D97706" }}>
+                        {cycleStatus}
+                      </Text>
+                    </View>
+                  </View>
+
+                  {cycleDate && (
+                    <Text style={{ fontSize: 11, fontWeight: "600", color: GRAY_500, marginBottom: 6 }}>
+                      Resolved Date: {cycleDate}
+                    </Text>
+                  )}
+
+                  {cycle.note ? (
+                    <Text style={{ fontSize: 13, color: COLORS.textDark, marginBottom: 10, fontStyle: "italic" }}>
+                      Inspector Note: "{cycle.note}"
+                    </Text>
+                  ) : null}
+
+                  <Text style={{ fontSize: 12, fontWeight: "700", color: GRAY_600, textTransform: "uppercase", marginBottom: 6 }}>
+                    Inspector Resolution Photos (2 Photos):
+                  </Text>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.imageRow}>
+                    {Array.isArray(cycle.images) && cycle.images.map((img, idx) => {
+                      const uri = getFinalImageUri(img);
+                      return (
+                        <TouchableOpacity
+                          key={`resolve-${cycleNum}-${img}-${idx}`}
+                          activeOpacity={0.8}
+                          onPress={() => {
+                            setViewerImageUrl(uri);
+                            setViewerVisible(true);
+                          }}
+                        >
+                          <Image source={{ uri }} style={styles.previewImage} />
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </ScrollView>
+
+                  {cycle.citizen_feedback && (
+                    <View style={{ backgroundColor: "#FFFFFF", borderRadius: 12, padding: 12, marginTop: 12, borderWidth: 1, borderColor: "#E5E7EB", gap: 6 }}>
+                      <Text style={{ fontSize: 12, fontWeight: "700", color: "#374151", textTransform: "uppercase" }}>
+                        Your Feedback (Cycle #{cycleNum}):
+                      </Text>
+                      <Text style={{ fontSize: 14, fontStyle: "italic", color: COLORS.textDark }}>
+                        "{cycle.citizen_feedback.feedback_text || cycle.citizen_feedback.text}"
+                      </Text>
+                      {cycle.citizen_feedback.rating > 0 && (
+                        <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+                          <Text style={{ fontSize: 12, fontWeight: "700", color: "#4B5563" }}>Rating:</Text>
+                          {Array.from({ length: 5 }).map((_, i) => (
+                            <Icon
+                              key={i}
+                              name="star"
+                              size={14}
+                              color={i < cycle.citizen_feedback.rating ? "#F59E0B" : "#D1D5DB"}
+                            />
+                          ))}
+                        </View>
+                      )}
+                      <View style={{ flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: 10, paddingTop: 8, borderTopWidth: 1, borderTopColor: "#F3F4F6" }}>
+                        <Text style={{ fontSize: 11, fontWeight: "700", color: "#4B5563" }}>
+                          Sentiment: <Text style={{ color: cycle.result === "REOPENED" ? "#DC2626" : "#059669", fontWeight: "800" }}>{cycle.citizen_feedback.sentiment_classification || (cycle.result === "REOPENED" ? "NEGATIVE" : "POSITIVE")}</Text>
+                        </Text>
+                        {cycle.citizen_feedback.sentiment_score !== undefined && (
+                          <Text style={{ fontSize: 11, fontWeight: "700", color: "#4B5563" }}>
+                            Sentiment Score: <Text style={{ color: "#111827", fontWeight: "800" }}>{cycle.citizen_feedback.sentiment_score}</Text>
+                          </Text>
+                        )}
+                        <Text style={{ fontSize: 11, fontWeight: "800", color: cycle.result === "REOPENED" ? "#DC2626" : "#059669", marginLeft: "auto" }}>
+                          Result: {cycle.result || (cycle.result === "REOPENED" ? "REOPENED" : "COMPLETED")}
+                        </Text>
+                      </View>
+                    </View>
+                  )}
+                </View>
+              );
+            })}
 
             {/* Notes section */}
             {(complaint?.citizen_note || complaint?.worker_note ||
@@ -920,10 +1114,10 @@ export const ComplaintDetailScreen = ({ route, navigation }) => {
             <View style={[styles.card, { backgroundColor: "#FEF3C7", borderColor: "#F59E0B", borderWidth: 1.5, gap: 10 }]}>
               <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
                 <Icon name="alert-circle-outline" size={24} color="#D97706" />
-                <View>
-                  <Text style={{ fontSize: 15, fontWeight: "800", color: "#B45309" }}>REOPENED: LOW SATISFACTION</Text>
-                  <Text style={{ fontSize: 11, fontWeight: "700", color: "#B45309", opacity: 0.8 }}>
-                    Reason: {complaint?.reopened_reason || "NEGATIVE_CITIZEN_FEEDBACK"}
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 15, fontWeight: "800", color: "#B45309" }}>Complaint Reopened</Text>
+                  <Text style={{ fontSize: 12, fontWeight: "600", color: "#B45309", marginTop: 2 }}>
+                    Your feedback indicates that the issue may not be fully resolved. The complaint has been sent back to the inspector for further action.
                   </Text>
                 </View>
               </View>
@@ -964,7 +1158,7 @@ export const ComplaintDetailScreen = ({ route, navigation }) => {
           )}
 
           {/* ── CITIZEN FEEDBACK SECTION ── */}
-          {isCitizen && complaint && ["closed", "resolved", "reopened"].includes(normalizedStatus.toLowerCase()) && (
+          {isCitizen && complaint && (
             loadingFeedback ? (
               <View style={styles.card}>
                 <ActivityIndicator size="small" color={PRIMARY} />
@@ -972,73 +1166,12 @@ export const ComplaintDetailScreen = ({ route, navigation }) => {
                   Checking feedback...
                 </Text>
               </View>
-            ) : (feedbackAlreadySubmitted || existingFeedbackData || complaint?.feedback) ? (
-              /* READ-ONLY SUBMITTED FEEDBACK UI */
-              <View style={[styles.card, { backgroundColor: "#ECFDF5", borderColor: "#A7F3D0", borderWidth: 1.5 }]}>
-                <View style={{ flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 12, paddingBottom: 10, borderBottomWidth: 1, borderBottomColor: "#D1FAE5" }}>
-                  <View style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: "#059669", alignItems: "center", justifyContent: "center" }}>
-                    <Icon name="check" size={20} color="#fff" />
-                  </View>
-                  <View>
-                    <Text style={{ fontSize: 16, fontWeight: "800", color: "#064E3B" }}>Feedback Submitted ✓</Text>
-                    <Text style={{ fontSize: 12, color: "#047857" }}>Thank you for your feedback.</Text>
-                  </View>
-                </View>
-
-                <Text style={{ fontSize: 12, fontWeight: "700", color: GRAY_500, textTransform: "uppercase", marginBottom: 6 }}>
-                  Your Rating:
-                </Text>
-                <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 12 }}>
-                  {[1, 2, 3, 4, 5].map((star) => {
-                    const activeRating = ((existingFeedbackData || complaint.feedback)?.rating || rating || 0);
-                    return (
-                      <Icon
-                        key={star}
-                        name={star <= activeRating ? "star" : "star-outline"}
-                        size={26}
-                        color={star <= activeRating ? "#F59E0B" : GRAY_400}
-                      />
-                    );
-                  })}
-                  <Text style={{ fontSize: 14, fontWeight: "700", color: COLORS.textDark, marginLeft: 8 }}>
-                    {((existingFeedbackData || complaint.feedback)?.rating || rating || 0)} / 5 Stars
-                  </Text>
-                </View>
-
-                <Text style={{ fontSize: 12, fontWeight: "700", color: GRAY_500, textTransform: "uppercase", marginBottom: 6 }}>
-                  Your Feedback:
-                </Text>
-                <View style={{ backgroundColor: "#FFFFFF", padding: 14, borderRadius: 12, borderWidth: 1, borderColor: "#D1FAE5", marginBottom: 12 }}>
-                  <Text style={{ fontSize: 14, fontStyle: "italic", color: COLORS.textDark }}>
-                    "{((existingFeedbackData || complaint.feedback)?.feedback_text || (existingFeedbackData || complaint.feedback)?.feedback || feedback)}"
-                  </Text>
-                </View>
-
-                <View style={{ flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: 12, paddingTop: 8, borderTopWidth: 1, borderTopColor: "#D1FAE5" }}>
-                  {((existingFeedbackData || complaint.feedback)?.sentiment_classification || (existingFeedbackData || complaint.feedback)?.sentiment || complaint.sentiment_classification) && (
-                    <Text style={{ fontSize: 12, fontWeight: "700", color: GRAY_600 }}>
-                      Sentiment:{" "}
-                      <Text style={{ fontWeight: "800", color: ((existingFeedbackData || complaint.feedback)?.sentiment_classification || (existingFeedbackData || complaint.feedback)?.sentiment || complaint.sentiment_classification) === "POSITIVE" ? "#059669" : ((existingFeedbackData || complaint.feedback)?.sentiment_classification || (existingFeedbackData || complaint.feedback)?.sentiment || complaint.sentiment_classification) === "NEGATIVE" ? "#DC2626" : "#2563EB" }}>
-                        {(existingFeedbackData || complaint.feedback)?.sentiment_classification || (existingFeedbackData || complaint.feedback)?.sentiment || complaint.sentiment_classification}
-                      </Text>
-                    </Text>
-                  )}
-                  {((existingFeedbackData || complaint.feedback)?.sentiment_score !== undefined || complaint.sentiment_score !== undefined) && (
-                    <Text style={{ fontSize: 12, fontWeight: "700", color: GRAY_600 }}>
-                      Sentiment Score:{" "}
-                      <Text style={{ fontWeight: "800", color: COLORS.textDark }}>
-                        {(existingFeedbackData || complaint.feedback)?.sentiment_score ?? complaint.sentiment_score}
-                      </Text>
-                    </Text>
-                  )}
-                </View>
-              </View>
-            ) : (normalizedStatus.toLowerCase() === "resolved" || normalizedStatus.toLowerCase() === "closed") ? (
-              /* EDITABLE FEEDBACK FORM */
+            ) : (!activeCycleHasFeedback && (["closed", "resolved"].includes(normalizedStatus.toLowerCase()) || activeCycle?.status === "RESOLVED")) ? (
+              /* EDITABLE FEEDBACK FORM FOR ACTIVE CYCLE */
               <View style={styles.card}>
-                <SectionTitle title="Resolution Feedback" icon="star-outline" />
+                <SectionTitle title={`How satisfied are you with this updated resolution?`} icon="star-outline" />
                 <Text style={{ fontSize: 13, color: GRAY_500, marginBottom: 12 }}>
-                  Rate your satisfaction with the resolution of this complaint:
+                  Rate your satisfaction with the inspector's resolution update (Cycle #{activeCycle?.cycle_number || 1}):
                 </Text>
                 <View style={styles.ratingRow}>
                   {[1, 2, 3, 4, 5].map((star) => (
@@ -1049,7 +1182,7 @@ export const ComplaintDetailScreen = ({ route, navigation }) => {
                 </View>
                 <TextInput
                   style={[styles.textInput, { marginTop: 12, minHeight: 80 }]}
-                  placeholder="Tell us about your experience..."
+                  placeholder="Tell us about your experience with this resolution update..."
                   placeholderTextColor={GRAY_400}
                   value={feedback}
                   onChangeText={setFeedback}
@@ -1063,6 +1196,59 @@ export const ComplaintDetailScreen = ({ route, navigation }) => {
                 >
                   {submitting ? <ActivityIndicator size="small" color="#fff" /> : <Text style={[styles.actionBtnText, { fontSize: 16, fontWeight: "600" }]}>Submit Feedback</Text>}
                 </TouchableOpacity>
+              </View>
+            ) : activeCycleHasFeedback ? (
+              /* READ-ONLY SUBMITTED FEEDBACK UI FOR ACTIVE CYCLE */
+              <View style={[styles.card, { backgroundColor: "#ECFDF5", borderColor: "#A7F3D0", borderWidth: 1.5 }]}>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 12, paddingBottom: 10, borderBottomWidth: 1, borderBottomColor: "#D1FAE5" }}>
+                  <View style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: "#059669", alignItems: "center", justifyContent: "center" }}>
+                    <Icon name="check" size={20} color="#fff" />
+                  </View>
+                  <View>
+                    <Text style={{ fontSize: 16, fontWeight: "800", color: "#064E3B" }}>Feedback Submitted ✓</Text>
+                    <Text style={{ fontSize: 12, color: "#047857" }}>Thank you for your feedback.</Text>
+                  </View>
+                </View>
+
+                <Text style={{ fontSize: 12, fontWeight: "700", color: GRAY_500, textTransform: "uppercase", marginBottom: 6 }}>
+                  Latest Rating:
+                </Text>
+                <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 12 }}>
+                  {[1, 2, 3, 4, 5].map((star) => {
+                    const activeRating = (activeCycle?.citizen_feedback?.rating || (existingFeedbackData || complaint.feedback)?.rating || rating || 0);
+                    return (
+                      <Icon
+                        key={star}
+                        name={star <= activeRating ? "star" : "star-outline"}
+                        size={26}
+                        color={star <= activeRating ? "#F59E0B" : GRAY_400}
+                      />
+                    );
+                  })}
+                  <Text style={{ fontSize: 14, fontWeight: "700", color: COLORS.textDark, marginLeft: 8 }}>
+                    {(activeCycle?.citizen_feedback?.rating || (existingFeedbackData || complaint.feedback)?.rating || rating || 0)} / 5 Stars
+                  </Text>
+                </View>
+
+                <Text style={{ fontSize: 12, fontWeight: "700", color: GRAY_500, textTransform: "uppercase", marginBottom: 6 }}>
+                  Latest Feedback:
+                </Text>
+                <View style={{ backgroundColor: "#FFFFFF", padding: 14, borderRadius: 12, borderWidth: 1, borderColor: "#D1FAE5", marginBottom: 12 }}>
+                  <Text style={{ fontSize: 14, fontStyle: "italic", color: COLORS.textDark }}>
+                    "{activeCycle?.citizen_feedback?.feedback_text || activeCycle?.citizen_feedback?.text || ((existingFeedbackData || complaint.feedback)?.feedback_text || (existingFeedbackData || complaint.feedback)?.feedback || feedback)}"
+                  </Text>
+                </View>
+
+                <View style={{ flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: 12, paddingTop: 8, borderTopWidth: 1, borderTopColor: "#D1FAE5" }}>
+                  {(activeCycle?.citizen_feedback?.sentiment_classification || (existingFeedbackData || complaint.feedback)?.sentiment_classification || complaint.sentiment_classification) && (
+                    <Text style={{ fontSize: 12, fontWeight: "700", color: GRAY_600 }}>
+                      Sentiment:{" "}
+                      <Text style={{ fontWeight: "800", color: (activeCycle?.citizen_feedback?.sentiment_classification || (existingFeedbackData || complaint.feedback)?.sentiment_classification || complaint.sentiment_classification) === "POSITIVE" ? "#059669" : "#DC2626" }}>
+                        {activeCycle?.citizen_feedback?.sentiment_classification || (existingFeedbackData || complaint.feedback)?.sentiment_classification || complaint.sentiment_classification}
+                      </Text>
+                    </Text>
+                  )}
+                </View>
               </View>
             ) : null
           )}
@@ -1094,7 +1280,10 @@ export const ComplaintDetailScreen = ({ route, navigation }) => {
               )}
               {["in_progress", "working"].includes(normalizedStatus.toLowerCase()) && (
                 <View style={{ marginTop: 10 }}>
-                  <Text style={{ fontSize: 14, fontWeight: '700', marginBottom: 10, color: '#333' }}>Attach Proof (Required)</Text>
+                  <Text style={{ fontSize: 14, fontWeight: '700', marginBottom: 4, color: '#333' }}>Attach Resolution Proof (Exactly 2 Images Required)</Text>
+                  <Text style={{ fontSize: 12, fontWeight: '600', color: selectedProofImages.length === 2 ? '#059669' : '#DC2626', marginBottom: 10 }}>
+                    Selected: {selectedProofImages.length} / 2 images
+                  </Text>
                   
                   <View style={{ flexDirection: "row", gap: 10, marginBottom: 15 }}>
                     <TouchableOpacity style={[styles.actionBtn, { flex: 1, backgroundColor: '#0F8A83' }]} onPress={takeProofPhoto}>
@@ -1130,11 +1319,11 @@ export const ComplaintDetailScreen = ({ route, navigation }) => {
                   />
 
                   <TouchableOpacity 
-                    style={[styles.actionBtn, { backgroundColor: selectedProofImages.length > 0 ? "#059669" : "#a1a1aa", marginTop: 10 }]} 
+                    style={[styles.actionBtn, { backgroundColor: selectedProofImages.length === 2 ? "#059669" : "#a1a1aa", marginTop: 10 }]} 
                     onPress={handleResolve} 
-                    disabled={submitting || selectedProofImages.length === 0}
+                    disabled={submitting || selectedProofImages.length !== 2}
                   >
-                    {submitting ? <ActivityIndicator size="small" color="#fff" /> : <Text style={styles.actionBtnText}>Submit & Resolve</Text>}
+                    {submitting ? <ActivityIndicator size="small" color="#fff" /> : <Text style={styles.actionBtnText}>Submit & Resolve (2 Images)</Text>}
                   </TouchableOpacity>
                 </View>
               )}

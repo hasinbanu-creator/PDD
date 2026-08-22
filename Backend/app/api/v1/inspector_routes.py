@@ -636,10 +636,9 @@ async def resolve_complaint(
 
         is_reopened = str(complaint.get("status") or "").upper() == "REOPENED" or complaint.get("reopened_reason") is not None
 
-        if not images or len(images) == 0:
-            err_msg = "Please upload a photo before proceeding with a reopened complaint." if is_reopened else "Resolution proof images are required"
+        if not images or len(images) != 2:
             return ResponseHandler.error(
-                message=err_msg,
+                message="Exactly 2 resolution proof images are required",
                 status_code=status.HTTP_400_BAD_REQUEST
             )
 
@@ -660,25 +659,40 @@ async def resolve_complaint(
                 await out_file.write(content_bytes)
             image_urls.append(f"{user_id}/images/{new_filename}")
 
-        if len(image_urls) == 0:
-            err_msg = "Please upload a photo before proceeding with a reopened complaint." if is_reopened else "Valid resolution proof images are required"
+        if len(image_urls) != 2:
             return ResponseHandler.error(
-                message=err_msg,
+                message="Exactly 2 resolution proof images are required",
                 status_code=status.HTTP_400_BAD_REQUEST
             )
 
         old_status = complaint.get("status")
         new_status = "RESOLVED"
         
+        existing_cycles = list(complaint.get("resolution_cycles") or [])
+        cycle_number = len(existing_cycles) + 1
+        new_cycle = {
+            "cycle_number": cycle_number,
+            "inspector_id": str(current_user["user_id"]),
+            "inspector_name": current_user.get("name") or "Inspector",
+            "images": image_urls,
+            "note": note or "",
+            "resolved_at": datetime.utcnow(),
+            "status": "RESOLVED",
+            "citizen_feedback": None,
+            "result": None
+        }
+        existing_cycles.append(new_cycle)
+
         update_doc = {
             "status": new_status,
             "proof_images": image_urls,
+            "resolution_cycles": existing_cycles,
             "reopened_inspection_photo": image_urls[0],
             "closed_at": datetime.utcnow(),
             "updated_at": datetime.utcnow()
         }
 
-        logger.info(f"STATUS CHANGE BEFORE - Complaint ID: {complaint_id}, Old Status: {old_status}, New Status: {new_status}")
+        logger.info(f"STATUS CHANGE BEFORE - Complaint ID: {complaint_id}, Old Status: {old_status}, New Status: {new_status}, Cycle: {cycle_number}")
         await db.complaints.update_one(
             {"_id": complaint.get("_id")},
             {"$set": update_doc}
